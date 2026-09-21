@@ -12,10 +12,51 @@ import { DEFAULT_ROLES } from '@era/contracts';
  * ARCHITECTURE.md's "don't store derived counts" rule) or are named
  * differently (Reservation/SalesContract use `agentId`, mock-data calls the
  * same concept `ownerId`); this file is where that reconciliation happens.
+ *
+ * SAFETY GUARD (added 2026-09-21, after this exact wipe destroyed a real
+ * 637-project scraped Inventory dataset with no warning — see memory-bank/
+ * progress.md's "Incidents worth remembering"): `reset()` unconditionally
+ * deletes nearly every table. Before running it, `assertSafeToReset()`
+ * checks whether `Project` currently holds any row this seed didn't itself
+ * create (i.e. any id outside `erpSeed.projects`' own ids) — that's real or
+ * otherwise-non-demo data, and this script refuses to touch it. Pass
+ * `--force` (or `SEED_FORCE=1`) to override when a wipe is genuinely
+ * intended.
  */
 
 const db = new PrismaClient();
 const DEV_PASSWORD = 'ChangeMe123!';
+const FORCE = process.argv.includes('--force') || process.env.SEED_FORCE === '1';
+
+async function assertSafeToReset() {
+  if (FORCE) return;
+
+  const demoProjectIds = new Set(erpSeed.projects.map((p) => p.id));
+  const existing = await db.project.findMany({ select: { id: true, name: true } });
+  const foreign = existing.filter((p) => !demoProjectIds.has(p.id));
+
+  if (foreign.length > 0) {
+    console.error(
+      [
+        '',
+        `REFUSING TO SEED: found ${foreign.length} Project row(s) that aren't part of this`,
+        "demo dataset (id not in erpSeed.projects) — this looks like real or otherwise",
+        'important data, not the placeholder set this script is meant to reset.',
+        '',
+        `Example: "${foreign[0]?.name}" (id ${foreign[0]?.id}).`,
+        '',
+        'This exact mistake already destroyed a real 637-project scraped Inventory',
+        'dataset once (see memory-bank/progress.md). If you\'re SURE you want to wipe',
+        'the current Inventory (and every other table this script resets) and replace',
+        'it with the small demo/mock dataset, re-run with --force:',
+        '',
+        '  pnpm --filter @era/api db:seed -- --force',
+        '',
+      ].join('\n'),
+    );
+    process.exit(1);
+  }
+}
 
 const date = (s: string) => new Date(s);
 const dateOrNull = (s: string | null) => (s ? new Date(s) : null);
@@ -55,6 +96,7 @@ async function reset() {
 }
 
 async function main() {
+  await assertSafeToReset();
   await reset();
 
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);

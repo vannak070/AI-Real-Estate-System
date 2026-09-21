@@ -98,3 +98,56 @@ entirely), run `git remote -v` immediately — don't assume commands are
 operating on this repo just because the cwd is right. As of 2026-09-21 this
 project has its own correct `.git` pointed at
 `github.com/vannak070/AI-Real-Estate-System`, in sync with `origin/main`.
+
+## Root-cause investigation method: "what ran a destructive command against
+## this DB" (used 2026-09-21 for the real-Inventory-wipe incident)
+
+When something got destroyed and the *how* isn't obvious from the current
+state, this is the check order that actually narrows it down, cheapest and
+most conclusive first:
+
+1. **Docker container `Created` timestamp**, not just "is it running":
+   `docker inspect <container> --format '{{.Created}}'`. If it still reads
+   the original setup date, the named volume was never recreated — rules
+   out `docker compose down -v` / `docker volume rm` / a prune entirely,
+   regardless of what the data itself looks like now. (era-postgres's own
+   volume is named, not a bind mount — see `docker-compose.yml` — so a
+   plain `docker compose down` without `-v` was never a suspect either;
+   only removing the volume itself would matter.)
+2. **Local Claude Code session transcripts for this exact project**, if any
+   exist: `~/.claude/projects/<url-encoded-project-path>/*.jsonl` — one
+   file per top-level session, `<sessionId>/subagents/*.jsonl` for anything
+   spawned via the Agent tool underneath it. These are plain JSONL, one
+   `{"timestamp", "type", "message": {"content": [...]}}` object per line;
+   `tool_use` entries with `"name": "Bash"` have the exact command in
+   `input.command`. Grep/parse these directly (Python's `json.loads` per
+   line handles it fine) for the specific command(s) suspected — don't
+   trust a substring match on the whole file for anything file-content or
+   prose-wrapped; extract `tool_use`/`Bash` entries specifically and check
+   their `command` field, and check subagent files too, since a spawned
+   Explore/general-purpose agent's own Bash calls don't show up in the
+   parent session's tool_use list at all.
+3. **The user's own shell history** (`~/.zsh_history`, `~/.bash_history`) —
+   only useful if the destructive command was typed by a human in a
+   terminal that writes to one of those files; a lot of real usage (GUI
+   tools, other terminal apps, Claude Code's own Bash tool subprocess)
+   never touches them.
+4. **Hidden automatic triggers**: `postinstall`/`preinstall`/`prepare` in
+   every `package.json`, and each Turborepo task's `dependsOn` chain in
+   `turbo.json` — confirm nothing routine (like `pnpm install` or `pnpm
+   dev`) could silently cascade into the destructive command.
+
+For the 2026-09-21 incident (a full reset of the real 637-project Inventory
+scrape back to the demo seed, see `progress.md`'s Incidents section and
+`activeContext.md` item 1/2), steps 1 and 4 came back clean, and step 2
+found exactly which session had the real data intact vs. reverted (bracketing
+the reset to sometime within one specific ~9-day-long continuous session)
+but never found the literal command — searched every `Bash` tool_use in
+both local sessions and all 12 subagents spawned from the relevant one, for
+`db:seed` (the destructive form), `prisma migrate reset` without
+`--skip-seed`, and any Docker volume/`TRUNCATE`/`DELETE` pattern. None
+turned up. **Conclusion when this happens: don't keep digging indefinitely
+once steps 1–4 are exhausted — the more productive move is removing the
+*ability* to repeat the mistake** (see `prisma/seed.ts`'s `assertSafeToReset()`
+guard, added as the actual resolution here) rather than fully explaining a
+gap in the available logs.

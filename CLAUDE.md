@@ -47,7 +47,9 @@ pnpm install
 docker compose up -d postgres             # era-postgres on :5435 (docker-compose.yml) — see below
 pnpm --filter @era/api prisma:generate    # REQUIRED before api typecheck/dev — @prisma/client won't exist otherwise
 pnpm --filter @era/api prisma:migrate     # needs a Postgres at DATABASE_URL
-pnpm --filter @era/api db:seed            # optional demo data
+pnpm --filter @era/api db:seed            # optional demo data — WIPES nearly every table first;
+                                           # refuses (exit 1) if Inventory holds anything beyond the
+                                           # demo dataset's own rows. Add `-- --force` to override.
 
 pnpm client         # customer site dev server  :5173
 pnpm admin          # back office dev server     :5174

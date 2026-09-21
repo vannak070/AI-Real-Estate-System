@@ -11,14 +11,20 @@ update this one when a whole area of work actually completes.
 - **CRM**: Contacts, Pipeline (Leads with real auto-assignment to the
   least-loaded agent), Tasks — per-agent ownership scoping, a real
   "Edit contact" form, Lead editing covering every field the schema supports.
-- **Inventory**: real projects/units in Postgres (6 projects / 1,044 units as
-  of the 2026-09-21 client-connectivity review — this number moves with
-  whatever's seeded locally at the time; don't treat either figure as fixed,
-  check `docker exec era-postgres psql -U era -d era -c "select count(*)
-  from inventory_projects;"` if it matters), projects/blocks/units/unit-
-  types/price-lists all real CRUD, structured Cambodia location picker,
-  photo upload with cropping, a searchable unit/project/contact picker
-  pattern used everywhere a long list needs picking from.
+- **Inventory**: the real 637-listing dataset scraped from `eracambodia.com`
+  and `pointerasia.com` (see `apps/api/scripts/` and this file's "Incidents"
+  section below for how it got wiped by a DB reset and recovered on
+  2026-09-21) — 669 real projects / 688 units as of that recovery, 637 of
+  the projects carrying real photos. This number moves with whatever's
+  seeded locally at the time; don't treat any figure here as fixed — check
+  `docker exec era-postgres psql -U era -d era -c "select count(*) from
+  inventory_projects;"` if it matters, and if it ever comes back small
+  again (~6 projects), that's the demo placeholder seed, not this real
+  data — see the Incidents entry before assuming it needs re-scraping.
+  Full CRUD on projects/blocks/units/unit-types/price-lists, structured
+  Cambodia location picker, photo upload with cropping, a searchable
+  unit/project/contact picker pattern used everywhere a long list needs
+  picking from.
 - **Sales**: Quotations (with sequential discount tiers, a real
   discount-approval gate above 15%, DRAFT-only editing, PDF generation),
   Reservations (manual creation, deposit editing, configurable hold
@@ -142,3 +148,31 @@ update this one when a whole area of work actually completes.
   handler both mutates state and, soon after (via `setTimeout` or a
   callback), reads that same state back, check whether it's reading current
   state or a value closed over at definition time.
+- **`prisma/seed.ts` silently wiped the real, already-scraped 637-project
+  Inventory dataset back to the small demo seed** — discovered and
+  recovered 2026-09-21 (see "Where things stand" for the full story).
+  `apps/api/scripts/` had a real scraping pipeline (`eracambodia.com` +
+  `pointerasia.com`) that already ran once and replaced the demo Inventory
+  with real data; at some point `prisma/seed.ts` (the demo/mock-data seed)
+  ran again on top of it, unconditionally deleting Project/Unit/etc. first,
+  silently erasing the real data — this memory bank's own "637 real
+  projects" note had been present the whole time but a prior session, not
+  recognizing it, rewrote it to match whatever the (demo) DB held instead
+  of investigating the discrepancy. **Lesson: a memory-bank figure that
+  doesn't match the live DB is itself a signal something may have been
+  lost, not just staleness to silently correct** — before overwriting a
+  specific, oddly-precise number like "637" with "whatever's there now,"
+  it's worth asking why they differ. The exact trigger for that `db:seed`
+  run was investigated thoroughly (see `techContext.md`'s "Root-cause
+  investigation method" note) but never conclusively found — a Docker
+  volume wipe was ruled out (the container's `Created` timestamp was still
+  day one), and no matching command turned up in either of this project's
+  two local Claude Code session transcripts or their 12 subagents. The
+  recovery itself worked only because Postgres resets don't touch the
+  filesystem — the actual downloaded photos were still sitting orphaned in
+  `apps/api/uploads/`. **Resolved properly, not just patched**:
+  `prisma/seed.ts` now has an `assertSafeToReset()` guard (added the same
+  day) that refuses to run — no matter what invokes it, or why — if
+  `Project` holds any row outside the demo dataset's own ids, unless
+  `--force`/`SEED_FORCE=1` is explicitly passed. The exact trigger no
+  longer needs to be known for this specific failure mode to be closed.
