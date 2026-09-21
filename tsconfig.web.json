@@ -1,0 +1,18 @@
+{
+  "//": "Base for the Vite SPAs (apps/client, apps/admin). Deliberately looser than tsconfig.base.json — this code came from a Figma export and is being migrated. Ratchet `strict` on later.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "jsx": "react-jsx",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": false,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": false,
+    "verbatimModuleSyntax": false,
+    "declaration": false,
+    "sourceMap": false
+  }
+}

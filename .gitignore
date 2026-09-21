@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.env
+.env.local
+*.local
+.DS_Store
+coverage/
+.turbo/
+*.db
+
+# Locally-uploaded images (apps/api/src/platform/uploads.ts) — not source, don't commit
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep

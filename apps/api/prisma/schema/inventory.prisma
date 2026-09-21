@@ -1,0 +1,167 @@
+// Reconciled with packages/mock-data/src/erp/types.ts.
+// Project.totalUnits is deliberately NOT a stored column — derive it with
+// `count(units)`. A denormalized count is a bug waiting to happen (see the
+// same call in ARCHITECTURE.md re: Unit.status being the single source of
+// truth for availability).
+
+enum ProjectStatus {
+  PLANNING
+  SELLING
+  SOLD_OUT
+  HANDOVER
+  COMPLETED
+}
+
+enum PropertyCategory {
+  SALE
+  RENT
+}
+
+enum PropertyType {
+  CONDO
+  HOUSE
+  VILLA
+  TOWNHOUSE
+  SHOPHOUSE
+  LAND
+  BOREY
+  COMMERCIAL
+}
+
+/// One marketing ribbon at a time, shown on listing cards (admin today, customer site later).
+enum ListingBadge {
+  NONE
+  EXCLUSIVE
+  BEST_OFFER
+}
+
+model Project {
+  id           String           @id @default(cuid())
+  name         String
+  /// display string, auto-derived from village/commune/district when those are set — kept so every
+  /// existing card/header that reads `location` needs no change. Free text for legacy records.
+  location     String
+  /// display string = `province` when set — same auto-derive/back-compat rationale as `location`.
+  city         String?
+  /// Structured Cambodia administrative divisions (Province/City -> District/Khan -> Commune/Sangkat
+  /// -> Phum), sourced from a real gazetteer via the admin's location picker — not free text. All
+  /// optional since existing projects predate this and are never auto-backfilled (no guessing).
+  province     String?
+  district     String?
+  commune      String?
+  village      String?
+  phase        String?
+  status       ProjectStatus    @default(PLANNING)
+  category     PropertyCategory @default(SALE)
+  propertyType PropertyType     @default(CONDO)
+  handoverDate DateTime?
+  amenities    String[]
+  coverColor   String?
+  /// relative paths under the API's /uploads static route, e.g. "/uploads/projects/<id>/<uuid>.jpg"
+  imageUrls    String[]         @default([])
+  badge        ListingBadge     @default(NONE)
+  /// external link (YouTube/Vimeo/etc) — not a real upload, video hosting is out of scope for now
+  videoUrl     String?
+  /// marketing override for "Starting from" — falls back to MIN(unit.listPrice) when unset
+  startingPriceOverride Int?
+  /// Real developer-project facts, disclosed by the source listing but not derivable from our own
+  /// seeded units — kept as their own fields rather than discarded when a scrape surfaces them.
+  developer    String?
+  tenure       String?
+  totalFloors  Int?
+  /// the project's own stated total unit count (e.g. "1300 units") — distinct from counting our
+  /// seeded Unit rows, which are one per disclosed *unit type*, not one per physical unit.
+  disclosedUnitCount Int?
+  /// whole-building floor plan (which floors belong to which "collection" tier) — a quotation/marketing asset, not a photo
+  sitePlanUrl  String?
+  createdAt    DateTime         @default(now())
+  blocks       Block[]
+  units        Unit[]
+  priceLists   PriceList[]
+
+  @@map("inventory_projects")
+}
+
+model Block {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+  name      String
+  floors    Int
+  units     Unit[]
+
+  @@map("inventory_blocks")
+}
+
+/// Global catalog (studio, 1BR, 2BR, …) — not per-project.
+model UnitType {
+  id          String  @id @default(cuid())
+  name        String
+  bedrooms    Int
+  bathrooms   Int
+  areaSqm     Float
+  description String?
+  imageUrls   String[] @default([])
+  /// dimensioned unit-layout drawing (distinct from the lifestyle photos in imageUrls) — used on quotation PDFs
+  floorPlanUrl String?
+  units       Unit[]
+
+  @@map("inventory_unit_types")
+}
+
+enum UnitStatus {
+  AVAILABLE
+  HELD
+  RESERVED
+  BOOKED
+  SOLD
+  CONTRACTED
+  HANDED_OVER
+  BLOCKED
+}
+
+model Unit {
+  id            String     @id @default(cuid())
+  projectId     String
+  project       Project    @relation(fields: [projectId], references: [id])
+  blockId       String?
+  block         Block?     @relation(fields: [blockId], references: [id])
+  unitTypeId    String?
+  unitType      UnitType?  @relation(fields: [unitTypeId], references: [id])
+  code          String
+  floor         Int?
+  /// saleable/billed area — "gross" on quotation documents
+  areaSqm       Float?
+  /// usable area — "net" on quotation documents; optional since not every listing distinguishes it
+  netAreaSqm    Float?
+  view          String?
+  orientation   String?
+  parking       Int        @default(0)
+  listPrice     Int
+  status        UnitStatus @default(AVAILABLE)
+  /// hand-picked by ops for a curated homepage rail (e.g. "Serviced Apartments for Rent") — not derived
+  featured      Boolean    @default(false)
+  holdExpiresAt DateTime?
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([projectId, code])
+  @@index([status])
+  @@map("inventory_units")
+}
+
+model PriceList {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id])
+  name            String
+  version         Int      @default(1)
+  effectiveFrom   DateTime @default(now())
+  active          Boolean  @default(false)
+  /// price per sqm, USD
+  psf             Float
+  floorPremiumPct Float    @default(0)
+  viewPremiumUsd  Int      @default(0)
+
+  @@index([projectId, active])
+  @@map("inventory_price_lists")
+}

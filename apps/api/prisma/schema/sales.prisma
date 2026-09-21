@@ -1,0 +1,125 @@
+// Reconciled with packages/mock-data/src/erp/types.ts.
+// The speculative `Deal` model (pre-quotation opportunity) is dropped — the
+// static build proved the real flow is Lead -> Quotation -> Reservation ->
+// Contract, with no separate opportunity stage. Commission moved to `finance`
+// (it's money, not a sales-pipeline concern).
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  EXPIRED
+  DECLINED
+}
+
+model Quotation {
+  id             String              @id @default(cuid())
+  number         String              @unique
+  contactId      String //  -> crm_contacts.id
+  unitId         String //  -> inventory_units.id
+  leadId         String? //  -> crm_leads.id
+  ownerId        String //  -> identity_users.id
+  priceListId    String? //  -> inventory_price_lists.id
+  listPrice      Int
+  /// [{ label, pct }, ...] — applied in sequence, each pct against the price remaining after the prior tier (matches how agents actually stack discounts, e.g. "1st discount 10%" then "2nd discount 5%" on the reduced price)
+  discounts      Json                @default("[]")
+  /// effective combined discount, derived from `discounts` at creation time — kept for cheap list-view display
+  discountPct    Float               @default(0)
+  discountAmount Int                 @default(0)
+  netPrice       Int
+  paymentPlanId  String
+  paymentPlan    PaymentPlanTemplate @relation(fields: [paymentPlanId], references: [id])
+  status         QuoteStatus         @default(DRAFT)
+  validUntil     DateTime?
+  createdAt      DateTime            @default(now())
+  reservations   Reservation[]
+
+  @@index([status])
+  @@map("sales_quotations")
+}
+
+model PaymentPlanTemplate {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?
+  /// [{ label, dueOffsetDays?, milestone?, percent }, ...] — see PaymentPlanInstallment
+  installments Json
+  quotations   Quotation[]
+  contracts    SalesContract[]
+
+  @@map("sales_payment_plan_templates")
+}
+
+enum ReservationStatus {
+  HELD
+  CONFIRMED
+  EXPIRED
+  CONVERTED
+  CANCELLED
+}
+
+model Reservation {
+  id            String            @id @default(cuid())
+  number        String            @unique
+  quotationId   String?
+  quotation     Quotation?        @relation(fields: [quotationId], references: [id])
+  unitId        String //       -> inventory_units.id
+  contactId     String //       -> crm_contacts.id
+  agentId       String //       -> identity_users.id
+  depositAmount Int               @default(0)
+  depositPaid   Boolean           @default(false)
+  status        ReservationStatus @default(HELD)
+  expiresAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  contract      SalesContract?
+
+  @@index([status])
+  @@map("sales_reservations")
+}
+
+enum ContractStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  ACTIVE
+  COMPLETED
+  TERMINATED
+}
+
+model SalesContract {
+  id             String              @id @default(cuid())
+  number         String              @unique
+  reservationId  String?             @unique
+  reservation    Reservation?        @relation(fields: [reservationId], references: [id])
+  unitId         String
+  contactId      String
+  agentId        String
+  salePrice      Int
+  discountAmount Int                 @default(0)
+  netPrice       Int
+  paymentPlanId  String
+  paymentPlan    PaymentPlanTemplate @relation(fields: [paymentPlanId], references: [id])
+  status         ContractStatus      @default(DRAFT)
+  signedAt       DateTime?
+  createdAt      DateTime            @default(now())
+  milestones     ContractMilestone[]
+
+  @@map("sales_contracts")
+}
+
+enum MilestoneStatus {
+  PENDING
+  DONE
+}
+
+model ContractMilestone {
+  id          String          @id @default(cuid())
+  contractId  String
+  contract    SalesContract   @relation(fields: [contractId], references: [id])
+  label       String
+  dueDate     DateTime?
+  status      MilestoneStatus @default(PENDING)
+  completedAt DateTime?
+
+  @@map("sales_contract_milestones")
+}

@@ -1,0 +1,116 @@
+// Reconciled with packages/mock-data/src/erp/types.ts.
+
+enum ContactType {
+  PROSPECT
+  BUYER
+  TENANT
+  OWNER
+  BROKER
+  REFERRER
+}
+
+enum KycStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+/// Shared by Contact.source and Lead.source — where the relationship started.
+enum LeadSource {
+  FACEBOOK
+  TELEGRAM
+  WHATSAPP
+  WEBSITE
+  WALK_IN
+  REFERRAL
+  CAMPAIGN
+}
+
+model Contact {
+  id               String      @id @default(cuid())
+  name             String
+  type             ContactType @default(PROSPECT)
+  email            String?
+  phone            String?
+  nationality      String?
+  company          String?
+  kycStatus        KycStatus   @default(NONE)
+  source           LeadSource  @default(WEBSITE)
+  consentMarketing Boolean     @default(false)
+  ownerId          String? //  -> identity_users.id (no FK: module boundary)
+  tags             String[]
+  createdAt        DateTime    @default(now())
+  leads            Lead[]
+
+  @@index([ownerId])
+  @@map("crm_contacts")
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  VIEWING
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum Temperature {
+  HOT
+  WARM
+  COLD
+}
+
+model Lead {
+  id                 String      @id @default(cuid())
+  contactId          String
+  contact            Contact     @relation(fields: [contactId], references: [id])
+  stage              LeadStage   @default(NEW)
+  score              Int         @default(0)
+  temperature        Temperature @default(WARM)
+  budgetMin          Int?
+  budgetMax          Int?
+  preferredProjectId String? //  -> inventory_projects.id
+  unitTypeWanted     String?
+  timeline           String?
+  ownerId            String? //  -> identity_users.id
+  source             LeadSource  @default(WEBSITE)
+  campaignId         String? //  -> marketing_campaigns.id
+  lostReason         String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  activities         Activity[]
+
+  @@index([stage])
+  @@index([ownerId])
+  @@map("crm_leads")
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  VIEWING
+  NOTE
+  TASK
+  STATUS_CHANGE
+}
+
+model Activity {
+  id         String       @id @default(cuid())
+  type       ActivityType
+  subject    String
+  leadId     String?
+  lead       Lead?        @relation(fields: [leadId], references: [id])
+  contactId  String?
+  contractId String? //   -> sales_contracts.id
+  ownerId    String? //   -> identity_users.id
+  dueAt      DateTime?
+  done       Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+
+  @@index([leadId])
+  @@map("crm_activities")
+}

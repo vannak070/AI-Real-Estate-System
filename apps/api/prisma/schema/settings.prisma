@@ -1,0 +1,42 @@
+// New in Phase 0 #1 — reconciled with packages/mock-data/src/erp/types.ts.
+// NumberSequence backs Phase 0 #4 (atomic doc numbering) — bump `nextNumber`
+// inside a transaction with `SELECT ... FOR UPDATE` semantics (Prisma:
+// `db.$transaction` + a conditional update), never read-then-write outside one.
+
+model CompanyProfile {
+  /// singleton row
+  id        String   @id @default("default")
+  name      String
+  legalName String?
+  address   String?
+  phone     String?
+  email     String?
+  taxId     String?
+  currency  String   @default("USD")
+  timezone  String   @default("Asia/Phnom_Penh")
+  locale    String   @default("en-KH")
+  updatedAt DateTime @updatedAt
+
+  @@map("settings_company_profile")
+}
+
+model NumberSequence {
+  id     String @id @default(cuid())
+  /// human label, e.g. "Reservation", "Sale Agreement" — NOT the lookup key
+  doc    String @unique
+  /// the lookup key services call nextNumber() with — "QT","RSV","SPA","INV","PAY","RCP",...
+  prefix String @unique
+  nextNumber Int @default(1)
+  padding    Int @default(4)
+
+  @@map("settings_number_sequences")
+}
+
+model TaxRate {
+  id        String  @id @default(cuid())
+  name      String
+  ratePct   Float
+  isDefault Boolean @default(false)
+
+  @@map("settings_tax_rates")
+}

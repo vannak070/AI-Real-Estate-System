@@ -1,0 +1,12 @@
+// Analytics owns denormalized read models only, updated from events.
+// Nothing else writes here; this module never writes anywhere else.
+model DailyMetric {
+  id     String   @id @default(cuid())
+  day    DateTime @db.Date
+  metric String
+  value  Float    @default(0)
+  dims   Json?
+
+  @@unique([day, metric])
+  @@map("analytics_daily_metrics")
+}

@@ -1,0 +1,97 @@
+// New in Phase 0 #1 — reconciled with packages/mock-data/src/erp/types.ts.
+// Cross-cutting workflow: approvals, documents, notifications. Full CRUD
+// lands in Phase 5; this file just establishes the tables.
+
+enum ApprovalType {
+  DISCOUNT
+  REFUND
+  CANCELLATION
+  PRICE_OVERRIDE
+}
+
+enum ApprovalRefType {
+  QUOTATION
+  RESERVATION
+  CONTRACT
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ApprovalRequest {
+  id          String          @id @default(cuid())
+  type        ApprovalType
+  refType     ApprovalRefType
+  refId       String
+  requestedBy String //  -> identity_users.id
+  amount      Int?
+  pct         Float?
+  reason      String
+  status      ApprovalStatus  @default(PENDING)
+  decidedBy   String?
+  decidedAt   DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@index([status])
+  @@map("ops_approval_requests")
+}
+
+enum DocType {
+  ID
+  PROOF_OF_FUNDS
+  QUOTATION
+  RESERVATION_FORM
+  SPA
+  RECEIPT
+  DEMAND_LETTER
+  NOC
+  OTHER
+}
+
+enum DocRefType {
+  CONTACT
+  CONTRACT
+  RESERVATION
+  PROJECT
+  UNIT
+}
+
+model DocumentFile {
+  id         String     @id @default(cuid())
+  name       String
+  type       DocType
+  refType    DocRefType
+  refId      String
+  uploadedBy String? //  -> identity_users.id
+  uploadedAt DateTime   @default(now())
+  sizeKb     Int        @default(0)
+  /// path/key in the file store, once real uploads are wired (Phase 6)
+  storageKey String?
+
+  @@index([refType, refId])
+  @@map("ops_documents")
+}
+
+enum NotificationKind {
+  INFO
+  WARNING
+  SUCCESS
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  kind       NotificationKind @default(INFO)
+  title      String
+  body       String?
+  entityType String?
+  entityId   String?
+  userId     String? //  -> identity_users.id (null = broadcast to all)
+  read       Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  @@index([userId, read])
+  @@map("ops_notifications")
+}

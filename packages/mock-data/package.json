@@ -1,0 +1,17 @@
+{
+  "name": "@era/mock-data",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./erp": "./src/erp/index.ts"
+  },
+  "//": "TEMPORARY. Replace with real API calls (apps/*/src/api) once the backend is wired.",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

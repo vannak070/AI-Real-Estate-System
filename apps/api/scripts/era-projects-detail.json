@@ -1,0 +1,2937 @@
+[
+  {
+    "href": "/timesquare10",
+    "name": "TIME SQUARE 10 - OCEAN VIEW",
+    "type": "Residential Condominium",
+    "location": "Otres Beach, Sihanoukville",
+    "developer": "MEGAKIM WORLD CORP LTD.",
+    "tenure": "Freehold",
+    "completion": "Q2-2029",
+    "totalFloor": "39 Floors",
+    "totalUnit": "1300",
+    "totalBuilding": "3",
+    "startingPrice": "$ 39,900",
+    "unitTypes": [
+      {
+        "label": "TIFFAY 1 BED",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 36.0,
+        "areaMax": 36.0,
+        "price": 39000.0
+      },
+      {
+        "label": "TIFFAY 1 BED",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 36.0,
+        "areaMax": 36.0,
+        "price": 39000.0
+      },
+      {
+        "label": "STYLISH 1 BED",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 40.0,
+        "areaMax": 40.0,
+        "price": 43000.0
+      },
+      {
+        "label": "MODERN 1 BED",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 50.0,
+        "areaMax": 50.0,
+        "price": 52000.0
+      },
+      {
+        "label": "CRYSTAL 1 BED",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 47.0,
+        "areaMax": 47.0,
+        "price": 48500.0
+      },
+      {
+        "label": "SUPERIOR 1 BED",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 53.0,
+        "areaMax": 53.0,
+        "price": 56000.0
+      },
+      {
+        "label": "STYLISH 2 BED",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 73.0,
+        "areaMax": 73.0,
+        "price": 76000.0
+      },
+      {
+        "label": "SPECIOUS 2 BED",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 78.0,
+        "areaMax": 78.0,
+        "price": 78000.0
+      },
+      {
+        "label": "GOLDEN 2 BED",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 90.0,
+        "areaMax": 90.0,
+        "price": 90000.0
+      },
+      {
+        "label": "LUXURY 2 BED",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 100.0,
+        "areaMax": 100.0,
+        "price": 103000.0
+      },
+      {
+        "label": "LUXURY 3 BED",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 113.0,
+        "areaMax": 113.0,
+        "price": 125000.0
+      },
+      {
+        "label": "PRESTIGIOUS 3 BED",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 140.0,
+        "areaMax": 140.0,
+        "price": 140000.0
+      },
+      {
+        "label": "DIAMOND 4 BED (A1)",
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "areaMin": 205.0,
+        "areaMax": 205.0,
+        "price": 229000.0
+      },
+      {
+        "label": "DIAMOND 4 BED (A2)",
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "areaMin": 215.0,
+        "areaMax": 215.0,
+        "price": 238000.0
+      },
+      {
+        "label": "V1 - V11",
+        "bedrooms": 1,
+        "bathrooms": 2,
+        "areaMin": 67.0,
+        "areaMax": 67.0,
+        "price": 82500.0
+      },
+      {
+        "label": "W1 - W8",
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "areaMin": 100.0,
+        "areaMax": 100.0,
+        "price": 123700.0
+      },
+      {
+        "label": "X1 - X6",
+        "bedrooms": 3,
+        "bathrooms": 4,
+        "areaMin": 140.0,
+        "areaMax": 140.0,
+        "price": 198450.0
+      },
+      {
+        "label": "Y1 - Y5",
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "areaMin": 200.0,
+        "areaMax": 200.0,
+        "price": 238000.0
+      }
+    ]
+  },
+  {
+    "href": "/timesquare9bkk1",
+    "name": "TIME SQUARE 9 - BKK1",
+    "type": "Residential Condominium",
+    "location": "St.278, BKK1, Phnom Penh",
+    "developer": "MEGAKIM WORLD CORP LTD.",
+    "tenure": "Freehold",
+    "completion": "Q4-2029",
+    "totalFloor": "39  Floors",
+    "totalUnit": "600 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 90,000",
+    "unitTypes": [
+      {
+        "label": "TYPE B",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 80.0,
+        "areaMax": 80.0,
+        "price": 121000.0
+      },
+      {
+        "label": "TYPE N/O/P/Q/R/S/T",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 60.0,
+        "areaMax": 60.0,
+        "price": 90000.0
+      },
+      {
+        "label": "TYPE L",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 60.0,
+        "areaMax": 60.0,
+        "price": 90000.0
+      },
+      {
+        "label": "TIME SQUARE 9 - BKK1",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 75.0,
+        "areaMax": 75.0,
+        "price": 111000.0
+      },
+      {
+        "label": "TYPE M/K",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 90.0,
+        "areaMax": 95.0,
+        "price": 133000.0
+      },
+      {
+        "label": "TYPE A",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 130.0,
+        "areaMax": 130.0,
+        "price": 198000.0
+      },
+      {
+        "label": "TYPE C",
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "areaMin": 190.0,
+        "areaMax": 190.0,
+        "price": 292000.0
+      }
+    ]
+  },
+  {
+    "href": "/time-square-8-toul-tompoung",
+    "name": "TIME SQUARE 8 - TOUL TOMPOUNG",
+    "type": "Residential Condominium",
+    "location": "Toul Tompoung, Phnom Penh",
+    "developer": "MEGAKIM WORLD CORP LTD.",
+    "tenure": "Freehold",
+    "completion": "Q4-2028",
+    "totalFloor": "50 Floors",
+    "totalUnit": "700 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 39,900",
+    "unitTypes": [
+      {
+        "label": "J",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 40.0,
+        "areaMax": 40.0,
+        "price": 39900.0
+      },
+      {
+        "label": "K",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 47.0,
+        "areaMax": 47.0,
+        "price": 52000.0
+      },
+      {
+        "label": "L,M,N,O,P",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 47.0,
+        "areaMax": 47.0,
+        "price": 52000.0
+      },
+      {
+        "label": "I,H,G,F,E,D",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 60.0,
+        "areaMax": 60.0,
+        "price": 64000.0
+      },
+      {
+        "label": "Q,R",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 73.0,
+        "areaMax": 73.0,
+        "price": 73000.0
+      },
+      {
+        "label": "B,C",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 88.0,
+        "areaMax": 88.0,
+        "price": 94000.0
+      },
+      {
+        "label": "A",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 111.0,
+        "areaMax": 111.0,
+        "price": 118000.0
+      },
+      {
+        "label": "L,M",
+        "bedrooms": 1,
+        "bathrooms": 2,
+        "areaMin": 79.0,
+        "areaMax": 79.0,
+        "price": 100000.0
+      },
+      {
+        "label": "G,H",
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "areaMin": 104.0,
+        "areaMax": 104.0,
+        "price": 137000.0
+      },
+      {
+        "label": "S,Q,R,W",
+        "bedrooms": 3,
+        "bathrooms": 4,
+        "areaMin": 124.0,
+        "areaMax": 140.0,
+        "price": 186000.0
+      },
+      {
+        "label": "A,B,C",
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "areaMin": 167.0,
+        "areaMax": 173.0,
+        "price": 222000.0
+      }
+    ]
+  },
+  {
+    "href": "/jtower3",
+    "name": "J TOWER 3",
+    "type": "Residential Developments",
+    "location": "BKK1, Phnom Penh",
+    "developer": "Tanichu Assetment Co., Ltd",
+    "tenure": "Freehold",
+    "completion": "Q4-2028",
+    "totalFloor": "77  Floors",
+    "totalUnit": "360",
+    "totalBuilding": null,
+    "startingPrice": "$ 330,000",
+    "unitTypes": [
+      {
+        "label": "UNIT 01, 03, 05, 07",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 166.0,
+        "areaMax": 166.0,
+        "price": 330000.0
+      },
+      {
+        "label": "UNIT 02, 06",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 178.0,
+        "areaMax": 178.0,
+        "price": 350000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/lecondebkk1",
+    "name": "Le Condé BKK1",
+    "type": "Residential Condominium",
+    "location": "St.352, BKK1, Phnom Penh",
+    "developer": "WANG FU GUO JI PROPERTY DEVELOPMENT CO., LTD",
+    "tenure": "Freehold",
+    "completion": "Q4-2025",
+    "totalFloor": "43 Floors",
+    "totalUnit": "1080 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 100,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1 - A6",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 37.8,
+        "areaMax": 41.92,
+        "price": 120000.0
+      },
+      {
+        "label": "Unit B1 - B5",
+        "bedrooms": 1,
+        "areaMin": 49.96,
+        "areaMax": 64.88,
+        "bathrooms": 1,
+        "price": 155000.0
+      },
+      {
+        "label": "Unit C1 - C6",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 72.67,
+        "areaMax": 90.96,
+        "price": 240000.0
+      },
+      {
+        "label": "Unit D1 - D8",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 166.61,
+        "areaMax": 186.8,
+        "price": 520000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 100000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/urbanvillage2",
+    "name": "URBAN VILLAGE PHASE 2",
+    "type": "Residential Building",
+    "location": "Hun Sen Blvd, Phnom Penh",
+    "developer": "Goldfame Group and Urban Living Solution",
+    "tenure": "Freehold",
+    "completion": "Q4-2024",
+    "totalFloor": "62 Floors",
+    "totalUnit": "1,700 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 70,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 110.0,
+        "areaMax": 110.0,
+        "price": 250000.0
+      },
+      {
+        "label": "Unit A2",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 127.0,
+        "areaMax": 127.0,
+        "price": 300000.0
+      },
+      {
+        "label": "Unit B1-B3",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 73.0,
+        "areaMax": 76.0,
+        "price": 150000.0
+      },
+      {
+        "label": "Unit C1 - C2",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 54.0,
+        "areaMax": 58.0,
+        "price": 120000.0
+      },
+      {
+        "label": "Unit D1 - D2",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 38.0,
+        "areaMax": 38.0,
+        "price": 1.0
+      },
+      {
+        "label": "Duplex Loft 1 - Duplex Loft 5",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 73.0,
+        "areaMax": 88.0,
+        "price": 200000.0
+      },
+      {
+        "label": "Penthouse 3",
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "areaMin": 384.0,
+        "areaMax": 384.0,
+        "price": 70000.0
+      },
+      {
+        "label": "Penthouse 4",
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "areaMin": 343.0,
+        "areaMax": 343.0,
+        "price": 900000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 70000.0
+      }
+    ]
+  },
+  {
+    "href": "/norea-square-condominium",
+    "name": "NOREA SQUARE CONDOMINIUM",
+    "type": "Residential Building",
+    "location": "Koh Norea, Phnom Penh",
+    "developer": "OCIC",
+    "tenure": "Freehold",
+    "completion": "Q4-2029",
+    "totalFloor": "39 Floors",
+    "totalUnit": "224 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 63,500",
+    "unitTypes": [
+      {
+        "label": "1A",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 49.06,
+        "areaMax": 49.06,
+        "price": 63500.0
+      },
+      {
+        "label": "1B",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 54.04,
+        "areaMax": 54.04,
+        "price": 69900.0
+      },
+      {
+        "label": "2A",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 85.58,
+        "areaMax": 85.58,
+        "price": 111900.0
+      },
+      {
+        "label": "3A",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 146.61,
+        "areaMax": 146.61,
+        "price": 223900.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/leconde2",
+    "name": "Le Condé 2 - BKK1",
+    "type": "LOCATION",
+    "location": null,
+    "developer": "WANG FU GUO JI PROPERTY DEVELOPMENT CO., LTD",
+    "tenure": "Freehold",
+    "completion": "Q2-2030",
+    "totalFloor": "63 Floors",
+    "totalUnit": "398 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 160,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 72.94,
+        "areaMax": 72.94,
+        "price": 160000.0
+      },
+      {
+        "label": "Unit B1 - B6",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 95.9,
+        "areaMax": 116.58,
+        "price": 212000.0
+      },
+      {
+        "label": "Unit C1 - C8",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 122.8,
+        "areaMax": 189.8,
+        "price": 270000.0
+      },
+      {
+        "label": "Unit D1 - D3",
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "areaMin": 196.37,
+        "areaMax": 261.67,
+        "price": 430000.0
+      },
+      {
+        "label": "Unit E1 - E3",
+        "bedrooms": 5,
+        "bathrooms": 4,
+        "areaMin": 357.59,
+        "areaMax": 369.4,
+        "price": 788000.0
+      }
+    ]
+  },
+  {
+    "href": "/timesquare11bkk3",
+    "name": "TIME SQUARE 11",
+    "type": "Residential",
+    "location": "St.113, BKK3, Phnom Penh",
+    "developer": "MEGAKIM WORLD CORP LTD.",
+    "tenure": "Freehold",
+    "completion": "Q4-2029",
+    "totalFloor": "39  Floors",
+    "totalUnit": "390 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 45,000",
+    "unitTypes": [
+      {
+        "label": "TYPE D",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 38.0,
+        "areaMax": 38.0,
+        "price": 45000.0
+      },
+      {
+        "label": "TYPE C1-C5",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 45.0,
+        "areaMax": 45.0,
+        "price": 53000.0
+      },
+      {
+        "label": "TIME SQUARE 11 - BKK3",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 50.0,
+        "areaMax": 50.0,
+        "price": 58000.0
+      },
+      {
+        "label": "TYPE A1-A5",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 75.0,
+        "areaMax": 75.0,
+        "price": 88000.0
+      }
+    ]
+  },
+  {
+    "href": "/gatotower",
+    "name": "G.A.T.O TOWER",
+    "type": "Mixed-Use Developments",
+    "location": "St.334, BKK1, Phnom Penh",
+    "developer": "MIRAKU CAPITAL AND DEVELOPMENT CO.,LTD",
+    "tenure": "Freehold",
+    "completion": "Q4-2030",
+    "totalFloor": "67  Floors",
+    "totalUnit": "710 units: 472 Residences | 238 Hotels",
+    "totalBuilding": null,
+    "startingPrice": "$ 98,000",
+    "unitTypes": [
+      {
+        "label": "TYPE B & I",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 31.0,
+        "areaMax": 31.0,
+        "price": 98000.0
+      },
+      {
+        "label": "TYPE C - E - L - J",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 47.0,
+        "areaMax": 47.0,
+        "price": 148755.0
+      },
+      {
+        "label": "TYPE D & K",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 45.0,
+        "areaMax": 45.0,
+        "price": 142425.0
+      },
+      {
+        "label": "TYPE N & G",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 93.0,
+        "areaMax": 93.0,
+        "price": 294345.0
+      },
+      {
+        "label": "TYPE A & H",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 93.0,
+        "areaMax": 93.0,
+        "price": 316500.0
+      },
+      {
+        "label": "TYPE F & M",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 136.0,
+        "areaMax": 136.0,
+        "price": 367000.0
+      },
+      {
+        "label": "TYPE B & D",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 147.0,
+        "areaMax": 147.0,
+        "price": 660000.0
+      },
+      {
+        "label": "TYPE A & C",
+        "bedrooms": 1,
+        "bathrooms": 5,
+        "areaMin": 336.0,
+        "areaMax": 336.0,
+        "price": 1.5
+      },
+      {
+        "label": "TYPE PENTHOUSE",
+        "bedrooms": 1,
+        "bathrooms": 4,
+        "areaMin": 443.0,
+        "areaMax": 443.0,
+        "price": 2.3
+      }
+    ]
+  },
+  {
+    "href": "/projects/picassoskygemme",
+    "name": "PICASSO SKY GEMME",
+    "type": "Residential Building",
+    "location": "BKK1, Phnom Penh",
+    "developer": "Global Titan Stone Real Estate Developement",
+    "tenure": "Freehold",
+    "completion": "Q1 2028",
+    "totalFloor": "52 Floors",
+    "totalUnit": "276",
+    "totalBuilding": null,
+    "startingPrice": "$ 170,000",
+    "unitTypes": [
+      {
+        "label": "UNIT A1",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 61.0,
+        "areaMax": 61.0,
+        "price": 170000.0
+      },
+      {
+        "label": "UNIT A2",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 76.0,
+        "areaMax": 76.0,
+        "price": 210000.0
+      },
+      {
+        "label": "UNIT B1",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 93.0,
+        "areaMax": 93.0,
+        "price": 260000.0
+      },
+      {
+        "label": "UNIT B2",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 95.0,
+        "areaMax": 95.0,
+        "price": 265000.0
+      },
+      {
+        "label": "UNIT B3",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 105.0,
+        "areaMax": 105.0,
+        "price": 290000.0
+      },
+      {
+        "label": "UNIT B5",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 118.0,
+        "areaMax": 118.0,
+        "price": 320000.0
+      },
+      {
+        "label": "UNIT C1",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 170.0,
+        "areaMax": 170.0,
+        "price": 470000.0
+      },
+      {
+        "label": "UNIT C2",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 200.0,
+        "areaMax": 200.0,
+        "price": 550000.0
+      },
+      {
+        "label": "UNIT C3",
+        "bathrooms": 3,
+        "bedrooms": 3,
+        "areaMin": 203.0,
+        "areaMax": 203.0,
+        "price": 565000.0
+      }
+    ]
+  },
+  {
+    "href": "/kingstonroyale",
+    "name": "KINGSTON ROYALE",
+    "type": "Residential Condominium",
+    "location": "St.69BT, Kbal Tomnup Village, Beoung Tompun Phnom Penh",
+    "developer": "Kingston Royale (Local)",
+    "tenure": "Freehold",
+    "completion": "Q4-2027",
+    "totalFloor": "36 Floors",
+    "totalUnit": "310 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 49,000",
+    "unitTypes": [
+      {
+        "label": "A",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 84.7,
+        "areaMax": 84.7,
+        "price": 93000.0
+      },
+      {
+        "label": "B",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 67.1,
+        "areaMax": 67.1,
+        "price": 73800.0
+      },
+      {
+        "label": "C",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 65.2,
+        "areaMax": 65.2,
+        "price": 71700.0
+      },
+      {
+        "label": "D",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 54.9,
+        "areaMax": 54.9,
+        "price": 60000.0
+      },
+      {
+        "label": "E",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 53.2,
+        "areaMax": 53.2,
+        "price": 58500.0
+      },
+      {
+        "label": "F",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 48.2,
+        "areaMax": 48.2,
+        "price": 53000.0
+      },
+      {
+        "label": "G",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 47.5,
+        "areaMax": 47.5,
+        "price": 52250.0
+      },
+      {
+        "label": "H",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 47.5,
+        "areaMax": 47.5,
+        "price": 52250.0
+      },
+      {
+        "label": "I",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 43.0,
+        "areaMax": 43.0,
+        "price": 46000.0
+      },
+      {
+        "label": "J",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 45.0,
+        "areaMax": 45.0,
+        "price": 49000.0
+      },
+      {
+        "label": "K",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 45.6,
+        "areaMax": 45.6,
+        "price": 53000.0
+      }
+    ]
+  },
+  {
+    "href": "/odom-living",
+    "name": "Odom Living - Preah Norodom Blvd",
+    "type": "Residential Building",
+    "location": "Preah Norodom Blvd, Phnom Penh",
+    "developer": "Urban Living Solutions",
+    "tenure": "Freehold",
+    "completion": "Q4-2027",
+    "totalFloor": "30 Floors",
+    "totalUnit": "138",
+    "totalBuilding": null,
+    "startingPrice": "$ 275,000",
+    "unitTypes": [
+      {
+        "label": "Unit 1A",
+        "bathrooms": 1,
+        "bedrooms": 1,
+        "areaMin": 78.0,
+        "areaMax": 78.0,
+        "price": 275000.0
+      },
+      {
+        "label": "Unit 1B",
+        "bathrooms": 1,
+        "bedrooms": 1,
+        "areaMin": 80.0,
+        "areaMax": 80.0,
+        "price": 285000.0
+      },
+      {
+        "label": "Unit 2A",
+        "bathrooms": 2,
+        "bedrooms": 2,
+        "areaMin": 132.0,
+        "areaMax": 132.0,
+        "price": 510000.0
+      },
+      {
+        "label": "Unit 2B",
+        "bathrooms": 2,
+        "bedrooms": 2,
+        "areaMin": 126.0,
+        "areaMax": 126.0,
+        "price": 488000.0
+      },
+      {
+        "label": "Unit 2C",
+        "bathrooms": 2,
+        "bedrooms": 2,
+        "areaMin": 129.0,
+        "areaMax": 129.0,
+        "price": 477000.0
+      },
+      {
+        "label": "Unit 2D",
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "areaMin": 111.0,
+        "areaMax": 111.0,
+        "price": 410000.0
+      },
+      {
+        "label": "Unit 3BR",
+        "bedrooms": 3,
+        "bathrooms": 4,
+        "areaMin": 196.0,
+        "areaMax": 196.0,
+        "price": 760000.0
+      },
+      {
+        "label": "Unit 4BR",
+        "bedrooms": 4,
+        "bathrooms": 6,
+        "areaMin": 262.0,
+        "areaMax": 262.0,
+        "price": 1.1
+      }
+    ]
+  },
+  {
+    "href": "/odom-tower",
+    "name": "Odom Tower - Preah Norodom Blvd",
+    "type": "Commercial Building",
+    "location": "Preah Norodom Blvd, Phnom Penh",
+    "developer": "Urban Living Solutions (ULS)",
+    "tenure": "Freehold",
+    "completion": "Q4-2027",
+    "totalFloor": "45 Floors",
+    "totalUnit": null,
+    "totalBuilding": null,
+    "startingPrice": "$ 227,800",
+    "unitTypes": []
+  },
+  {
+    "href": "/lz-sea-view-premium",
+    "name": "LZ SEA VIEW PREMIUM",
+    "type": "Residential & Commercial Building",
+    "location": "Sangkat Bei, Sihanoukville",
+    "developer": "LZ Sea View Residence",
+    "tenure": "Freehold",
+    "completion": "Q2-2029",
+    "totalFloor": "24 Floors",
+    "totalUnit": "308",
+    "totalBuilding": "1",
+    "startingPrice": "$ 54,700",
+    "unitTypes": [
+      {
+        "label": "1-Bedroom",
+        "bathrooms": 1,
+        "areaMin": 89.6,
+        "areaMax": 93.1,
+        "price": 120000.0
+      },
+      {
+        "label": "2-Bedroom",
+        "bathrooms": 1,
+        "areaMin": 90.7,
+        "areaMax": 93.1,
+        "price": 123000.0
+      },
+      {
+        "label": "3-Bedroom",
+        "bathrooms": 2,
+        "areaMin": 137.46,
+        "areaMax": 137.46,
+        "price": 182000.0
+      },
+      {
+        "label": "PENTHOUSE",
+        "price": 182000.0
+      },
+      {
+        "label": "3-Bedroom",
+        "bathrooms": 4,
+        "areaMin": 271.6,
+        "areaMax": 367.0,
+        "price": 520000.0
+      }
+    ]
+  },
+  {
+    "href": "/borey-rith-luxury-toul-sangke",
+    "name": "BOREY RITH LUXURY TOUL SANGKE",
+    "type": "Residential & Commercial Building",
+    "location": "St.105, Toul Sangke, Phnom Penh",
+    "developer": "Borey Rith Group",
+    "tenure": "Freehold",
+    "completion": "24months",
+    "totalFloor": "3-5 Storey",
+    "totalUnit": "146 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 220,000",
+    "unitTypes": [
+      {
+        "label": "House : 6m x 16m | Land : 6m x 23.5m",
+        "price": 484.0
+      },
+      {
+        "label": "House : 4.2m x 14m | Land : 4.2m x 20.5m",
+        "price": 220.0
+      },
+      {
+        "label": "House : 6m x 10m | Land : 6m x 16.07m",
+        "price": 270.0
+      },
+      {
+        "label": "House : 6m x 16m | Land : 6m x 23.5m",
+        "price": 244.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/uc88",
+    "name": "UC88 WYNDHAM GARDEN BKK1",
+    "type": "Hotel & Residential",
+    "location": "St.322, BKK1, Phnom Penh",
+    "developer": "CHHUN SAMBATH DEVELOPMENT CO., LTD",
+    "tenure": "Freehold",
+    "completion": "Q2-2026",
+    "totalFloor": "46 Floors",
+    "totalUnit": "459 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 130,000",
+    "unitTypes": []
+  },
+  {
+    "href": "/time-square-7",
+    "name": "TIME SQUARE 7",
+    "type": "Residential Condominium",
+    "location": "Toul Kork, Phnom Penh",
+    "developer": "MEGAKIM WORLD CORP LTD.",
+    "tenure": "Freehold",
+    "completion": "Q2-2028",
+    "totalFloor": "47 Floors",
+    "totalUnit": "700 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 39,900",
+    "unitTypes": [
+      {
+        "label": "K,L,M,N,O,P",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 40.0,
+        "areaMax": 40.0,
+        "price": 39900.0
+      },
+      {
+        "label": "J,Q,R",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 47.0,
+        "areaMax": 47.0,
+        "price": 52000.0
+      },
+      {
+        "label": "G,H,S,T,U,V",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 60.0,
+        "areaMax": 60.0,
+        "price": 57500.0
+      },
+      {
+        "label": "F",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 60.0,
+        "areaMax": 60.0,
+        "price": 57500.0
+      },
+      {
+        "label": "B,C,D,E",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 76.0,
+        "areaMax": 76.0,
+        "price": 74000.0
+      },
+      {
+        "label": "A",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 100.0,
+        "areaMax": 100.0,
+        "price": 93000.0
+      },
+      {
+        "label": "I",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 100.0,
+        "areaMax": 100.0,
+        "price": 93000.0
+      },
+      {
+        "label": "K,L,M,N,O,P",
+        "bedrooms": 1,
+        "bathrooms": 2,
+        "areaMin": 60.0,
+        "areaMax": 60.0,
+        "price": 73700.0
+      },
+      {
+        "label": "J,Q",
+        "bedrooms": 1,
+        "bathrooms": 2,
+        "areaMin": 70.0,
+        "areaMax": 70.0,
+        "price": 92500.0
+      },
+      {
+        "label": "F,G,T,H,U,V",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 100.0,
+        "areaMax": 100.0,
+        "price": 124000.0
+      },
+      {
+        "label": "B,C,D,E",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 130.0,
+        "areaMax": 130.0,
+        "price": 167000.0
+      },
+      {
+        "label": "I,Z",
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "areaMin": 160.0,
+        "areaMax": 160.0,
+        "price": 200000.0
+      },
+      {
+        "label": "A",
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "areaMin": 160.0,
+        "areaMax": 160.0,
+        "price": 200000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/timesquare302",
+    "name": "TIME SQUARE 6 - BKK1",
+    "type": "Residential Condominium",
+    "location": "BKK1, Phnom Penh",
+    "developer": "MEGAKIM WORLD CORP LTD.",
+    "tenure": "Freehold",
+    "completion": "Q3-2027",
+    "totalFloor": "47 Floors",
+    "totalUnit": "370 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 80,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 110.0,
+        "areaMax": 110.0,
+        "price": 170000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 125.0,
+        "areaMax": 125.0,
+        "price": 200000.0
+      },
+      {
+        "label": "Unit C.D.E.F",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 67.0,
+        "areaMax": 67.0,
+        "price": 107000.0
+      },
+      {
+        "label": "Unit G",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 50.0,
+        "areaMax": 50.0,
+        "price": 80000.0
+      },
+      {
+        "label": "Unit H",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 64.0,
+        "areaMax": 64.0,
+        "price": 102000.0
+      },
+      {
+        "label": "Unit I.J.K",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 57.0,
+        "areaMax": 57.0,
+        "price": 82000.0
+      },
+      {
+        "label": "Unit K1, K2, K3",
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "areaMin": 170.0,
+        "areaMax": 210.0,
+        "price": 290000.0
+      },
+      {
+        "label": "Unit Q1, Q2, Q3, Q5",
+        "bedrooms": 3,
+        "bathrooms": 4,
+        "areaMin": 145.0,
+        "areaMax": 160.0,
+        "price": 265000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 80000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/timesquarebkk1",
+    "name": "TIME SQUARE 5 - BKK1",
+    "type": "Residential Condominium",
+    "location": "BKK1, Phnom Penh",
+    "developer": "Megakim World Corp Ltd.",
+    "tenure": "Freehold",
+    "completion": "Q4-2025",
+    "totalFloor": "45 Floors",
+    "totalUnit": "350 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 67,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 80.0,
+        "areaMax": 80.0,
+        "price": 132000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 60.0,
+        "areaMax": 60.0,
+        "price": 100000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 50.0,
+        "areaMax": 50.0,
+        "price": 83000.0
+      },
+      {
+        "label": "Unit D, E, F",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 41.0,
+        "areaMax": 56.0,
+        "price": 67000.0
+      },
+      {
+        "label": "Unit S",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 135.0,
+        "areaMax": 135.0,
+        "price": 222000.0
+      },
+      {
+        "label": "Unit X",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 120.0,
+        "areaMax": 120.0,
+        "price": 200000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 67000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/lavistaone",
+    "name": "La Vista One",
+    "type": "Residential Condominium",
+    "location": "Chroy ChangVa, Phnom Penh",
+    "developer": "Yin Yi Venture Co., Ltd",
+    "tenure": "Freehold",
+    "completion": "Q4-2025",
+    "totalFloor": "41 Floors",
+    "totalUnit": "1,680 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 100,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bathrooms": 1,
+        "areaMin": 48.99,
+        "areaMax": 59.27,
+        "price": 107000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 56.63,
+        "areaMax": 63.04,
+        "price": 123000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 75.03,
+        "areaMax": 75.03,
+        "price": 165000.0
+      },
+      {
+        "label": "Unit D",
+        "bedrooms": 2,
+        "areaMin": 83.77,
+        "areaMax": 90.14,
+        "price": 180000.0
+      },
+      {
+        "label": "Unit D1",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 85.96,
+        "areaMax": 85.96,
+        "price": 189000.0
+      },
+      {
+        "label": "Unit E",
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "areaMin": 103.55,
+        "areaMax": 103.55,
+        "price": 220000.0
+      },
+      {
+        "label": "Unit F",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 127.04,
+        "areaMax": 127.04,
+        "price": 280000.0
+      },
+      {
+        "label": "Unit G",
+        "bathrooms": 2,
+        "bedrooms": 1,
+        "areaMin": 72.91,
+        "areaMax": 72.91,
+        "price": 160000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 100000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/anataresidence",
+    "name": "ANATA RESIDENCE",
+    "type": "Residential & Commercial Building",
+    "location": "Steung Meanchey Phnom Penh",
+    "developer": "Bun Ches Group Co., LTD.",
+    "tenure": "Freehold",
+    "completion": "Q1-2024",
+    "totalFloor": "25 Floor",
+    "totalUnit": "323 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 40,000",
+    "unitTypes": [
+      {
+        "label": "P1 - P4A (Penthouse)",
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "areaMin": 135.0,
+        "areaMax": 158.0,
+        "price": 200000.0
+      },
+      {
+        "label": "P5 - P6 (Penthouse)",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 155.0,
+        "areaMax": 186.0,
+        "price": 300000.0
+      },
+      {
+        "label": "A - D (Shophouse)",
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "areaMin": 107.0,
+        "areaMax": 136.0,
+        "price": 150000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/rfcity",
+    "name": "R&F CITY",
+    "type": "Residential Condominium",
+    "location": "Hun Sen Blvd, Phnom Penh",
+    "developer": "R&F Property",
+    "tenure": "Freehold",
+    "completion": "Q1-2022",
+    "totalFloor": "33 Floors",
+    "totalUnit": "5236 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 95,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 53.0,
+        "areaMax": 55.0,
+        "price": 95000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 75.0,
+        "areaMax": 78.0,
+        "price": 135000.0
+      },
+      {
+        "label": "Unit C",
+        "bathrooms": 2,
+        "bedrooms": 3,
+        "areaMin": 115.0,
+        "areaMax": 115.0,
+        "price": 200000.0
+      },
+      {
+        "label": "Unit D",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 130.0,
+        "areaMax": 130.0,
+        "price": 235000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 95000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/rfmiro",
+    "name": "R&F CITY - MIRO",
+    "type": "Residential Building",
+    "location": "Hun Sen Blvd, Phnom Penh",
+    "developer": "R&F Property",
+    "tenure": "Freehold",
+    "completion": "Q1-2024",
+    "totalFloor": "Building A - 25F | Building B - 32F",
+    "totalUnit": "Condo: 612 Units | Shophouse: 11 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 55,000",
+    "unitTypes": [
+      {
+        "label": "STARTING PRICE",
+        "price": 55000.0,
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 38.0,
+        "areaMax": 38.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 50.0,
+        "areaMax": 50.0,
+        "price": 70000.0
+      },
+      {
+        "label": "Type: Store",
+        "areaMin": 50.0,
+        "areaMax": 92.0,
+        "price": 100000.0
+      }
+    ]
+  },
+  {
+    "href": "/residencehsensok",
+    "name": "RESIDENCE H SENSOK",
+    "type": "Residential Condominium",
+    "location": "Khan SenSok, Phnom Penh",
+    "developer": "LOMNOV THAN HC CO.LTD",
+    "tenure": "Freehold",
+    "completion": "Q2 2024",
+    "totalFloor": "29 Floors",
+    "totalUnit": "272 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 59,000",
+    "unitTypes": [
+      {
+        "label": "A",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 76.8,
+        "areaMax": 76.8,
+        "price": 100000.0
+      },
+      {
+        "label": "B",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 71.7,
+        "areaMax": 71.7,
+        "price": 90000.0
+      },
+      {
+        "label": "C",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 51.8,
+        "areaMax": 51.8,
+        "price": 68000.0
+      },
+      {
+        "label": "D",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 50.7,
+        "areaMax": 50.7,
+        "price": 69000.0
+      },
+      {
+        "label": "E",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 45.0,
+        "areaMax": 45.0,
+        "price": 59900.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/morganenmaison",
+    "name": "MORGAN ENMAISON",
+    "type": "Residential Building",
+    "location": "Chroy ChangVa, Phnom Penh",
+    "developer": "Morgan Group",
+    "tenure": "Freehold",
+    "completion": "Q4-2023",
+    "totalFloor": "Tower1&6 - 47Floors | Tower2&5 - 54Floors | Tower3 - 70Floors",
+    "totalUnit": "6049 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 80,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 3,
+        "bathrooms": 1,
+        "areaMin": 105.0,
+        "areaMax": 105.0,
+        "price": 200000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 45.0,
+        "areaMax": 48.0,
+        "price": 85000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 55.0,
+        "areaMax": 55.0,
+        "price": 104000.0
+      },
+      {
+        "label": "Unit D",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 98.0,
+        "areaMax": 98.0,
+        "price": 180000.0
+      },
+      {
+        "label": "Unit E",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 110.0,
+        "areaMax": 110.0,
+        "price": 210000.0
+      },
+      {
+        "label": "Unit F",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 58.0,
+        "areaMax": 58.0,
+        "price": 110000.0
+      },
+      {
+        "label": "Unit R",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 95.0,
+        "areaMax": 95.0,
+        "price": 180000.0
+      },
+      {
+        "label": "Penthouse",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 225.73,
+        "areaMax": 225.73,
+        "price": 420000.0
+      },
+      {
+        "label": "Type X1 - X6",
+        "price": 200000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 80000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/timesquare3",
+    "name": "TIME SQUARE 3",
+    "type": "Residential & Commercial Building",
+    "location": "Tuol Kork, Phnom Penh",
+    "developer": "Megakim World Corp Ltd.",
+    "tenure": "Freehold",
+    "completion": "Q1-2023",
+    "totalFloor": "32 Floors",
+    "totalUnit": "280 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 65,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 40.0,
+        "areaMax": 40.0,
+        "price": 75000.0
+      },
+      {
+        "label": "Unit B, C, D, E",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 50.0,
+        "areaMax": 50.0,
+        "price": 95000.0
+      },
+      {
+        "label": "Unit F",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 40.0,
+        "areaMax": 40.0,
+        "price": 75000.0
+      },
+      {
+        "label": "Unit H, I, J, K, L, M",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 36.0,
+        "areaMax": 36.0,
+        "price": 68000.0
+      },
+      {
+        "label": "Unit G & N",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 75.0,
+        "areaMax": 75.0,
+        "price": 145000.0
+      },
+      {
+        "label": "Luxury Office",
+        "areaMin": 75.0,
+        "areaMax": 75.0,
+        "price": 140000.0
+      },
+      {
+        "label": "Premium Office",
+        "price": 94000.0
+      },
+      {
+        "label": "Classic Office",
+        "price": 80000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/diamondbaygarden",
+    "name": "DIAMOND BAY GARDEN",
+    "type": "Residential Building",
+    "location": "Koh Pich, Phnom Penh",
+    "developer": "OCIC",
+    "tenure": "Freehold",
+    "completion": "Q4-2025",
+    "totalFloor": "39 Floors",
+    "totalUnit": "591 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 132,000",
+    "unitTypes": [
+      {
+        "label": "Unit SR & SC",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 60.0,
+        "areaMax": 62.0,
+        "price": 132000.0
+      },
+      {
+        "label": "Unit 2C",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 120.0,
+        "areaMax": 120.0,
+        "price": 263500.0
+      },
+      {
+        "label": "Unit 2CD",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 106.0,
+        "areaMax": 106.0,
+        "price": 228700.0
+      },
+      {
+        "label": "Unit 2D",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 75.0,
+        "areaMax": 75.0,
+        "price": 163000.0
+      },
+      {
+        "label": "Unit 2R",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 106.0,
+        "areaMax": 106.0,
+        "price": 245500.0
+      },
+      {
+        "label": "Unit 3R",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 170.0,
+        "areaMax": 170.0,
+        "price": 379500.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 132000.0
+      }
+    ]
+  },
+  {
+    "href": "/norea-cove-residence",
+    "name": "NOREA COVE RESIDENCE",
+    "type": "Residential Building",
+    "location": "Diamond Island, Phnom Penh",
+    "developer": "AKRAM Development",
+    "tenure": "Freehold",
+    "completion": "Q2-2026",
+    "totalFloor": "4-5 Storey",
+    "totalUnit": "74 Villas",
+    "totalBuilding": null,
+    "startingPrice": "$ 1.6M",
+    "unitTypes": []
+  },
+  {
+    "href": "/projects/cityview",
+    "name": "CITY VIEW",
+    "type": "Residential  & Commercial Building",
+    "location": "Boeung Kak, Phnom Penh",
+    "developer": "Hua Jun Property Development Co., Ltd.",
+    "tenure": "Freehold",
+    "completion": "Q4-2024",
+    "totalFloor": "34 Floors",
+    "totalUnit": "480 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 80,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 40.0,
+        "areaMax": 40.0,
+        "price": 83000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 52.0,
+        "areaMax": 52.0,
+        "price": 110000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 66.0,
+        "areaMax": 66.0,
+        "price": 135000.0
+      },
+      {
+        "label": "Unit D",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 80.0,
+        "areaMax": 80.0,
+        "price": 165000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 80000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/wealthmansion",
+    "name": "WEALTH MANSION",
+    "type": "Residential Condominium",
+    "location": "Chroy ChangVa, Phnom Penh",
+    "developer": "TENURE",
+    "tenure": null,
+    "completion": "Q4-2024",
+    "totalFloor": "45 Floors",
+    "totalUnit": "1,326 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 120,000",
+    "unitTypes": [
+      {
+        "label": "Unit A/A1",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 55.82,
+        "areaMax": 62.67,
+        "price": 120000.0
+      },
+      {
+        "label": "Unit A2",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 64.07,
+        "areaMax": 64.07,
+        "price": 140000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 112.13,
+        "areaMax": 112.13,
+        "price": 250000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 66.55,
+        "areaMax": 66.55,
+        "price": 145000.0
+      },
+      {
+        "label": "Unit D",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 81.15,
+        "areaMax": 81.15,
+        "price": 178000.0
+      },
+      {
+        "label": "Unit F",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 121.11,
+        "areaMax": 121.11,
+        "price": 266000.0
+      },
+      {
+        "label": "Unit F1",
+        "bathrooms": 2,
+        "bedrooms": 2,
+        "areaMin": 101.97,
+        "areaMax": 101.97,
+        "price": 222000.0
+      },
+      {
+        "label": "Unit G",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 128.14,
+        "areaMax": 128.14,
+        "price": 280000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 120000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/vueaston",
+    "name": "VUE ASTON",
+    "type": "Residential Condominium",
+    "location": "Koh Norea, Phnom Penh",
+    "developer": "The Peninsula Capital Co., Ltd.",
+    "tenure": "Freehold",
+    "completion": "Q4-2023",
+    "totalFloor": "38 Floors",
+    "totalUnit": "895 units",
+    "totalBuilding": null,
+    "startingPrice": "70,000$",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 73.84,
+        "areaMax": 77.3,
+        "price": 160000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 59.78,
+        "areaMax": 65.76,
+        "price": 138000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 36.69,
+        "areaMax": 40.74,
+        "price": 80000.0
+      },
+      {
+        "label": "Unit D",
+        "bedrooms": 3,
+        "bathrooms": 1,
+        "areaMin": 91.42,
+        "areaMax": 91.42,
+        "price": 200000.0
+      },
+      {
+        "label": "Unit E",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 78.07,
+        "areaMax": 78.07,
+        "price": 170000.0
+      },
+      {
+        "label": "Unit F",
+        "bedrooms": 3,
+        "bathrooms": 1,
+        "areaMin": 101.61,
+        "areaMax": 101.61,
+        "price": 220000.0
+      },
+      {
+        "label": "Unit G",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 47.33,
+        "areaMax": 47.33,
+        "price": 103000.0
+      },
+      {
+        "label": "Unit H",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 73.84,
+        "areaMax": 77.3,
+        "price": 160000.0
+      },
+      {
+        "label": "Unit I",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 82.95,
+        "areaMax": 82.95,
+        "price": 180000.0
+      },
+      {
+        "label": "Unit J",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 75.32,
+        "areaMax": 75.32,
+        "price": 165000.0
+      },
+      {
+        "label": "Unit K",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 55.73,
+        "areaMax": 55.73,
+        "price": 120000.0
+      },
+      {
+        "label": "Unit L",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 44.83,
+        "areaMax": 44.83,
+        "price": 96000.0
+      },
+      {
+        "label": "Unit M",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 32.88,
+        "areaMax": 42.93,
+        "price": 75000.0
+      },
+      {
+        "label": "Unit N",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 45.33,
+        "areaMax": 45.33,
+        "price": 96000.0
+      },
+      {
+        "label": "Unit P",
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "areaMin": 238.99,
+        "areaMax": 238.99,
+        "price": 520000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/agileskyresidence",
+    "name": "AGILE SKY RESIDENCE",
+    "type": "Residential Condominium",
+    "location": "BKK, Phnom Penh",
+    "developer": "Agile Naki Property Co., Ltd.",
+    "tenure": "Freehold",
+    "completion": "Q4-2022",
+    "totalFloor": "44 Floors",
+    "totalUnit": "963 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 90,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 111.0,
+        "areaMax": 111.0,
+        "price": 270000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 39.0,
+        "areaMax": 42.0,
+        "price": 90000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 72.0,
+        "areaMax": 76.0,
+        "price": 170000.0
+      },
+      {
+        "label": "Unit D",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 56.0,
+        "areaMax": 57.0,
+        "price": 136000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 90000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/picassocitygarden",
+    "name": "PICASSO CITY GARDEN",
+    "type": "Residential Condominium",
+    "location": "BKK1, Phnom Penh",
+    "developer": "Global Titan Stone Real Estate Developement",
+    "tenure": "Freehold",
+    "completion": "Completed",
+    "totalFloor": "30 Floors",
+    "totalUnit": "144 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 140,000",
+    "unitTypes": [
+      {
+        "label": "Unit A - G",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 75.0,
+        "areaMax": 147.0,
+        "price": 270000.0
+      },
+      {
+        "label": "Unit H - K",
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "areaMin": 153.0,
+        "areaMax": 229.0,
+        "price": 550000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 140000.0
+      }
+    ]
+  },
+  {
+    "href": "/mekong-view-tower-1",
+    "name": "MEKONG VIEW TOWER 1",
+    "type": "Residential Condominium",
+    "location": "Chroy Changva, Phnom Penh",
+    "developer": "Mekong View Tower",
+    "tenure": "Freehold",
+    "completion": "Completed",
+    "totalFloor": "17 Floors",
+    "totalUnit": "116 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 123,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 100.0,
+        "areaMax": 100.0,
+        "price": 123000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 100.0,
+        "areaMax": 100.0,
+        "price": 123000.0
+      },
+      {
+        "label": "Unit Premium",
+        "bedrooms": 3,
+        "bathrooms": 4,
+        "areaMin": 200.0,
+        "areaMax": 200.0,
+        "price": 280000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/tkstar",
+    "name": "TK STAR",
+    "type": "Residential  Building",
+    "location": "Tuol Kork, Phnom Penh",
+    "developer": "Star Ting International Development Co., Ltd.",
+    "tenure": "Freehold",
+    "completion": "Q1-2023",
+    "totalFloor": "35 Floors",
+    "totalUnit": "910 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 70,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 37.0,
+        "areaMax": 52.33,
+        "price": 78000.0
+      },
+      {
+        "label": "Unit A3",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 52.4,
+        "areaMax": 52.4,
+        "price": 135000.0
+      },
+      {
+        "label": "Unit B1",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 60.76,
+        "areaMax": 60.76,
+        "price": 156000.0
+      },
+      {
+        "label": "Unit B5",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 62.74,
+        "areaMax": 62.74,
+        "price": 160000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 70000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/onepark",
+    "name": "ONE PARK",
+    "type": "Residential  Building",
+    "location": "Bang Kork, Phnom Penh",
+    "developer": "Graticity Real Estate Development Co., Ltd.",
+    "tenure": "Freehold",
+    "completion": "Q1-2022",
+    "totalFloor": "12-15 Floors",
+    "totalUnit": "1334 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 120,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 72.76,
+        "areaMax": 72.76,
+        "price": 220000.0
+      },
+      {
+        "label": "Unit A3",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 87.79,
+        "areaMax": 87.79,
+        "price": 270000.0
+      },
+      {
+        "label": "Unit B1a",
+        "bathrooms": 2,
+        "bedrooms": 2,
+        "areaMin": 104.8,
+        "areaMax": 104.8,
+        "price": 330000.0
+      },
+      {
+        "label": "Unit B3a",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 98.38,
+        "areaMax": 98.38,
+        "price": 310000.0
+      },
+      {
+        "label": "Unit B4",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 95.79,
+        "areaMax": 95.79,
+        "price": 300000.0
+      },
+      {
+        "label": "Unit C1a",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 117.26,
+        "areaMax": 117.26,
+        "price": 375000.0
+      },
+      {
+        "label": "Unit C2a",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 121.5,
+        "areaMax": 121.5,
+        "price": 387000.0
+      },
+      {
+        "label": "Unit M",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 36.0,
+        "areaMax": 51.0,
+        "price": 120000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 120000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/royalplatinum",
+    "name": "ROYAL PLATINUM",
+    "type": "Residential & Commercial Building",
+    "location": "Tuol Kork, Phnom Penh",
+    "developer": "Royal Hong Lai Huat",
+    "tenure": "Freehold",
+    "completion": "Q1-2024",
+    "totalFloor": "19 Floors",
+    "totalUnit": "Residential: 851 Units Commercial: 50 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 120,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1",
+        "bathrooms": 1,
+        "bedrooms": 1,
+        "areaMin": 68.69,
+        "areaMax": 70.23,
+        "price": 160000.0
+      },
+      {
+        "label": "Unit A2 & B2",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 111.15,
+        "areaMax": 118.27,
+        "price": 270000.0
+      },
+      {
+        "label": "Unit A3",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 49.82,
+        "areaMax": 51.8,
+        "price": 120000.0
+      },
+      {
+        "label": "Penthouse A - E",
+        "bedrooms": 4,
+        "bathrooms": 5,
+        "areaMin": 369.27,
+        "areaMax": 476.09,
+        "price": 880000.0
+      },
+      {
+        "label": "4 Floor",
+        "areaMin": 200.0,
+        "areaMax": 200.0,
+        "price": 500000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 120000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/orkide",
+    "name": "ORKIDÉ THE ROYAL CONDOMINIUM",
+    "type": "Residential Condominium",
+    "location": "Sen Sok, Phnom Penh",
+    "developer": "ORKIDÉ VILLA CO., LTD",
+    "tenure": "Freehold",
+    "completion": "Completed",
+    "totalFloor": "18 Floors",
+    "totalUnit": "2007 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 126,000",
+    "unitTypes": [
+      {
+        "label": "Unit 1A - 1F",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 76.38,
+        "areaMax": 89.38,
+        "price": 210000.0
+      },
+      {
+        "label": "Unit 2A - 2G",
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "areaMin": 146.02,
+        "areaMax": 261.69,
+        "price": 400000.0
+      },
+      {
+        "label": "Unit 2H - 2Q",
+        "bathrooms": 2,
+        "areaMin": 100.2,
+        "areaMax": 223.68,
+        "price": 275000.0
+      },
+      {
+        "label": "Unit 3A - 3F",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 202.3,
+        "areaMax": 294.16,
+        "price": 550000.0
+      },
+      {
+        "label": "Unit S1 - S5",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 48.73,
+        "areaMax": 60.0,
+        "price": 131000.0
+      },
+      {
+        "label": "Unit S6 - S8",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 46.49,
+        "areaMax": 56.58,
+        "price": 126000.0
+      },
+      {
+        "label": "PENTHOUSE",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 126.14,
+        "areaMax": 290.11,
+        "price": 350000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 126000.0
+      }
+    ]
+  },
+  {
+    "href": "/the-pearl-of-kep",
+    "name": "THE PEARL OF KEP",
+    "type": "Residential Building",
+    "location": "Kep, Cambodia",
+    "developer": "Tmor Ma Dom",
+    "tenure": "Freehold",
+    "completion": "Q1-2028",
+    "totalFloor": "9",
+    "totalUnit": "77 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 92,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1",
+        "price": 92000.0,
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 51.87,
+        "areaMax": 51.87
+      },
+      {
+        "label": "Unit A2",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 55.2,
+        "areaMax": 55.2,
+        "price": 106000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 67.0,
+        "areaMax": 67.0,
+        "price": 140000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 70.04,
+        "areaMax": 70.04,
+        "price": 143000.0
+      },
+      {
+        "label": "Unit E",
+        "bathrooms": 1,
+        "bedrooms": 2,
+        "areaMin": 101.76,
+        "areaMax": 101.76,
+        "price": 172550.0
+      },
+      {
+        "label": "Unit Penthouse",
+        "bathrooms": 7,
+        "bedrooms": 6,
+        "areaMin": 633.21,
+        "areaMax": 633.21,
+        "price": 12.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/starbay",
+    "name": "STAR BAY",
+    "type": "Residential Building",
+    "location": "Sihanoukville",
+    "developer": "Xing Hui Property",
+    "tenure": "Freehold",
+    "completion": "Q1-2022",
+    "totalFloor": "Tower 1 - 30Floors | Tower 2&3 - 33Floors | Tower 4,5 & 6 - 39Floors",
+    "totalUnit": "Est. 5000 units / 10Buildings",
+    "totalBuilding": null,
+    "startingPrice": "$ 55,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 48.0,
+        "areaMax": 53.0,
+        "price": 85000.0
+      },
+      {
+        "label": "Unit A2",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 65.0,
+        "areaMax": 69.0,
+        "price": 115000.0
+      },
+      {
+        "label": "Unit A3",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 30.0,
+        "areaMax": 36.0,
+        "price": 55000.0
+      },
+      {
+        "label": "Unit A7",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 66.0,
+        "areaMax": 66.0,
+        "price": 120000.0
+      },
+      {
+        "label": "Unit B1",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 33.0,
+        "areaMax": 33.0,
+        "price": 55000.0
+      },
+      {
+        "label": "Unit B5",
+        "bathrooms": 1,
+        "bedrooms": 0,
+        "areaMin": 39.0,
+        "areaMax": 39.0,
+        "price": 68000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/platinumcoast",
+    "name": "PLATINUM COAST",
+    "type": "Residential Building",
+    "location": "Sihanoukville",
+    "developer": "Hon Zhao Xin",
+    "tenure": "99 Years",
+    "completion": "Q2-2023",
+    "totalFloor": "17 Floors",
+    "totalUnit": "494 Condo Units | 54 Villas | 8 Penthouses",
+    "totalBuilding": null,
+    "startingPrice": "$ 50,000",
+    "unitTypes": [
+      {
+        "label": "Unit A",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 34.69,
+        "areaMax": 34.69,
+        "price": 50000.0
+      },
+      {
+        "label": "Unit A1",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 35.48,
+        "areaMax": 35.48,
+        "price": 52000.0
+      },
+      {
+        "label": "Unit A2",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 37.36,
+        "areaMax": 37.36,
+        "price": 55000.0
+      },
+      {
+        "label": "Unit A3",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 40.12,
+        "areaMax": 40.12,
+        "price": 58000.0
+      },
+      {
+        "label": "Unit B",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 66.64,
+        "areaMax": 71.45,
+        "price": 100000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/bakongvillage",
+    "name": "BAKONG VILLAGE",
+    "type": "Villa & Shop House",
+    "location": "Siem Reap, Cambodia",
+    "developer": "Urban Living Solutions",
+    "tenure": "Freehold",
+    "completion": "Completed",
+    "totalFloor": null,
+    "totalUnit": "317 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 65,000",
+    "unitTypes": [
+      {
+        "label": "Villa A",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 100.0,
+        "areaMax": 100.0,
+        "price": 95000.0
+      },
+      {
+        "label": "Villa B",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 69.0,
+        "areaMax": 69.0,
+        "price": 65000.0
+      },
+      {
+        "label": "Villa C",
+        "bathrooms": 1,
+        "bedrooms": 2,
+        "areaMin": 84.0,
+        "areaMax": 84.0,
+        "price": 80000.0
+      },
+      {
+        "label": "Shop House S",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "areaMin": 263.0,
+        "areaMax": 263.0,
+        "price": 260000.0
+      },
+      {
+        "label": "Shop House L",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 233.0,
+        "areaMax": 233.0,
+        "price": 220000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 65000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/roseapplesquare",
+    "name": "ROSE APPLE SQUARE",
+    "type": "Residential Condominium",
+    "location": "Siem Reap, Cambodia",
+    "developer": "Urban Living Solutions",
+    "tenure": "Freehold",
+    "completion": "Q4-2023",
+    "totalFloor": "6 Floors",
+    "totalUnit": "207 units",
+    "totalBuilding": null,
+    "startingPrice": "$ 75,000",
+    "unitTypes": [
+      {
+        "label": "Unit A1",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 47.0,
+        "areaMax": 47.0,
+        "price": 110000.0
+      },
+      {
+        "label": "Unit A2",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 78.0,
+        "areaMax": 78.0,
+        "price": 185000.0
+      },
+      {
+        "label": "Unit B1",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 53.0,
+        "areaMax": 53.0,
+        "price": 125000.0
+      },
+      {
+        "label": "Unit B2",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 72.0,
+        "areaMax": 72.0,
+        "price": 170000.0
+      },
+      {
+        "label": "Unit C",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "areaMin": 55.0,
+        "areaMax": 55.0,
+        "price": 130000.0
+      },
+      {
+        "label": "Unit D",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 32.0,
+        "areaMax": 32.0,
+        "price": 75000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 75000.0
+      }
+    ]
+  },
+  {
+    "href": "/projects/dseaview",
+    "name": "D’SEAVIEW",
+    "type": "Residential & Commercial Building",
+    "location": "Sihanoukville",
+    "developer": "PH One Development Co., Ltd",
+    "tenure": "Freehold",
+    "completion": "Completed",
+    "totalFloor": "28 Floors",
+    "totalUnit": "804 Units",
+    "totalBuilding": null,
+    "startingPrice": "$ 85,000",
+    "unitTypes": [
+      {
+        "label": "Unit 2B",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 74.81,
+        "areaMax": 75.38,
+        "price": 135000.0
+      },
+      {
+        "label": "Unit 3A",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 96.16,
+        "areaMax": 96.89,
+        "price": 170000.0
+      },
+      {
+        "label": "Unit 2C",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 96.16,
+        "areaMax": 96.49,
+        "price": 170000.0
+      },
+      {
+        "label": "Unit 3A1",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 124.96,
+        "areaMax": 124.96,
+        "price": 225000.0
+      },
+      {
+        "label": "Unit 1A",
+        "bedrooms": 0,
+        "bathrooms": 1,
+        "areaMin": 47.07,
+        "areaMax": 49.51,
+        "price": 85000.0
+      },
+      {
+        "label": "Unit 2CP",
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "areaMin": 179.99,
+        "areaMax": 179.99,
+        "price": 325000.0
+      },
+      {
+        "label": "Unit 3A2",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "areaMin": 149.43,
+        "areaMax": 149.43,
+        "price": 158000.0
+      },
+      {
+        "label": "Unit 2A",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "areaMin": 82.74,
+        "areaMax": 83.26,
+        "price": 150000.0
+      },
+      {
+        "label": "Unit 2D",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "areaMin": 104.29,
+        "areaMax": 104.29,
+        "price": 190000.0
+      },
+      {
+        "label": "STARTING PRICE",
+        "price": 85000.0
+      }
+    ]
+  }
+]

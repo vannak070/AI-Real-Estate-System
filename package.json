@@ -1,0 +1,41 @@
+{
+  "name": "era-real-estate",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "client": "pnpm --filter @era/client dev",
+    "admin": "pnpm --filter @era/admin dev",
+    "api": "pnpm --filter @era/api dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "turbo run test",
+    "prisma:generate": "pnpm --filter @era/api prisma:generate",
+    "prisma:migrate": "pnpm --filter @era/api prisma:migrate",
+    "db:seed": "pnpm --filter @era/api db:seed"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "6.3.5"
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.19.0"
+  }
+}

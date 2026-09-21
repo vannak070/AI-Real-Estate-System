@@ -1,0 +1,90 @@
+// New in Phase 0 #1 — reconciled with packages/mock-data/src/erp/types.ts.
+// Owns everything money: invoices/receivables, payments, receipts, commissions.
+// Full CRUD lands in Phase 4; this file just establishes the tables.
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id         String        @id @default(cuid())
+  number     String        @unique
+  contractId String //    -> sales_contracts.id
+  contactId  String //    -> crm_contacts.id
+  label      String
+  dueDate    DateTime
+  amount     Int
+  taxAmount  Int           @default(0)
+  total      Int
+  amountPaid Int           @default(0)
+  status     InvoiceStatus @default(DRAFT)
+  issuedAt   DateTime?
+  createdAt  DateTime      @default(now())
+  payments   Payment[]
+
+  @@index([status])
+  @@index([contractId])
+  @@map("finance_invoices")
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CHEQUE
+  CARD
+  CASH
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  number     String        @unique
+  contractId String //    -> sales_contracts.id
+  contactId  String //    -> crm_contacts.id
+  invoiceId  String?
+  invoice    Invoice?      @relation(fields: [invoiceId], references: [id])
+  method     PaymentMethod
+  amount     Int
+  reference  String?
+  receivedAt DateTime      @default(now())
+  recordedBy String? //   -> identity_users.id
+  receipt    Receipt?
+
+  @@map("finance_payments")
+}
+
+model Receipt {
+  id        String   @id @default(cuid())
+  number    String   @unique
+  paymentId String   @unique
+  payment   Payment  @relation(fields: [paymentId], references: [id])
+  contactId String //  -> crm_contacts.id
+  amount    Int
+  issuedAt  DateTime @default(now())
+
+  @@map("finance_receipts")
+}
+
+enum CommissionStatus {
+  ACCRUED
+  APPROVED
+  PAID
+  CLAWED_BACK
+}
+
+model Commission {
+  id         String           @id @default(cuid())
+  contractId String           @unique //  -> sales_contracts.id
+  agentId    String //   -> identity_users.id
+  basis      Int
+  ratePct    Float
+  amount     Int
+  status     CommissionStatus @default(ACCRUED)
+  approvedBy String?
+  paidAt     DateTime?
+
+  @@map("finance_commissions")
+}

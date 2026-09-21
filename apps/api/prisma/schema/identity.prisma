@@ -1,0 +1,75 @@
+// Reconciled with packages/mock-data/src/erp/types.ts (the proven static model).
+
+/// Fully custom, DB-backed RBAC roles — not a fixed enum. `key` is a stable
+/// slug (the seeded system roles use ADMIN/SALES_MANAGER/AGENT/FINANCE/
+/// MARKETING/VIEWER so cross-module code — e.g. `identity.listAgents()` — can
+/// still filter `role: { key: 'AGENT' } }`), `capabilities` is a subset of
+/// `@era/contracts`'s fixed `Capability` union (validated at the tRPC layer,
+/// not by Postgres). `isSystem` roles can have their capabilities edited but
+/// not be deleted.
+model Role {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  name         String
+  description  String?
+  capabilities String[]
+  isSystem     Boolean  @default(false)
+  users        User[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("identity_roles")
+}
+
+model Team {
+  id        String @id @default(cuid())
+  name      String
+  branch    String
+  // Plain id, not a relation: avoids a second Team<->User relation next to
+  // User.teamId. Resolve via the module's own queries, not a Prisma join.
+  managerId String
+  users     User[]
+
+  @@map("identity_teams")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  /// Khmer-script name, shown alongside the English name on customer-facing documents (e.g. quotations)
+  nameKhmer    String?
+  /// ERA agent registration/license number, shown on customer-facing documents
+  licenseNumber String?
+  /// headshot for customer-facing documents — distinct from avatarColor, which is just a UI-initials swatch
+  photoUrl     String?
+  phone        String?
+  roleId       String
+  role         Role     @relation(fields: [roleId], references: [id])
+  teamId       String?
+  team         Team?    @relation(fields: [teamId], references: [id])
+  avatarColor  String?
+  /// monthly sales target in USD (whole dollars), for AGENT/SALES_MANAGER
+  target       Int?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sessions     Session[]
+
+  @@index([roleId])
+  @@map("identity_users")
+}
+
+/// Opaque server-side session, looked up from the signed cookie on every
+/// request. No JWTs — a DB row we can revoke (logout, "log out everywhere").
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@map("identity_sessions")
+}

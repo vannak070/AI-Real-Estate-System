@@ -1,0 +1,17 @@
+// Multi-file schema (prismaSchemaFolder). Each module owns exactly one *.prisma
+// file in this folder and may reference ONLY its own models. No cross-module
+// relations / foreign keys — cross-module links are plain id columns, resolved
+// at runtime through the other module's public API or an event-fed read model.
+//
+// When a module is extracted into its own service, its *.prisma file and its
+// tables move out wholesale, into that service's own database.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

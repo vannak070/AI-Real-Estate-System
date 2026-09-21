@@ -1,0 +1,6 @@
+**/dist/**
+**/node_modules/**
+**/.turbo/**
+pnpm-lock.yaml
+apps/api/src/generated/**
+packages/mock-data/src/index.ts

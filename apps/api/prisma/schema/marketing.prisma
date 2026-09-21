@@ -1,0 +1,44 @@
+// New in Phase 0 #1 — reconciled with packages/mock-data/src/erp/types.ts.
+// Leads/deals/revenue attributed to a channel or campaign are NOT stored here
+// — count them from crm_leads.campaignId / sales_contracts, same rule as
+// Project.totalUnits. Full CRUD lands in Phase 6.
+
+enum ChannelPlatform {
+  FACEBOOK
+  TELEGRAM
+  WHATSAPP
+  WEBSITE
+  WALK_IN
+  REFERRAL
+}
+
+model Channel {
+  id        String          @id @default(cuid())
+  name      String
+  platform  ChannelPlatform
+  connected Boolean         @default(false)
+  autoReply Boolean         @default(false)
+
+  @@map("marketing_channels")
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+model Campaign {
+  id        String          @id @default(cuid())
+  name      String
+  platform  ChannelPlatform
+  status    CampaignStatus  @default(DRAFT)
+  budget    Int             @default(0)
+  spend     Int             @default(0)
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime        @default(now())
+
+  @@map("marketing_campaigns")
+}
