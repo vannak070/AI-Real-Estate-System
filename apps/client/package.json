@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@era/api-client": "workspace:*",
-    "@era/mock-data": "workspace:*",
     "@era/theme": "workspace:*",
     "@era/ui": "workspace:*",
     "lucide-react": "0.487.0",

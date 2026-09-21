@@ -163,6 +163,7 @@ export interface RequestReservationInput {
   contactId: string;
   agentId: string;
   depositAmount?: number;
+  holdHours?: number;
 }
 
 export function useRequestReservation() {

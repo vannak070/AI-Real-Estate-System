@@ -103,7 +103,10 @@ export function createSalesService({ db, bus, logger, modules }: ModuleContext) 
     agentId: string;
     depositAmount?: number;
     quotationId?: string;
+    /** Overrides the default 48h hold — e.g. a manager granting a buyer more time to arrange a deposit. */
+    holdHours?: number;
   }) {
+    const holdMs = input.holdHours != null ? input.holdHours * 60 * 60 * 1000 : RESERVATION_TTL_MS;
     const reservation = await db.reservation.create({
       data: {
         number: await modules.settings.nextNumber('RSV'),
@@ -113,7 +116,7 @@ export function createSalesService({ db, bus, logger, modules }: ModuleContext) 
         quotationId: input.quotationId,
         depositAmount: input.depositAmount ?? 0,
         status: 'HELD',
-        expiresAt: new Date(Date.now() + RESERVATION_TTL_MS),
+        expiresAt: new Date(Date.now() + holdMs),
       },
     });
 

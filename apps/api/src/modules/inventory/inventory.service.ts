@@ -15,6 +15,14 @@ function startingPriceFor(override: number | null, units: { listPrice: number }[
   return units.length ? Math.min(...units.map((u) => u.listPrice)) : null;
 }
 
+/** The public site never shows the internal 8-value operational status — just whether a unit
+ * can still be bought (AVAILABLE), is spoken for (HELD/RESERVED/BOOKED/BLOCKED), or is gone (SOLD/CONTRACTED/HANDED_OVER). */
+function publicUnitStatus(status: UnitStatus): 'AVAILABLE' | 'RESERVED' | 'SOLD' {
+  if (status === 'AVAILABLE') return 'AVAILABLE';
+  if (SOLD_LIKE.includes(status)) return 'SOLD';
+  return 'RESERVED';
+}
+
 interface ProjectInput {
   name: string;
   /** Optional now — auto-derived from province/district/commune/village when those are given (see deriveAddress). */
@@ -373,6 +381,96 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
       if (!unit || unit.status !== 'RESERVED') return;
       await db.unit.update({ where: { id: unitId }, data: { status: 'AVAILABLE' } });
       await bus.publish(InventoryEvents.UnitReleased.type, { unitId, reservationId }, { correlationId });
+    },
+
+    /* ── Public (apps/client, no auth) — a hand-written safe projection, never the raw admin
+     * row. Deliberately excludes gdv/soldValue/startingPriceOverride (only the already-computed
+     * startingPrice) and priceLists (psf/premiums) — commercially sensitive, admin-only. ── */
+
+    async listPublicProjects() {
+      const projects = await db.project.findMany({
+        include: { units: { select: { status: true, listPrice: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+      return projects.map(({ units, startingPriceOverride, ...project }) => ({
+        id: project.id,
+        name: project.name,
+        location: project.location,
+        city: project.city,
+        phase: project.phase,
+        status: project.status,
+        category: project.category,
+        propertyType: project.propertyType,
+        handoverDate: project.handoverDate,
+        amenities: project.amenities,
+        coverColor: project.coverColor,
+        imageUrls: project.imageUrls,
+        badge: project.badge,
+        videoUrl: project.videoUrl,
+        startingPrice: startingPriceFor(startingPriceOverride, units),
+        totalUnits: units.length,
+        availableUnits: units.filter((u) => u.status === 'AVAILABLE').length,
+      }));
+    },
+
+    async getPublicProject(id: string) {
+      const project = await db.project.findUnique({
+        where: { id },
+        include: { units: { select: { status: true, listPrice: true } } },
+      });
+      if (!project) return null;
+      const { units, startingPriceOverride, ...rest } = project;
+      return {
+        id: rest.id,
+        name: rest.name,
+        location: rest.location,
+        city: rest.city,
+        province: rest.province,
+        district: rest.district,
+        commune: rest.commune,
+        village: rest.village,
+        phase: rest.phase,
+        status: rest.status,
+        category: rest.category,
+        propertyType: rest.propertyType,
+        handoverDate: rest.handoverDate,
+        amenities: rest.amenities,
+        coverColor: rest.coverColor,
+        imageUrls: rest.imageUrls,
+        badge: rest.badge,
+        videoUrl: rest.videoUrl,
+        developer: rest.developer,
+        tenure: rest.tenure,
+        totalFloors: rest.totalFloors,
+        disclosedUnitCount: rest.disclosedUnitCount,
+        sitePlanUrl: rest.sitePlanUrl,
+        startingPrice: startingPriceFor(startingPriceOverride, units),
+        totalUnits: units.length,
+        availableUnits: units.filter((u) => u.status === 'AVAILABLE').length,
+      };
+    },
+
+    async listPublicUnits(projectId: string) {
+      const units = await db.unit.findMany({
+        where: { projectId },
+        include: { unitType: true },
+        orderBy: { listPrice: 'asc' },
+      });
+      return units.map((u) => ({
+        id: u.id,
+        code: u.code,
+        floor: u.floor,
+        areaSqm: u.areaSqm,
+        netAreaSqm: u.netAreaSqm,
+        view: u.view,
+        listPrice: u.listPrice,
+        status: publicUnitStatus(u.status),
+        bedrooms: u.unitType?.bedrooms ?? null,
+        bathrooms: u.unitType?.bathrooms ?? null,
+        unitTypeName: u.unitType?.name ?? null,
+        unitTypeImageUrls: u.unitType?.imageUrls ?? [],
+        floorPlanUrl: u.unitType?.floorPlanUrl ?? null,
+      }));
     },
   };
 }

@@ -13,7 +13,8 @@
     "lint": "eslint src",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:about": "tsx prisma/seed-about.ts"
   },
   "prisma": {
     "schema": "prisma/schema"

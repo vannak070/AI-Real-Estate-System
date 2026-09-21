@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ListingBadge, ProjectStatus, PropertyCategory, PropertyType, UnitStatus } from '@prisma/client';
-import { router, withCapability } from '../../trpc/trpc.js';
+import { router, withCapability, publicProcedure } from '../../trpc/trpc.js';
 import type { InventoryService } from './inventory.service.js';
 
 const projectInput = z.object({
@@ -170,6 +170,21 @@ export function inventoryRouter(service: InventoryService) {
       setStatus: withCapability('inventory:write')
         .input(z.object({ id: z.string(), status: z.nativeEnum(UnitStatus) }))
         .mutation(({ input }) => service.setUnitStatus(input.id, input.status)),
+    }),
+
+    // No withCapability — apps/client is unauthenticated. A hand-written safe projection
+    // (inventory.service.ts's listPublicProjects/getPublicProject/listPublicUnits), never the
+    // raw admin row: excludes gdv/soldValue/startingPriceOverride and priceLists entirely.
+    public: router({
+      projects: router({
+        list: publicProcedure.query(() => service.listPublicProjects()),
+        get: publicProcedure.input(z.object({ id: z.string() })).query(({ input }) => service.getPublicProject(input.id)),
+      }),
+      units: router({
+        list: publicProcedure
+          .input(z.object({ projectId: z.string() }))
+          .query(({ input }) => service.listPublicUnits(input.projectId)),
+      }),
     }),
 
     priceLists: router({

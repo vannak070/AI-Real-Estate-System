@@ -166,9 +166,6 @@ importers:
       '@era/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@era/mock-data':
-        specifier: workspace:*
-        version: link:../../packages/mock-data
       '@era/theme':
         specifier: workspace:*
         version: link:../../packages/theme

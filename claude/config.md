@@ -2,7 +2,11 @@
 
 Read this before starting any task driven from `claude/`. It is the rulebook;
 [`../CLAUDE.md`](../CLAUDE.md) and [`../ARCHITECTURE.md`](../ARCHITECTURE.md) are
-the background.
+the background — and [`../memory-bank/`](../memory-bank/) is the durable,
+repo-local record of what's already been built, why, and what's still open.
+**Read `memory-bank/activeContext.md` and `memory-bank/progress.md` first**,
+every task — they're kept current and will save you from re-deriving context
+or repeating a mistake this repo has already made once.
 
 ## 1. Always work from a spec
 
@@ -23,9 +27,10 @@ apps/admin          back office — Vite + React 18 (@era/admin), :5174
 apps/api            modular monolith backend (@era/api), :4000
 packages/contracts  event & command schemas (@era/contracts)
 packages/shared     ids, logger (@era/shared)
-packages/api-client typed client for @era/api — REST now, tRPC later (@era/api-client)
+packages/api-client typed client for @era/api — tRPC, zero codegen (@era/api-client)
 packages/ui         shared React primitives (@era/ui)
-packages/mock-data  TEMPORARY fixtures for both SPAs — replace with @era/api-client
+packages/mock-data  legacy fixtures — no longer used by either SPA; only apps/api's seed script uses it now
+memory-bank/        durable project context — read activeContext.md + progress.md first
 packages/theme      shared brand tokens (@era/theme)
 ```
 
@@ -54,9 +59,14 @@ From `ARCHITECTURE.md`:
 
 - Pick the right app: customer-facing → `apps/client`, internal/back-office →
   `apps/admin`. A change that spans both usually belongs in a shared package.
-- Data goes through **`@era/api-client`** + TanStack Query hooks, not new
-  `@era/mock-data` imports. Migrate one page at a time and drop its
-  `@era/mock-data` import when done.
+- Data goes through **`@era/api-client`** — TanStack Query hooks in `apps/admin`,
+  plain `useEffect`/`useState` around the tRPC client's own promises in
+  `apps/client` (no TanStack Query dependency there, kept that way on purpose).
+  `@era/mock-data` has no consumers left in `apps/client` or `apps/admin` —
+  every screen in both apps, including `ChatPage.tsx`, now reads real data
+  (`ChatPage.tsx` is still a scripted decision tree, not a real LLM, but it's
+  no longer on mock data). Don't add a new `@era/mock-data` import to either
+  SPA — it's kept only for `apps/api`'s seed script.
 - Match the surrounding file: brand colours are still inline hex in most files
   (`#001F5B` navy, `#EF2D2C` red, `#8B0A1C` maroon) — don't refactor that as a
   side effect. Shared tokens live in `@era/theme`.

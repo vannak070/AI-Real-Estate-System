@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Search } from 'lucide-react';
 import {
   PageHeader,
   DataTable,
@@ -21,6 +22,7 @@ import {
   useReservations,
   useSignContract,
   useUpdateReservationDeposit,
+  type PaymentPlanInstallmentInput,
 } from '../data/sales';
 import { useAuth, useCan } from '../store/auth';
 import { useContacts, contactLabel } from '../data/crm';
@@ -33,9 +35,27 @@ import { RESERVATION_STATUSES, type ReservationStatus } from '../data/types';
 
 type ReservationRow = NonNullable<ReturnType<typeof useReservations>['data']>[number];
 
+const DEFAULT_HOLD_HOURS = 48;
+/** Matches acceptQuotation's own suggestion — a starting point, not a rule; the agent can always override it. */
+const SUGGESTED_DEPOSIT_PCT = 2;
+
+/** Projects a payment plan's installments into real dollar amounts against a chosen price —
+ * same rounding/last-row-absorbs-drift logic as the server's `projectPaymentSchedule`, kept
+ * here as a lightweight client-side preview (mirrors the pattern already used in QuotationsPage). */
+function projectSchedule(installments: PaymentPlanInstallmentInput[], price: number) {
+  let cumulative = 0;
+  return installments.map((inst, i) => {
+    const isLast = i === installments.length - 1;
+    const amount = isLast ? price - cumulative : Math.round((price * inst.percent) / 100);
+    cumulative += amount;
+    return { label: inst.label, amount };
+  });
+}
+
 function NewReservationDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const { data: agents } = useUsers();
+  const { data: units } = useUnits();
   const requestReservation = useRequestReservation();
 
   // Only users who can actually work a reservation — Finance/Marketing/Viewer
@@ -47,6 +67,11 @@ function NewReservationDrawer({ open, onClose }: { open: boolean; onClose: () =>
   const [unitId, setUnitId] = useState('');
   const [agentId, setAgentId] = useState(user?.id ?? '');
   const [depositAmount, setDepositAmount] = useState('');
+  const [depositEdited, setDepositEdited] = useState(false);
+  const [holdHours, setHoldHours] = useState(String(DEFAULT_HOLD_HOURS));
+
+  const selectedUnit = units?.find((u) => u.id === unitId);
+  const suggestedDeposit = selectedUnit ? Math.round((selectedUnit.listPrice * SUGGESTED_DEPOSIT_PCT) / 100 / 100) * 100 : 0;
 
   const missing = [!contactId && 'Contact', !unitId && 'Unit', !agentId && 'Agent'].filter(
     (m): m is string => typeof m === 'string',
@@ -57,6 +82,8 @@ function NewReservationDrawer({ open, onClose }: { open: boolean; onClose: () =>
     setUnitId('');
     setAgentId(user?.id ?? '');
     setDepositAmount('');
+    setDepositEdited(false);
+    setHoldHours(String(DEFAULT_HOLD_HOURS));
   };
 
   const submit = () => {
@@ -67,6 +94,7 @@ function NewReservationDrawer({ open, onClose }: { open: boolean; onClose: () =>
         contactId,
         agentId,
         depositAmount: depositAmount ? Number(depositAmount) : undefined,
+        holdHours: holdHours ? Number(holdHours) : undefined,
       },
       { onSuccess: () => { onClose(); reset(); } },
     );
@@ -85,7 +113,16 @@ function NewReservationDrawer({ open, onClose }: { open: boolean; onClose: () =>
         <label className="block">
           <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Unit (available only)</span>
           <div className="mt-1">
-            <UnitPicker value={unitId} onChange={setUnitId} />
+            <UnitPicker
+              value={unitId}
+              onChange={(id) => {
+                setUnitId(id);
+                if (!depositEdited) {
+                  const u = units?.find((x) => x.id === id);
+                  if (u) setDepositAmount(String(Math.round((u.listPrice * SUGGESTED_DEPOSIT_PCT) / 100 / 100) * 100));
+                }
+              }}
+            />
           </div>
         </label>
 
@@ -102,15 +139,43 @@ function NewReservationDrawer({ open, onClose }: { open: boolean; onClose: () =>
         </label>
 
         <label className="block">
-          <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Deposit amount (optional)</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+            Deposit amount {selectedUnit && `(suggested ${money(suggestedDeposit)} · 2% of list price)`}
+          </span>
           <TextInput
             className="mt-1 w-full"
             type="number"
             placeholder="0"
             value={depositAmount}
-            onChange={(e) => setDepositAmount(e.target.value)}
+            onChange={(e) => {
+              setDepositAmount(e.target.value);
+              setDepositEdited(true);
+            }}
           />
         </label>
+
+        <label className="block">
+          <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Hold duration (hours)</span>
+          <TextInput
+            className="mt-1 w-full"
+            type="number"
+            value={holdHours}
+            onChange={(e) => setHoldHours(e.target.value)}
+          />
+        </label>
+
+        {selectedUnit && (
+          <div className="rounded-lg bg-gray-50 p-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">List price</span>
+              <span>{money(selectedUnit.listPrice)}</span>
+            </div>
+            <div className="mt-1 flex justify-between font-bold text-[var(--era-navy)]">
+              <span>Deposit</span>
+              <span>{money(depositAmount ? Number(depositAmount) : 0)}</span>
+            </div>
+          </div>
+        )}
 
         {missing.length > 0 && <p className="text-xs text-[var(--era-red)]">Required: {missing.join(', ')}.</p>}
         {requestReservation.error && <p className="text-xs text-[var(--era-red)]">{requestReservation.error.message}</p>}
@@ -130,6 +195,7 @@ export function ReservationsPage() {
   const { user } = useAuth();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [status, setStatus] = useState<ReservationStatus | 'ALL'>('ALL');
+  const [q, setQ] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [signing, setSigning] = useState(false);
@@ -150,7 +216,16 @@ export function ReservationsPage() {
   const signContract = useSignContract();
 
   const all = reservations ?? [];
-  const rows = all.filter((r) => status === 'ALL' || r.status === status);
+  const needle = q.trim().toLowerCase();
+  const rows = all.filter((r) => {
+    if (status !== 'ALL' && r.status !== status) return false;
+    if (!needle) return true;
+    return (
+      r.number.toLowerCase().includes(needle) ||
+      contactLabel(contacts, r.contactId).toLowerCase().includes(needle) ||
+      unitLabel(units, projects, r.unitId).toLowerCase().includes(needle)
+    );
+  });
   const now = Date.now();
 
   const columns: Column<ReservationRow>[] = [
@@ -201,13 +276,18 @@ export function ReservationsPage() {
     setSigning(true);
   }
 
+  const signMissing = [!signSalePrice && 'Sale price', !signPaymentPlanId && 'Payment plan'].filter(
+    (m): m is string => typeof m === 'string',
+  );
+  const signPlan = (paymentPlans ?? []).find((p) => p.id === signPaymentPlanId);
+
   function submitSign() {
-    if (!r || !signSalePrice) return;
+    if (!r || signMissing.length > 0) return;
     signContract.mutate(
       {
         reservationId: r.id,
         salePrice: Number(signSalePrice),
-        paymentPlanId: signPaymentPlanId || undefined,
+        paymentPlanId: signPaymentPlanId,
       },
       { onSuccess: () => { closeDrawer(); } },
     );
@@ -255,6 +335,10 @@ export function ReservationsPage() {
         }
       />
       <Toolbar>
+        <div className="relative max-w-xs flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <TextInput placeholder="Search number, contact, or unit…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8" />
+        </div>
         <Select value={status} onChange={(e) => setStatus(e.target.value as ReservationStatus | 'ALL')}>
           <option value="ALL">All statuses</option>
           {RESERVATION_STATUSES.map((s) => (
@@ -356,10 +440,26 @@ export function ReservationsPage() {
                     ))}
                   </Select>
                 </label>
-                {!signSalePrice && <p className="text-xs text-[var(--era-red)]">Required: Sale price.</p>}
+                {signPlan && signSalePrice && (
+                  <div className="rounded-lg bg-gray-50 p-3 text-sm">
+                    <div className="flex justify-between font-bold text-[var(--era-navy)]">
+                      <span>Sale price</span>
+                      <span>{money(Number(signSalePrice))}</span>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      {projectSchedule(signPlan.installments, Number(signSalePrice)).map((row, i) => (
+                        <div key={i} className="flex justify-between text-gray-500">
+                          <span>{row.label}</span>
+                          <span>{money(row.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {signMissing.length > 0 && <p className="text-xs text-[var(--era-red)]">Required: {signMissing.join(', ')}.</p>}
                 {signContract.error && <p className="text-xs text-[var(--era-red)]">{signContract.error.message}</p>}
                 <div className="flex gap-2">
-                  <Button size="sm" disabled={!signSalePrice || signContract.isPending} onClick={submitSign}>
+                  <Button size="sm" disabled={signMissing.length > 0 || signContract.isPending} onClick={submitSign}>
                     {signContract.isPending ? 'Signing…' : 'Sign contract'}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setSigning(false)}>

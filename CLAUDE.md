@@ -17,7 +17,7 @@ packages/contracts   @era/contracts   — versioned event & command schemas (zod
 packages/shared      @era/shared      — ids, logger
 packages/api-client  @era/api-client  — tRPC client typed against @era/api's AppRouter (no REST, no codegen)
 packages/ui          @era/ui          — shared React primitives (Button, Card, DataTable, Drawer, StatCard, Badge, …)
-packages/mock-data   @era/mock-data   — TEMPORARY fixtures. `.` = the old SPA data; `@era/mock-data/erp` = the full ERP seed (contacts, units, quotations, contracts, invoices, commissions, approvals, …). Replace with @era/api-client.
+packages/mock-data   @era/mock-data   — legacy fixtures. No longer used by apps/client or apps/admin (every screen in both, including ChatPage.tsx, is on the real API as of 2026-09-21) — the only remaining consumer is apps/api's prisma/seed.ts, which seeds demo data from @era/mock-data/erp.
 packages/theme       @era/theme       — shared brand tokens (theme.css)
 ```
 
@@ -29,7 +29,12 @@ the back office links back to the customer site via `VITE_CLIENT_URL` (a plain
 
 Read [`ARCHITECTURE.md`](ARCHITECTURE.md) for the backend's module boundaries,
 the event bus, and the reservation-saga example. Team task specs live in
-[`claude/`](claude/README.md) (not `.claude/`).
+[`claude/`](claude/README.md) (not `.claude/`). **Read
+[`memory-bank/activeContext.md`](memory-bank/activeContext.md) and
+[`memory-bank/progress.md`](memory-bank/progress.md) before starting
+non-trivial work** — this file is the stable reference; the memory bank is
+the continuously-updated record of what's actually been built, what's still
+open, and lessons already learned the hard way.
 
 ## Commands
 
@@ -69,13 +74,17 @@ Each SPA also reads `VITE_*` from its own `.env`.
 `node-linker=hoisted` is set in `.npmrc` (flat `node_modules`, friendliest to the
 Vite/Tailwind toolchain).
 
-## apps/admin — the back office (partially wired to the real API)
+## apps/admin — the back office (fully wired to the real API)
 
-`apps/admin` is a full Odoo-replacement back office. As of Phase 8, **Contacts,
-Pipeline (Leads), Tasks, and Users & Roles are wired to the real `apps/api`
-backend**; every other screen (inventory, sales, finance, commissions,
-approvals, documents, marketing, reports, settings, agents) still runs on
-static data.
+`apps/admin` is a full Odoo-replacement back office. **Every screen is wired
+to the real `apps/api` backend** — CRM, Inventory, Sales, Finance,
+Approvals, Documents, Marketing, Settings, Users & Roles, and the
+About-page CMS. There is no local-state fallback store left in this app
+(the old `erp-store.tsx`/`useErp()` mock-data provider and its
+`selectors.ts` were deleted once the last screen migrated off them) and no
+`@era/mock-data` imports remain anywhere in `apps/admin/src`. If you find a
+screen that still looks unwired, treat that as a regression to investigate,
+not an expected gap.
 
 - **RBAC is fully DB-backed, not a fixed enum.** `identity_roles`
   (`apps/api/prisma/schema/identity.prisma`) holds `key`, `name`, `description`,
@@ -125,26 +134,19 @@ static data.
   matching. `isLoading` (the initial `auth.me` round trip) is handled in
   `app/guards.tsx`'s `RequireAuth` before it decides to redirect to `/login`.
   There is no `loginAs()` impersonation shortcut against the real backend.
-- **Migrated screens** (`ContactsPage`, `LeadsPage`, `TasksPage`) read/write via
-  typed React Query hooks in `apps/admin/src/data/crm.ts` and `data/identity.ts`
-  (`useContacts`, `useContact`, `useVerifyKyc`, `useLeads`, `useLead`,
-  `useChangeLeadStage`, `useActivities`, `useToggleActivityDone`, `useUsers`,
-  `useTeams`, …), built on `apps/admin/src/lib/api.ts` (`createApiClient`,
-  LAN-aware baseUrl) and `apps/admin/src/lib/query-client.ts`. Local enum
-  string-unions live in `apps/admin/src/data/types.ts` (no `@era/mock-data`
-  dependency). `groupLeadsByStage()` in `data/crm.ts` replaces the old
-  `pipelineByStage(db)` selector for the migrated Pipeline board.
-- **Everything else still uses `apps/admin/src/store/erp-store.tsx`** —
-  `<ErpProvider>` seeds from `@era/mock-data/erp` into React state; `useErp()`
-  returns `{ db, actions }`. Every action there mutates local state only and
-  resets on reload. Migrate a screen the same way Contacts/Leads/Tasks were
-  migrated: swap `useErp()` reads for hooks in `data/*.ts`, backed by
-  `@era/api-client` + TanStack Query, and delete the `@era/mock-data` import.
-- Derived reads for NOT-yet-migrated screens (KPIs, AR aging, leaderboard,
-  balances) are pure functions in `apps/admin/src/store/selectors.ts`.
-  Formatters in `apps/admin/src/lib/format.ts` — `relDays(iso, now?)` takes an
-  optional `now` so migrated pages can pass `Date.now()` instead of the frozen
-  mock "today".
+- **Every screen** reads/writes via typed React Query hooks, one file per module
+  in `apps/admin/src/data/` (`crm.ts`, `identity.ts`, `inventory.ts`, `sales.ts`,
+  `finance.ts`, `ops.ts`, `marketing.ts`, `settings.ts`, …) — e.g. `useContacts`,
+  `useLeads`, `useChangeLeadStage`, `useUsers`, `useProjects`, `useUnits`,
+  `useQuotations`, `useReservations`, `useContracts`, `useInvoices`,
+  `usePaymentPlans`, `useAboutContent`, and their mutation counterparts — all
+  built on `apps/admin/src/lib/api.ts` (`createApiClient`, LAN-aware baseUrl)
+  and `apps/admin/src/lib/query-client.ts`. Local enum string-unions live in
+  `apps/admin/src/data/types.ts` (no `@era/mock-data` dependency).
+- Formatters live in `apps/admin/src/lib/format.ts` — `relDays(iso, now?)` takes
+  an optional `now` so pages can pass `Date.now()` instead of a frozen mock
+  "today" (a holdover from when some pages still read frozen mock timestamps;
+  now just the normal convention).
 - Screens in `apps/admin/src/pages/` (one per nav item); nav is grouped in
   `AdminLayout`. Screens are `PageHeader` + `DataTable`/`Drawer` from `@era/ui`.
 
@@ -164,12 +166,22 @@ adds `react-slick`.
   nullable columns come through as `T | null`, not `T | undefined`). No test
   runner yet. Vite build stays esbuild (no type checking); `pnpm typecheck` is
   the gate.
-- **Contacts/Leads/Tasks in `apps/admin` are wired to the real backend**; every
-  other screen in both apps still runs on mock data from `@era/mock-data`. The
-  typed client for the real backend is **`@era/api-client`** (`createApiClient({
-  baseUrl })`, tRPC, zero codegen) — wire a screen to it + TanStack Query, then
-  delete its `@era/mock-data` import, the same way Contacts/Leads/Tasks were done
-  (see `apps/admin/src/data/`). `@era/mock-data` is temporary.
+- **Both apps are fully wired to the real backend** — every screen in
+  `apps/admin`, and in `apps/client` the Properties list/detail pages, the
+  About page, and `ChatPage.tsx` (as of its 2026-09-21 Tier 0 fix), via
+  `apps/client/src/lib/api.ts` (same `createApiClient` pattern as admin, but
+  plain `useEffect`/`useState` around the tRPC client's promises —
+  `apps/client` has no TanStack Query dependency, kept that way deliberately
+  rather than adding one for a handful of pages). **`ChatPage.tsx` is still
+  not a real AI** — it now reads real inventory and submits real leads, but
+  its conversation logic remains a scripted decision tree with no LLM; a
+  real LLM integration is a separate, larger product decision, not yet made.
+  The typed client for the real backend is **`@era/api-client`**
+  (`createApiClient({ baseUrl })`, tRPC, zero codegen) — see
+  `apps/admin/src/data/` and `apps/client/src/lib/api.ts` for the pattern if
+  wiring up anything new. `@era/mock-data` has no consumers left in either
+  SPA; it remains a workspace package only because `apps/api/prisma/seed.ts`
+  uses `@era/mock-data/erp` to seed demo data.
 - **`@era/ui`** holds shared primitives (`cn`, `Button`, `Card` so far). Grow it
   by extracting repeated inline-styled patterns; each app's `tailwind.css` already
   `@source`s it.

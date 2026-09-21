@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { can } from '@era/contracts';
 import { ActivityType, ContactType, LeadSource, LeadStage, Temperature } from '@prisma/client';
-import { router, withCapability } from '../../trpc/trpc.js';
+import { router, withCapability, publicProcedure } from '../../trpc/trpc.js';
 import { scopedOwnerId } from '../../trpc/scoping.js';
 import type { CrmService } from './crm.service.js';
 
@@ -131,6 +131,30 @@ export function crmRouter(service: CrmService) {
           }),
         )
         .mutation(({ input: { id, ...data } }) => service.updateLead(id, data)),
+    }),
+
+    // No withCapability — apps/client is unauthenticated. The one and only way anything on the
+    // public site writes to the database: creates a real Contact+Lead via the same createLead
+    // used internally, source hardcoded to WEBSITE (never trust the caller's own claim of source).
+    public: router({
+      submitLead: publicProcedure
+        .input(
+          z.object({
+            name: z.string().min(1),
+            email: z.string().email().optional(),
+            phone: z.string().optional(),
+            message: z.string().optional(),
+            preferredProjectId: z.string().optional(),
+          }),
+        )
+        .mutation(({ input }) =>
+          service.createLead({
+            contact: { name: input.name, email: input.email, phone: input.phone },
+            source: 'WEBSITE',
+            preferredProjectId: input.preferredProjectId,
+            message: input.message,
+          }),
+        ),
     }),
 
     activities: router({

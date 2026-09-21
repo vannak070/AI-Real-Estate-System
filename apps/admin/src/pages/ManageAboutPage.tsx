@@ -1,26 +1,476 @@
 import { useState } from "react";
-import { 
-  Building2, 
-  Users, 
-  Award, 
-  Target, 
-  Heart,
+import {
+  Building2,
+  Users,
+  Award,
+  Calendar,
   Save,
   Plus,
   Trash2,
-  Edit2,
-  Calendar,
-  FileText
 } from "lucide-react";
+import { Button, TextInput } from '@era/ui';
+import { useCan } from '../store/auth';
+import { ImageGallery } from '../app/components/ImageGallery';
+import {
+  useAboutContent,
+  useUpdateAboutContent,
+  useAboutMilestones,
+  useCreateAboutMilestone,
+  useUpdateAboutMilestone,
+  useDeleteAboutMilestone,
+  useAboutTeam,
+  useCreateAboutTeamMember,
+  useUpdateAboutTeamMember,
+  useDeleteAboutTeamMember,
+  useSetAboutTeamMemberPhoto,
+  useRemoveAboutTeamMemberPhoto,
+  useAboutAwards,
+  useCreateAboutAward,
+  useUpdateAboutAward,
+  useDeleteAboutAward,
+} from '../data/settings';
+
+type Content = NonNullable<ReturnType<typeof useAboutContent>['data']>;
+type Milestone = NonNullable<ReturnType<typeof useAboutMilestones>['data']>[number];
+type TeamMember = NonNullable<ReturnType<typeof useAboutTeam>['data']>[number];
+type AwardRow = NonNullable<ReturnType<typeof useAboutAwards>['data']>[number];
+
+function OverviewTab({ content, canWrite }: { content: Content; canWrite: boolean }) {
+  const [form, setForm] = useState(content);
+  const [saved, setSaved] = useState(false);
+  const update = useUpdateAboutContent();
+
+  const missing = !form.pageTitle.trim() ? ['Page title'] : [];
+
+  function set<K extends keyof Content>(key: K, value: Content[K]) {
+    setForm({ ...form, [key]: value });
+    setSaved(false);
+  }
+
+  function save() {
+    if (missing.length > 0) return;
+    update.mutate(form, { onSuccess: () => setSaved(true) });
+  }
+
+  const values = form.values;
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold text-gray-900 mb-6">Company Overview Content</h2>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Page Title</label>
+        <TextInput className="w-full" value={form.pageTitle} onChange={(e) => set('pageTitle', e.target.value)} />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Subtitle</label>
+        <textarea
+          rows={2}
+          value={form.subtitle ?? ''}
+          onChange={(e) => set('subtitle', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Main Description (Paragraph 1)</label>
+        <textarea
+          rows={4}
+          value={form.paragraph1 ?? ''}
+          onChange={(e) => set('paragraph1', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Main Description (Paragraph 2)</label>
+        <textarea
+          rows={3}
+          value={form.paragraph2 ?? ''}
+          onChange={(e) => set('paragraph2', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
+        />
+      </div>
+
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Company Statistics</h3>
+        <div className="grid md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Active Projects</label>
+            <TextInput className="w-full" value={form.statProjects ?? ''} onChange={(e) => set('statProjects', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Leads Qualified</label>
+            <TextInput className="w-full" value={form.statLeads ?? ''} onChange={(e) => set('statLeads', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">AI Accuracy</label>
+            <TextInput className="w-full" value={form.statAccuracy ?? ''} onChange={(e) => set('statAccuracy', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Sales Professionals</label>
+            <TextInput className="w-full" value={form.statTeamSize ?? ''} onChange={(e) => set('statTeamSize', e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Mission Statement</h3>
+        <textarea
+          rows={3}
+          value={form.mission ?? ''}
+          onChange={(e) => set('mission', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
+        />
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Core Values</h3>
+        <div className="space-y-3">
+          {values.map((value, idx) => (
+            <div key={idx} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <TextInput
+                className="flex-1"
+                value={value}
+                onChange={(e) => {
+                  const next = [...values];
+                  next[idx] = e.target.value;
+                  set('values', next);
+                }}
+              />
+              <button
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                onClick={() => set('values', values.filter((_, i) => i !== idx))}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+          {canWrite && (
+            <button
+              className="flex items-center space-x-2 px-4 py-2 text-[#001F5B] hover:bg-gray-50 rounded-lg transition"
+              onClick={() => set('values', [...values, ''])}
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-sm font-medium">Add Value</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {missing.length > 0 && <p className="text-sm text-red-600">Required: {missing.join(', ')}.</p>}
+      {update.error && <p className="text-sm text-red-600">{update.error.message}</p>}
+      {saved && !update.isPending && <p className="text-sm text-green-700">✓ Saved.</p>}
+
+      {canWrite && (
+        <button
+          onClick={save}
+          disabled={missing.length > 0 || update.isPending}
+          className="flex items-center space-x-2 px-6 py-3 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition-colors disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" />
+          <span>{update.isPending ? 'Saving…' : 'Save Overview'}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function MilestoneRow({ milestone, canWrite }: { milestone: Milestone; canWrite: boolean }) {
+  const [form, setForm] = useState(milestone);
+  const update = useUpdateAboutMilestone();
+  const del = useDeleteAboutMilestone();
+
+  const missing = [!form.year.trim() && 'Year', !form.title.trim() && 'Title', !form.description.trim() && 'Description'].filter(
+    (m): m is string => typeof m === 'string',
+  );
+
+  return (
+    <div className="p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-2">
+            <TextInput
+              className="px-3 py-1.5 text-sm font-semibold w-40"
+              value={form.year}
+              onChange={(e) => setForm({ ...form, year: e.target.value })}
+              placeholder="Year"
+            />
+          </div>
+          <TextInput
+            className="w-full mb-3 font-semibold text-lg"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Milestone Title"
+          />
+          <textarea
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Description"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
+          />
+        </div>
+        {canWrite && (
+          <button className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition" onClick={() => del.mutate(milestone.id)}>
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+      {missing.length > 0 && <p className="text-xs text-red-600 mb-2">Required: {missing.join(', ')}.</p>}
+      {update.error && <p className="text-xs text-red-600 mb-2">{update.error.message}</p>}
+      {del.error && <p className="text-xs text-red-600 mb-2">{del.error.message}</p>}
+      {canWrite && (
+        <Button
+          size="sm"
+          disabled={missing.length > 0 || update.isPending}
+          onClick={() => update.mutate({ id: milestone.id, year: form.year, title: form.title, description: form.description })}
+        >
+          {update.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function HistoryTab({ milestones, canWrite }: { milestones: Milestone[]; canWrite: boolean }) {
+  const create = useCreateAboutMilestone();
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-900">Company History Timeline</h2>
+        {canWrite && (
+          <button
+            className="flex items-center space-x-2 px-4 py-2 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition"
+            disabled={create.isPending}
+            onClick={() => create.mutate({ year: 'New', title: 'New milestone', description: 'Describe this milestone…', order: milestones.length })}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Milestone</span>
+          </button>
+        )}
+      </div>
+      {create.error && <p className="text-sm text-red-600">{create.error.message}</p>}
+      <div className="space-y-4">
+        {milestones.map((m) => (
+          <MilestoneRow key={m.id} milestone={m} canWrite={canWrite} />
+        ))}
+        {milestones.length === 0 && <p className="text-sm text-gray-400">No milestones yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+function TeamMemberRow({ member, canWrite }: { member: TeamMember; canWrite: boolean }) {
+  const [form, setForm] = useState(member);
+  const update = useUpdateAboutTeamMember();
+  const del = useDeleteAboutTeamMember();
+  const setPhoto = useSetAboutTeamMemberPhoto();
+  const removePhoto = useRemoveAboutTeamMemberPhoto();
+
+  const missing = [!form.name.trim() && 'Name', !form.position.trim() && 'Position'].filter((m): m is string => typeof m === 'string');
+
+  return (
+    <div className={`p-6 rounded-xl border-2 ${member.isLeader ? 'bg-gradient-to-br from-[#EF2D2C]/10 to-white border-[#EF2D2C]/30' : 'bg-gray-50 border-gray-200'}`}>
+      <div className="flex items-start justify-between mb-4">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-gray-500 flex items-center gap-2">
+          {member.isLeader && <Award className="w-4 h-4 text-[#EF2D2C]" />}
+          {member.isLeader ? 'Leadership' : 'Team member'}
+        </h3>
+        {canWrite && (
+          <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" onClick={() => del.mutate(member.id)}>
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+          <TextInput className="w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
+          <TextInput className="w-full" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} />
+        </div>
+        {member.isLeader && (
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Biography</label>
+            <textarea
+              rows={6}
+              value={form.bio ?? ''}
+              onChange={(e) => setForm({ ...form, bio: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
+            />
+          </div>
+        )}
+      </div>
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Photo</label>
+        <ImageGallery
+          images={member.photoUrl ? [member.photoUrl] : []}
+          canWrite={canWrite && !member.photoUrl}
+          onUpload={(dataUrl) => setPhoto.mutate({ id: member.id, dataUrl })}
+          onRemove={() => removePhoto.mutate(member.id)}
+          emptyHint="No photo — shows initials instead."
+        />
+      </div>
+      {missing.length > 0 && <p className="text-xs text-red-600 mb-2">Required: {missing.join(', ')}.</p>}
+      {update.error && <p className="text-xs text-red-600 mb-2">{update.error.message}</p>}
+      {del.error && <p className="text-xs text-red-600 mb-2">{del.error.message}</p>}
+      {setPhoto.error && <p className="text-xs text-red-600 mb-2">{setPhoto.error.message}</p>}
+      {canWrite && (
+        <Button
+          size="sm"
+          disabled={missing.length > 0 || update.isPending}
+          onClick={() => update.mutate({ id: member.id, name: form.name, position: form.position, bio: form.bio })}
+        >
+          {update.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function TeamTab({ team, canWrite }: { team: TeamMember[]; canWrite: boolean }) {
+  const create = useCreateAboutTeamMember();
+  const leader = team.find((m) => m.isLeader);
+  const rest = team.filter((m) => !m.isLeader);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-900">Team Management</h2>
+        {canWrite && (
+          <button
+            className="flex items-center space-x-2 px-4 py-2 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition"
+            disabled={create.isPending}
+            onClick={() => create.mutate({ name: 'New team member', position: 'Position', order: team.length })}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Team Member</span>
+          </button>
+        )}
+      </div>
+      {create.error && <p className="text-sm text-red-600">{create.error.message}</p>}
+
+      {leader && (
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Leadership</h3>
+          <TeamMemberRow member={leader} canWrite={canWrite} />
+        </div>
+      )}
+
+      <div>
+        <h3 className="text-lg font-bold text-gray-900 mb-4">Operations Support Team</h3>
+        <div className="space-y-3">
+          {rest.map((m) => (
+            <TeamMemberRow key={m.id} member={m} canWrite={canWrite} />
+          ))}
+          {rest.length === 0 && !leader && <p className="text-sm text-gray-400">No team members yet.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AwardCard({ award, canWrite }: { award: AwardRow; canWrite: boolean }) {
+  const [form, setForm] = useState(award);
+  const update = useUpdateAboutAward();
+  const del = useDeleteAboutAward();
+
+  const missing = [!form.year.trim() && 'Year', !form.title.trim() && 'Title', !form.organization.trim() && 'Organization'].filter(
+    (m): m is string => typeof m === 'string',
+  );
+
+  return (
+    <div className="p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1 space-y-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
+              <TextInput className="w-full" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Organization</label>
+              <TextInput className="w-full" value={form.organization} onChange={(e) => setForm({ ...form, organization: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Award Title</label>
+            <TextInput className="w-full font-semibold" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              rows={2}
+              value={form.description ?? ''}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
+            />
+          </div>
+        </div>
+        {canWrite && (
+          <button className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition" onClick={() => del.mutate(award.id)}>
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+      {missing.length > 0 && <p className="text-xs text-red-600 mb-2">Required: {missing.join(', ')}.</p>}
+      {update.error && <p className="text-xs text-red-600 mb-2">{update.error.message}</p>}
+      {del.error && <p className="text-xs text-red-600 mb-2">{del.error.message}</p>}
+      {canWrite && (
+        <Button
+          size="sm"
+          disabled={missing.length > 0 || update.isPending}
+          onClick={() =>
+            update.mutate({ id: award.id, year: form.year, title: form.title, organization: form.organization, description: form.description })
+          }
+        >
+          {update.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function AwardsTab({ awards, canWrite }: { awards: AwardRow[]; canWrite: boolean }) {
+  const create = useCreateAboutAward();
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-900">Awards & Recognition</h2>
+        {canWrite && (
+          <button
+            className="flex items-center space-x-2 px-4 py-2 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition"
+            disabled={create.isPending}
+            onClick={() => create.mutate({ year: String(new Date().getFullYear()), title: 'New award', organization: 'Organization', order: awards.length })}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Award</span>
+          </button>
+        )}
+      </div>
+      {create.error && <p className="text-sm text-red-600">{create.error.message}</p>}
+      <div className="space-y-4">
+        {awards.map((a) => (
+          <AwardCard key={a.id} award={a} canWrite={canWrite} />
+        ))}
+        {awards.length === 0 && <p className="text-sm text-gray-400">No awards yet.</p>}
+      </div>
+    </div>
+  );
+}
 
 export function ManageAboutPage() {
   const [activeSection, setActiveSection] = useState<'overview' | 'history' | 'team' | 'awards'>('overview');
-  const [saved, setSaved] = useState(false);
+  const canWrite = useCan('settings:write');
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
+  const { data: content } = useAboutContent();
+  const { data: milestones } = useAboutMilestones();
+  const { data: team } = useAboutTeam();
+  const { data: awards } = useAboutAwards();
 
   const sections = [
     { id: 'overview' as const, label: 'Company Overview', icon: Building2 },
@@ -36,26 +486,17 @@ export function ManageAboutPage() {
         <p className="text-gray-600">Update company information displayed on the About page</p>
       </div>
 
-      {saved && (
-        <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
-          <p className="text-green-700 font-medium">✓ About page content saved successfully!</p>
-        </div>
-      )}
-
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        {/* Section Tabs */}
         <div className="border-b border-gray-200">
           <div className="flex space-x-1 p-2">
-            {sections.map(section => {
+            {sections.map((section) => {
               const Icon = section.icon;
               return (
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
                   className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                    activeSection === section.id
-                      ? 'bg-[#001F5B] text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                    activeSection === section.id ? 'bg-[#001F5B] text-white' : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -66,402 +507,11 @@ export function ManageAboutPage() {
           </div>
         </div>
 
-        {/* Section Content */}
         <div className="p-8">
-          {/* Company Overview Section */}
-          {activeSection === 'overview' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Company Overview Content</h2>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Page Title
-                </label>
-                <input
-                  type="text"
-                  defaultValue="About ERA Cambodia"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subtitle
-                </label>
-                <textarea
-                  rows={2}
-                  defaultValue="Leading the future of real estate in Cambodia with innovative AI technology and exceptional service"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Main Description (Paragraph 1)
-                </label>
-                <textarea
-                  rows={4}
-                  defaultValue="ERA Cambodia is a pioneering real estate company that combines traditional expertise with cutting-edge artificial intelligence technology. We're revolutionizing how Cambodians buy, sell, and rent properties through our innovative AI-powered platform integrated with Odoo ERP."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Main Description (Paragraph 2)
-                </label>
-                <textarea
-                  rows={3}
-                  defaultValue="With a portfolio of 5 premium projects across Phnom Penh and a dedicated team of 10 sales professionals, we're committed to delivering exceptional service and results to our clients."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                />
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Company Statistics</h3>
-                <div className="grid md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Active Projects
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue="5"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Leads Qualified
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue="1,247+"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      AI Accuracy
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue="94.5%"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Sales Professionals
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue="10"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Mission Statement</h3>
-                <textarea
-                  rows={3}
-                  defaultValue="To democratize access to quality real estate through innovative AI technology, making property search and transactions seamless, transparent, and efficient for all Cambodians."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Core Values</h3>
-                <div className="space-y-3">
-                  {[
-                    'Innovation & Technology Excellence',
-                    'Customer-First Approach',
-                    'Integrity & Transparency'
-                  ].map((value, idx) => (
-                    <div key={idx} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                      <input
-                        type="text"
-                        defaultValue={value}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                      />
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <button className="flex items-center space-x-2 px-4 py-2 text-[#001F5B] hover:bg-gray-50 rounded-lg transition">
-                    <Plus className="w-4 h-4" />
-                    <span className="text-sm font-medium">Add Value</span>
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={handleSave}
-                className="flex items-center space-x-2 px-6 py-3 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Overview</span>
-              </button>
-            </div>
-          )}
-
-          {/* Company History Section */}
-          {activeSection === 'history' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Company History Timeline</h2>
-                <button className="flex items-center space-x-2 px-4 py-2 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition">
-                  <Plus className="w-4 h-4" />
-                  <span>Add Milestone</span>
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {[
-                  {
-                    year: '2026 - Present',
-                    title: 'AI Integration Era',
-                    description: 'Launched comprehensive AI Real Estate System with 6 intelligent agents, achieving 40% increase in conversion rates and 50-70% reduction in manual workload.'
-                  },
-                  {
-                    year: '2024',
-                    title: 'Digital Transformation',
-                    description: 'Implemented Odoo ERP integration, connecting CRM, Sales, and Inventory modules for seamless operations. Introduced multi-channel lead capture across Facebook, Website, Telegram, and WhatsApp.'
-                  },
-                  {
-                    year: '2022',
-                    title: 'Rapid Expansion',
-                    description: 'Expanded portfolio to 5 premium projects across Phnom Penh. Grew sales team to 10 professionals, handling over 400 monthly leads.'
-                  },
-                  {
-                    year: '2020',
-                    title: 'Foundation',
-                    description: 'ERA Cambodia was established with a vision to revolutionize the real estate industry through technology and exceptional customer service.'
-                  }
-                ].map((milestone, idx) => (
-                  <div key={idx} className="p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <input
-                            type="text"
-                            defaultValue={milestone.year}
-                            className="px-3 py-1.5 text-sm font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                            placeholder="Year"
-                          />
-                        </div>
-                        <input
-                          type="text"
-                          defaultValue={milestone.title}
-                          className="w-full mb-3 px-3 py-2 font-semibold text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                          placeholder="Milestone Title"
-                        />
-                        <textarea
-                          rows={3}
-                          defaultValue={milestone.description}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                          placeholder="Description"
-                        />
-                      </div>
-                      <button className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={handleSave}
-                className="flex items-center space-x-2 px-6 py-3 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save History</span>
-              </button>
-            </div>
-          )}
-
-          {/* Team Members Section */}
-          {activeSection === 'team' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Team Management</h2>
-                <button className="flex items-center space-x-2 px-4 py-2 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition">
-                  <Plus className="w-4 h-4" />
-                  <span>Add Team Member</span>
-                </button>
-              </div>
-
-              {/* CEO Section */}
-              <div className="p-6 bg-gradient-to-br from-[#EF2D2C]/10 to-white border-2 border-[#EF2D2C]/30 rounded-xl">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
-                  <Award className="w-5 h-5 text-[#EF2D2C]" />
-                  <span>Leadership (CEO)</span>
-                </h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                    <input
-                      type="text"
-                      defaultValue="KUNGKEA KHORN"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
-                    <input
-                      type="text"
-                      defaultValue="CHAIRMAN AND CEO"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Biography</label>
-                    <textarea
-                      rows={6}
-                      defaultValue="Kungkea has an educational background in Business Management. Prior to set up ERA Cambodia, Kungkea was a Franchise Manager of an international real estate company. He is a Certified Real Estate Specialist (CIPS) and a Senior Real Estate Specialist (SRES). In 2018, Kungkea had successfully set up ERA Cambodia where he brought the business up to a form of master franchise from USA to Cambodia."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Operations Team */}
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Operations Support Team</h3>
-                <div className="space-y-3">
-                  {[
-                    { name: 'ATH PHEARAK', position: 'Design & Tech Supervisor' },
-                    { name: 'HOEM SEIHA', position: 'Director at ERA Data Intel' },
-                    { name: 'CHOU RATHA', position: 'Media Supervisor' },
-                    { name: 'NCEL ROTANA', position: 'Account Manager' },
-                  ].map((member, idx) => (
-                    <div key={idx} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex-1 grid grid-cols-2 gap-4">
-                        <input
-                          type="text"
-                          defaultValue={member.name}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                          placeholder="Full Name"
-                        />
-                        <input
-                          type="text"
-                          defaultValue={member.position}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                          placeholder="Position"
-                        />
-                      </div>
-                      <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={handleSave}
-                className="flex items-center space-x-2 px-6 py-3 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Team</span>
-              </button>
-            </div>
-          )}
-
-          {/* Awards Section */}
-          {activeSection === 'awards' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Awards & Recognition</h2>
-                <button className="flex items-center space-x-2 px-4 py-2 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition">
-                  <Plus className="w-4 h-4" />
-                  <span>Add Award</span>
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {[
-                  {
-                    year: '2025',
-                    title: 'Best Real Estate Innovation',
-                    organization: 'Cambodia Property Awards',
-                    description: 'Recognized for pioneering AI-powered real estate solutions'
-                  },
-                  {
-                    year: '2024',
-                    title: 'Top Real Estate Agency',
-                    organization: 'Asia Pacific Property Excellence',
-                    description: 'Outstanding performance in residential property sales'
-                  },
-                  {
-                    year: '2024',
-                    title: 'Digital Transformation Leader',
-                    organization: 'ASEAN Business Awards',
-                    description: 'Excellence in implementing Odoo ERP integration'
-                  }
-                ].map((award, idx) => (
-                  <div key={idx} className="p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1 space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
-                            <input
-                              type="text"
-                              defaultValue={award.year}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Organization</label>
-                            <input
-                              type="text"
-                              defaultValue={award.organization}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Award Title</label>
-                          <input
-                            type="text"
-                            defaultValue={award.title}
-                            className="w-full px-3 py-2 font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                          <textarea
-                            rows={2}
-                            defaultValue={award.description}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#001F5B]"
-                          />
-                        </div>
-                      </div>
-                      <button className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={handleSave}
-                className="flex items-center space-x-2 px-6 py-3 bg-[#001F5B] text-white rounded-lg hover:bg-[#EF2D2C] transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Awards</span>
-              </button>
-            </div>
-          )}
+          {activeSection === 'overview' && (content ? <OverviewTab content={content} canWrite={canWrite} /> : null)}
+          {activeSection === 'history' && <HistoryTab milestones={milestones ?? []} canWrite={canWrite} />}
+          {activeSection === 'team' && <TeamTab team={team ?? []} canWrite={canWrite} />}
+          {activeSection === 'awards' && <AwardsTab awards={awards ?? []} canWrite={canWrite} />}
         </div>
       </div>
     </div>

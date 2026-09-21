@@ -116,6 +116,11 @@ export function createCrmService({ db, bus, modules }: ModuleContext) {
       contact: { name: string; email?: string; phone?: string };
       source: LeadSource;
       ownerId?: string;
+      preferredProjectId?: string;
+      /** Free text from an inbound enquiry (e.g. the public site's "Request info" form) —
+       * stored as a NOTE activity rather than a new column, matching how every other
+       * free-text note on a lead is already recorded. */
+      message?: string;
     }) {
       // No owner named explicitly (e.g. a manager adding an inbound lead with
       // nobody claimed yet) -> hand it to whoever has the lightest open pipeline.
@@ -125,6 +130,7 @@ export function createCrmService({ db, bus, modules }: ModuleContext) {
         data: {
           source: input.source,
           ownerId,
+          preferredProjectId: input.preferredProjectId,
           contact: {
             create: {
               name: input.contact.name,
@@ -138,6 +144,12 @@ export function createCrmService({ db, bus, modules }: ModuleContext) {
           },
         },
       });
+
+      if (input.message) {
+        await db.activity.create({
+          data: { type: 'NOTE', subject: input.message, leadId: lead.id, contactId: lead.contactId, ownerId },
+        });
+      }
 
       await bus.publish(CrmEvents.LeadCreated.type, {
         leadId: lead.id,

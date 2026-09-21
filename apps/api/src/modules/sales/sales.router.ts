@@ -137,6 +137,8 @@ export function salesRouter(service: SalesService) {
             contactId: z.string(),
             agentId: z.string(),
             depositAmount: z.number().nonnegative().optional(),
+            // Capped at 30 days — a hold with no practical ceiling isn't a "hold" any more.
+            holdHours: z.number().positive().max(24 * 30).optional(),
           }),
         )
         .mutation(({ input, ctx }) =>

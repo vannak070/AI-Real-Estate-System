@@ -40,3 +40,61 @@ model TaxRate {
 
   @@map("settings_tax_rates")
 }
+
+/// CMS content for the public site's About page (apps/client's AboutPage.tsx, "Overview" tab) —
+/// previously hardcoded strings baked into that component, editable from nowhere. Singleton row,
+/// same pattern as CompanyProfile. The "Contact" tab on the client stays static/out of scope —
+/// it's not part of what apps/admin's ManageAboutPage.tsx was ever meant to manage.
+model AboutPageContent {
+  id           String   @id @default("default")
+  pageTitle    String   @default("About ERA Cambodia")
+  subtitle     String?
+  paragraph1   String?
+  paragraph2   String?
+  mission      String?
+  values       String[] @default([])
+  /// free-text marketing figures (e.g. "1,247+", "94.5%") — not always plain numbers
+  statProjects String?
+  statLeads    String?
+  statAccuracy String?
+  statTeamSize String?
+  updatedAt    DateTime @updatedAt
+
+  @@map("settings_about_content")
+}
+
+model AboutMilestone {
+  id          String @id @default(cuid())
+  year        String
+  title       String
+  description String
+  /// display order, lowest first — not creation order, since a re-ordered timeline is a real edit
+  order       Int    @default(0)
+
+  @@map("settings_about_milestones")
+}
+
+model AboutTeamMember {
+  id       String  @id @default(cuid())
+  name     String
+  position String
+  bio      String?
+  /// relative path under /uploads, same convention as Project.imageUrls — single headshot, like User.photoUrl
+  photoUrl String?
+  /// the one CEO/leadership card gets the large bio layout; everyone else renders in the grid
+  isLeader Boolean @default(false)
+  order    Int     @default(0)
+
+  @@map("settings_about_team_members")
+}
+
+model AboutAward {
+  id           String  @id @default(cuid())
+  year         String
+  title        String
+  organization String
+  description  String?
+  order        Int     @default(0)
+
+  @@map("settings_about_awards")
+}
