@@ -11,8 +11,12 @@ update this one when a whole area of work actually completes.
 - **CRM**: Contacts, Pipeline (Leads with real auto-assignment to the
   least-loaded agent), Tasks — per-agent ownership scoping, a real
   "Edit contact" form, Lead editing covering every field the schema supports.
-- **Inventory**: 637 real projects / 893 real units, projects/blocks/units/
-  unit-types/price-lists all real CRUD, structured Cambodia location picker,
+- **Inventory**: real projects/units in Postgres (6 projects / 1,044 units as
+  of the 2026-09-21 client-connectivity review — this number moves with
+  whatever's seeded locally at the time; don't treat either figure as fixed,
+  check `docker exec era-postgres psql -U era -d era -c "select count(*)
+  from inventory_projects;"` if it matters), projects/blocks/units/unit-
+  types/price-lists all real CRUD, structured Cambodia location picker,
   photo upload with cropping, a searchable unit/project/contact picker
   pattern used everywhere a long list needs picking from.
 - **Sales**: Quotations (with sequential discount tiers, a real
@@ -54,6 +58,33 @@ update this one when a whole area of work actually completes.
   a different quotation." The same reasoning was applied to a reservation's
   unit/contact/agent when its deposit-editing was added later — deposit can
   change, identity fields can't.
+- **A contract's `completeContract` is manual-only on purpose, not an
+  unfinished automation** — it might look like a missing "all invoices
+  paid → COMPLETED" trigger, but the code comment on it explains why that
+  would be wrong: completion tracks handover, not payment-in-full. Proven
+  by real seed data: the "Post-handover 50/50" payment plan pays 50% of
+  the price across 3 years *after* handover, so a payment-driven
+  auto-complete would leave an already-handed-over contract stuck ACTIVE
+  for years. Investigated 2026-09-21 as a candidate feature, and the user
+  chose to keep it manual once this was surfaced — recheck this reasoning
+  before ever building payment-driven contract completion.
+- **The ownership-check shape (fetch record → `can(ctx.user.capabilities,
+  '<module>:read:all')` → compare `ownerId`/`agentId` → `FORBIDDEN`) is now
+  the standing convention for any mutation that acts on an existing owned
+  row**, proven first in `sales.router.ts` (quotations, reservations) and
+  extended to all of `crm.router.ts` in the 2026-09-21 audit (`contacts.
+  update`/`.verifyKyc`, `leads.update`/`.changeStage`, `activities.
+  toggleDone`). A record with a null `ownerId` (never explicitly assigned)
+  still requires the module's `:read:all` capability to touch — that's a
+  deliberate "unassigned means restricted, not open" choice, not an
+  oversight. `activities.create` was also brought in line with `contacts.
+  create`/`leads.create`'s use of `scopedOwnerId()` on its `ownerId` field,
+  since it was the one create-style CRM mutation letting a plain `crm:write`
+  holder assign a task to someone else. A same-day follow-up audited
+  Inventory, Finance, and Marketing for the same gap and found the pattern
+  doesn't apply to any of them — see `activeContext.md`'s "Known open items"
+  for the per-module reasoning. The audit is complete; no modules remain
+  queued for it.
 - **`ChatPage.tsx` was explicitly left alone** during the Public Listings
   Plan even though it was the most visible remaining piece of mock data at
   the time; it got its own separate, smaller "Tier 0" pass later
@@ -92,3 +123,22 @@ update this one when a whole area of work actually completes.
   "obviously it wouldn't do that" is not a substitute for actually checking
   what a query selects, especially on `db.<model>.findMany`/`findUnique`
   calls with no explicit projection.
+- **`ChatPage.tsx`'s quick-reply buttons were silently broken for an unknown
+  period** — `handleOptionClick` set `input` state then called `handleSend()`
+  from a stale closure that still saw the old (usually empty) `input`, so
+  its `if (!input.trim()) return;` guard silently swallowed the click. 6 of
+  the 9 lead-qualification steps offer only buttons, so this meant most
+  real chat visitors clicking the suggested options (the flow's primary
+  interaction) would see the conversation appear to freeze, with nothing in
+  the console to suggest why. Caught 2026-09-21 while browser-verifying the
+  customer site's DB connectivity end-to-end — reading the code wouldn't
+  have caught it (the write path itself, `api.crm.public.submitLead`, was
+  and is fine; the bug was entirely in whether the UI ever called it). Fixed
+  by having `handleSend` accept an optional `overrideText` param so
+  `handleOptionClick` passes the clicked value explicitly instead of relying
+  on `input` state timing. A reminder: **a passing typecheck/lint and a
+  code read that "looks right" don't catch stale-closure bugs in React
+  event handlers** — only actually clicking through the UI does. When a
+  handler both mutates state and, soon after (via `setTimeout` or a
+  callback), reads that same state back, check whether it's reading current
+  state or a value closed over at definition time.

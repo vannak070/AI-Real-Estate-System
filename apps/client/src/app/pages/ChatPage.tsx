@@ -247,13 +247,17 @@ export function ChatPage() {
     }
   }
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  /** `overrideText` lets a quick-reply button pass its own value straight through instead of
+   * going via `input` state — reading `input` here would otherwise be stale for a caller (like
+   * handleOptionClick) invoking this from a timeout registered before that state settled. */
+  const handleSend = (overrideText?: string) => {
+    const textToSend = overrideText ?? input;
+    if (!textToSend.trim()) return;
 
-    const userMessage: Message = { id: Date.now().toString(), sender: 'user', message: input, timestamp: new Date().toISOString() };
+    const userMessage: Message = { id: Date.now().toString(), sender: 'user', message: textToSend, timestamp: new Date().toISOString() };
     setMessages((prev) => [...prev, userMessage]);
 
-    const currentInput = input;
+    const currentInput = textToSend;
     setInput("");
     setTimeout(scrollToBottom, 50);
 
@@ -351,7 +355,6 @@ export function ChatPage() {
   };
 
   const handleOptionClick = (option: string) => {
-    setInput(option);
     setTimeout(() => {
       if (step === -1 && property) {
         const userMessage: Message = { id: Date.now().toString(), sender: 'user', message: option, timestamp: new Date().toISOString() };
@@ -462,7 +465,7 @@ export function ChatPage() {
           }
         }, 800);
       } else {
-        handleSend();
+        handleSend(option);
       }
     }, 100);
   };
@@ -602,7 +605,7 @@ export function ChatPage() {
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF2D2C]"
             />
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               className="text-white px-6 py-3 rounded-lg transition flex items-center space-x-2"
               style={{ backgroundColor: '#EF2D2C' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#8B0A1C')}
