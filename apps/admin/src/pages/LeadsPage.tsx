@@ -131,7 +131,11 @@ export function LeadsPage() {
   const canWrite = useCan('crm:write');
   const canSeeAll = useCan('crm:read:all');
   const { user } = useAuth();
-  const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  // crm:read:all holders (managers, admins, …) don't get leads auto-assigned
+  // to them, so "My leads" would always look empty — default them to the
+  // team-wide view instead. Safe as a lazy initializer: <RequireAuth>
+  // guarantees auth has already resolved before this page ever renders.
+  const [scope, setScope] = useState<'mine' | 'all'>(() => (canSeeAll ? 'all' : 'mine'));
   const [newOpen, setNewOpen] = useState(false);
   const [q, setQ] = useState('');
   const [draggingId, setDraggingId] = useState<string | null>(null);

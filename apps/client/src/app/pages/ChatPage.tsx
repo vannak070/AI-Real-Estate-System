@@ -38,12 +38,59 @@ function money(n: number | null) {
   return n == null ? 'Contact for pricing' : `$${n.toLocaleString()}`;
 }
 
+/** Matches the shape `crm.public.submitLead`'s zod schema requires — checked here too so a
+ * garbled answer gets caught in the chat, not as a silent submission failure after the whole
+ * conversation is done. */
+function isValidEmail(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
+}
+
+/** Lenient on purpose (the server has no format requirement) — just enough to catch "that's
+ * clearly not a phone number" (e.g. a name typed into the wrong step). */
+function isValidPhone(s: string): boolean {
+  return /^\+?[\d\s-]{6,}$/.test(s.trim());
+}
+
 const GENERIC_GREETING: Message = {
   id: '1',
   sender: 'bot',
   message: "Hello! 👋 Welcome to ERA Cambodia AI Property Assistant. I'm here to help you find your dream property in Phnom Penh.\n\nI can help you with:\n• Finding properties that match your budget\n• Exploring different locations\n• Comparing property types\n• Scheduling property viewings\n\nWhat's your name?",
   timestamp: new Date().toISOString(),
 };
+
+/** Persists the conversation across a route change (e.g. clicking "View Details" on a
+ * "Compare with Other Properties" card navigates to /properties/:id, unmounting this page) so
+ * coming back to /chat resumes instead of restarting from the greeting. sessionStorage, not
+ * localStorage: this is "don't lose my place this browsing session," not a permanent record. */
+const CHAT_STORAGE_KEY = 'era-chat-session-v1';
+
+interface PersistedChat {
+  messages: Message[];
+  step: number;
+  leadData: Record<string, string>;
+  schedulingData: Record<string, string>;
+  propertyId?: string;
+  propertyName?: string;
+}
+
+function loadPersistedChat(): PersistedChat | null {
+  try {
+    const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedChat;
+    return Array.isArray(parsed.messages) && parsed.messages.length > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedChat(state: PersistedChat) {
+  try {
+    sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Private browsing / quota / disabled storage — chat still works, it just won't survive navigation.
+  }
+}
 
 function buildPropertyGreeting(proj: PublicProjectDetail, units: PublicUnit[]): Message {
   const unitTypeNames = Array.from(new Set(units.map((u) => u.unitTypeName).filter((n): n is string => !!n)));
@@ -60,15 +107,29 @@ export function ChatPage() {
   const location = useLocation();
   const propertyContext = location.state as { propertyId?: string; propertyName?: string } | null;
 
+  // A fresh "Chat about THIS property" link (from a property's own page) always starts a new
+  // conversation for that property — but a plain return to /chat with no such link (browser
+  // back, the nav bar's "Chat with AI Assistant", or clicking "View Details" on a
+  // "Compare with Other Properties" card and coming back) resumes the visitor's prior
+  // conversation instead of throwing away everything they already told the assistant.
+  const [initial] = useState(() => {
+    const restored = loadPersistedChat();
+    const freshPropertyId = propertyContext?.propertyId;
+    return restored && (!freshPropertyId || freshPropertyId === restored.propertyId) ? restored : null;
+  });
+  const effectivePropertyId = initial?.propertyId ?? propertyContext?.propertyId;
+  const effectivePropertyName = initial?.propertyName ?? propertyContext?.propertyName;
+
   const [messages, setMessages] = useState<Message[]>(
-    propertyContext?.propertyId
-      ? [{ id: '1', sender: 'bot', message: 'One moment — pulling up the details… 🔍', timestamp: new Date().toISOString() }]
-      : [GENERIC_GREETING],
+    initial?.messages ??
+      (effectivePropertyId
+        ? [{ id: '1', sender: 'bot', message: 'One moment — pulling up the details… 🔍', timestamp: new Date().toISOString() }]
+        : [GENERIC_GREETING]),
   );
   const [input, setInput] = useState("");
-  const [step, setStep] = useState(propertyContext?.propertyId ? -1 : 0); // -1 = property-specific mode, while loading or resolved
-  const [leadData, setLeadData] = useState<Record<string, string>>({});
-  const [schedulingData, setSchedulingData] = useState<Record<string, string>>({});
+  const [step, setStep] = useState(initial?.step ?? (effectivePropertyId ? -1 : 0)); // -1 = property-specific mode, while loading or resolved
+  const [leadData, setLeadData] = useState<Record<string, string>>(initial?.leadData ?? {});
+  const [schedulingData, setSchedulingData] = useState<Record<string, string>>(initial?.schedulingData ?? {});
   const [property, setProperty] = useState<PublicProjectDetail | null>(null);
   const [propertyUnits, setPropertyUnits] = useState<PublicUnit[]>([]);
   const [allProjects, setAllProjects] = useState<PublicProject[]>([]);
@@ -94,25 +155,27 @@ export function ChatPage() {
   }, []);
 
   useEffect(() => {
-    if (!propertyContext?.propertyId) return;
+    if (!effectivePropertyId) return;
     let cancelled = false;
     Promise.all([
-      api.inventory.public.projects.get.query({ id: propertyContext.propertyId }),
-      api.inventory.public.units.list.query({ projectId: propertyContext.propertyId }),
+      api.inventory.public.projects.get.query({ id: effectivePropertyId }),
+      api.inventory.public.units.list.query({ projectId: effectivePropertyId }),
     ])
       .then(([proj, units]) => {
         if (cancelled) return;
         if (proj) {
           setProperty(proj);
           setPropertyUnits(units);
-          setMessages([buildPropertyGreeting(proj, units)]);
-        } else {
+          // A restored conversation already has its own messages (possibly well past the
+          // greeting) — only a brand-new property chat gets the generated greeting.
+          if (!initial) setMessages([buildPropertyGreeting(proj, units)]);
+        } else if (!initial) {
           setStep(0);
           setMessages([GENERIC_GREETING]);
         }
       })
       .catch(() => {
-        if (cancelled) return;
+        if (cancelled || initial) return;
         setStep(0);
         setMessages([GENERIC_GREETING]);
       });
@@ -264,16 +327,20 @@ export function ChatPage() {
     // Mid-scheduling free-text (name/phone/email) in property-specific mode.
     if (step === -1 && property && schedulingData.date && schedulingData.time && !schedulingData.email) {
       setTimeout(() => {
-        if (!schedulingData.name && !currentInput.includes("@") && !currentInput.match(/^\+?\d/)) {
+        if (!schedulingData.name && !isValidEmail(currentInput) && !isValidPhone(currentInput)) {
           setSchedulingData({ ...schedulingData, name: currentInput });
           pushBotMessage(`Thank you, ${currentInput}! 😊\n\nPlease provide your phone number (WhatsApp preferred):\n\nExample: +855 12 345 678`);
-        } else if (schedulingData.name && !schedulingData.phone && currentInput.match(/^\+?\d/)) {
+        } else if (schedulingData.name && !schedulingData.phone && isValidPhone(currentInput)) {
           setSchedulingData({ ...schedulingData, phone: currentInput });
           pushBotMessage("Great! 📱\n\nLastly, please provide your email address:");
-        } else if (schedulingData.name && schedulingData.phone && currentInput.includes("@")) {
+        } else if (schedulingData.name && schedulingData.phone && isValidEmail(currentInput)) {
           const finalScheduling = { ...schedulingData, email: currentInput };
           setSchedulingData(finalScheduling);
           submitViewingRequest(finalScheduling);
+        } else if (!schedulingData.phone) {
+          pushBotMessage("That doesn't look like a valid phone number — please try again, e.g. +855 12 345 678.");
+        } else {
+          pushBotMessage("That doesn't look like a valid email address — please double-check and try again.");
         }
       }, 800);
       return;
@@ -282,6 +349,19 @@ export function ChatPage() {
     if (step === -1) return; // property-specific mode, not in scheduling — free text has nowhere to go yet
 
     const currentStep = conversationFlow[step];
+
+    // Catches a garbled phone/email here, in the conversation, instead of letting the whole
+    // profile silently fail to submit at the very end (crm.public.submitLead's zod schema
+    // rejects an invalid email, and the generic catch-all error then hides why).
+    if (currentStep.field === 'phone' && !isValidPhone(currentInput)) {
+      setTimeout(() => pushBotMessage("That doesn't look like a valid phone number — could you try again? Example: +855 12 345 678"), 800);
+      return;
+    }
+    if (currentStep.field === 'email' && !isValidEmail(currentInput)) {
+      setTimeout(() => pushBotMessage("That doesn't look like a valid email address — could you double-check and try again?"), 800);
+      return;
+    }
+
     const updatedLeadData = { ...leadData, [currentStep.field]: currentInput };
     setLeadData(updatedLeadData);
 

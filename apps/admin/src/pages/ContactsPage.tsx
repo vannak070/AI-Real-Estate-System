@@ -203,7 +203,11 @@ export function ContactsPage() {
   const canWrite = useCan('crm:write');
   const canSeeAll = useCan('crm:read:all');
   const { user } = useAuth();
-  const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  // crm:read:all holders (managers, admins, …) are rarely assigned contacts
+  // themselves — default them to the team-wide view instead of "My contacts",
+  // which would otherwise look empty. Safe as a lazy initializer: <RequireAuth>
+  // guarantees auth has already resolved before this page ever renders.
+  const [scope, setScope] = useState<'mine' | 'all'>(() => (canSeeAll ? 'all' : 'mine'));
   const [q, setQ] = useState('');
   const [type, setType] = useState('ALL');
   const [openId, setOpenId] = useState<string | null>(null);
