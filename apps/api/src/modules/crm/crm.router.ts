@@ -56,6 +56,8 @@ export function crmRouter(service: CrmService) {
           service.createContact({ ...input, ownerId: scopedOwnerId(ctx.user, 'crm:read:all', input.ownerId) }),
         ),
 
+      // Ownership check mirrors quotations.update: a plain crm:write holder may only act
+      // on their own contacts unless they also hold crm:read:all.
       update: withCapability('crm:write')
         .input(
           z.object({
@@ -71,11 +73,24 @@ export function crmRouter(service: CrmService) {
             tags: z.array(z.string()).optional(),
           }),
         )
-        .mutation(({ input: { id, ...data } }) => service.updateContact(id, data)),
+        .mutation(async ({ input: { id, ...data }, ctx }) => {
+          const contact = await service.getContact(id);
+          if (contact && !can(ctx.user.capabilities, 'crm:read:all') && contact.ownerId !== ctx.user.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'This contact belongs to another agent' });
+          }
+          return service.updateContact(id, data);
+        }),
 
+      // Ownership check mirrors contacts.update.
       verifyKyc: withCapability('crm:write')
         .input(z.object({ id: z.string() }))
-        .mutation(({ input }) => service.verifyKyc(input.id)),
+        .mutation(async ({ input, ctx }) => {
+          const contact = await service.getContact(input.id);
+          if (contact && !can(ctx.user.capabilities, 'crm:read:all') && contact.ownerId !== ctx.user.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'This contact belongs to another agent' });
+          }
+          return service.verifyKyc(input.id);
+        }),
     }),
 
     leads: router({
@@ -111,10 +126,19 @@ export function crmRouter(service: CrmService) {
           }),
         ),
 
+      // Ownership check mirrors leads.update.
       changeStage: withCapability('crm:write')
         .input(z.object({ id: z.string(), to: z.nativeEnum(LeadStage) }))
-        .mutation(({ input }) => service.changeStage(input.id, input.to)),
+        .mutation(async ({ input, ctx }) => {
+          const lead = await service.getLead(input.id);
+          if (lead && !can(ctx.user.capabilities, 'crm:read:all') && lead.ownerId !== ctx.user.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'This lead belongs to another agent' });
+          }
+          return service.changeStage(input.id, input.to);
+        }),
 
+      // Ownership check mirrors quotations.update: a plain crm:write holder may only act
+      // on their own leads unless they also hold crm:read:all.
       update: withCapability('crm:write')
         .input(
           z.object({
@@ -130,7 +154,13 @@ export function crmRouter(service: CrmService) {
             lostReason: z.string().nullable().optional(),
           }),
         )
-        .mutation(({ input: { id, ...data } }) => service.updateLead(id, data)),
+        .mutation(async ({ input: { id, ...data }, ctx }) => {
+          const lead = await service.getLead(id);
+          if (lead && !can(ctx.user.capabilities, 'crm:read:all') && lead.ownerId !== ctx.user.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'This lead belongs to another agent' });
+          }
+          return service.updateLead(id, data);
+        }),
     }),
 
     // No withCapability — apps/client is unauthenticated. The one and only way anything on the
@@ -165,6 +195,8 @@ export function crmRouter(service: CrmService) {
       /** The caller's own overdue + open tasks — always self-scoped, regardless of crm:read:all. */
       myWork: withCapability('crm:read').query(({ ctx }) => service.listMyWork(ctx.user.id)),
 
+      // ownerId scoped the same way as contacts.create/leads.create — a plain crm:write
+      // holder can't assign a task/activity to another agent without crm:read:all.
       create: withCapability('crm:write')
         .input(
           z.object({
@@ -177,11 +209,21 @@ export function crmRouter(service: CrmService) {
             dueAt: z.coerce.date().optional(),
           }),
         )
-        .mutation(({ input }) => service.createActivity(input)),
+        .mutation(({ input, ctx }) =>
+          service.createActivity({ ...input, ownerId: scopedOwnerId(ctx.user, 'crm:read:all', input.ownerId) }),
+        ),
 
+      // Ownership check mirrors contacts.update — an activity with no owner (e.g. an
+      // auto-logged STATUS_CHANGE) requires crm:read:all to touch, same as elsewhere.
       toggleDone: withCapability('crm:write')
         .input(z.object({ id: z.string() }))
-        .mutation(({ input }) => service.toggleActivityDone(input.id)),
+        .mutation(async ({ input, ctx }) => {
+          const activity = await service.getActivity(input.id);
+          if (activity && !can(ctx.user.capabilities, 'crm:read:all') && activity.ownerId !== ctx.user.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'This activity belongs to another agent' });
+          }
+          return service.toggleActivityDone(input.id);
+        }),
     }),
   });
 }

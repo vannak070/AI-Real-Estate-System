@@ -210,6 +210,10 @@ export function createCrmService({ db, bus, modules }: ModuleContext) {
       return db.activity.create({ data: input });
     },
 
+    getActivity(id: string) {
+      return db.activity.findUnique({ where: { id } });
+    },
+
     async toggleActivityDone(id: string) {
       const a = await db.activity.findUniqueOrThrow({ where: { id } });
       return db.activity.update({ where: { id }, data: { done: !a.done } });
