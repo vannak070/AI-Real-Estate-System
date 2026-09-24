@@ -219,6 +219,8 @@ async function main() {
   for (const spec of ALL_PROJECTS) {
     const project = await db.project.create({
       data: {
+        isPublished: true,
+        isDevelopment: SALE_CONDOS.includes(spec),
         name: spec.name,
         location: spec.location,
         city: spec.city,

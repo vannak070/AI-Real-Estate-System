@@ -148,6 +148,8 @@ async function main() {
 
     const project = await db.project.create({
       data: {
+        isPublished: true,
+        isDevelopment: true,
         name: rec.name,
         location,
         city,

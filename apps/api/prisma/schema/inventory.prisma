@@ -60,6 +60,13 @@ model Project {
   /// relative paths under the API's /uploads static route, e.g. "/uploads/projects/<id>/<uuid>.jpg"
   imageUrls    String[]         @default([])
   badge        ListingBadge     @default(NONE)
+  /// "Show on website" — false keeps it off the customer site (listing, detail page, AI chat). New
+  /// properties start hidden so they can be finished first; the migration set all pre-existing rows true.
+  isPublished  Boolean          @default(false)
+  /// Development project (a developer's building/estate — admin Inventory → Projects) vs. an
+  /// individual property (→ Sales/Rent by category). Set explicitly by the admin; replaces the old
+  /// "more than 1 unit row" rule, which misfiled real towers that only have one sample unit entered.
+  isDevelopment Boolean         @default(false)
   /// external link (YouTube/Vimeo/etc) — not a real upload, video hosting is out of scope for now
   videoUrl     String?
   /// marketing override for "Starting from" — falls back to MIN(unit.listPrice) when unset

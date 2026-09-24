@@ -42,4 +42,5 @@ export interface ModuleApis {
   marketing: import('../modules/marketing/index.js').MarketingApi;
   settings: import('../modules/settings/index.js').SettingsApi;
   analytics: import('../modules/analytics/index.js').AnalyticsApi;
+  assistant: import('../modules/assistant/index.js').AssistantApi;
 }

@@ -17,7 +17,7 @@ packages/contracts   @era/contracts   — versioned event & command schemas (zod
 packages/shared      @era/shared      — ids, logger
 packages/api-client  @era/api-client  — tRPC client typed against @era/api's AppRouter (no REST, no codegen)
 packages/ui          @era/ui          — shared React primitives (Button, Card, DataTable, Drawer, StatCard, Badge, …)
-packages/mock-data   @era/mock-data   — legacy fixtures. No longer used by apps/client or apps/admin (every screen in both, including ChatPage.tsx, is on the real API as of 2026-09-21) — the only remaining consumer is apps/api's prisma/seed.ts, which seeds demo data from @era/mock-data/erp.
+packages/mock-data   @era/mock-data   — legacy fixtures. No longer used by apps/client or apps/admin (every screen in both is on the real API) — the only remaining consumer is apps/api's prisma/seed.ts, which seeds demo data from @era/mock-data/erp.
 packages/theme       @era/theme       — shared brand tokens (theme.css)
 ```
 
@@ -170,14 +170,22 @@ adds `react-slick`.
   the gate.
 - **Both apps are fully wired to the real backend** — every screen in
   `apps/admin`, and in `apps/client` the Properties list/detail pages, the
-  About page, and `ChatPage.tsx` (as of its 2026-09-21 Tier 0 fix), via
-  `apps/client/src/lib/api.ts` (same `createApiClient` pattern as admin, but
-  plain `useEffect`/`useState` around the tRPC client's promises —
-  `apps/client` has no TanStack Query dependency, kept that way deliberately
-  rather than adding one for a handful of pages). **`ChatPage.tsx` is still
-  not a real AI** — it now reads real inventory and submits real leads, but
-  its conversation logic remains a scripted decision tree with no LLM; a
-  real LLM integration is a separate, larger product decision, not yet made.
+  About page, and `ChatPage.tsx`, via `apps/client/src/lib/api.ts` (same
+  `createApiClient` pattern as admin, but plain `useEffect`/`useState`
+  around the tRPC client's promises — `apps/client` has no TanStack Query
+  dependency, kept that way deliberately rather than adding one for a
+  handful of pages). **`ChatPage.tsx` is a real Claude-backed AI assistant**
+  (Tier 1, 2026-09-24) — it calls `assistant.public.chat`
+  (`apps/api/src/modules/assistant/`), which uses the Anthropic API with
+  tool use (`search_properties`/`get_property`/`submit_lead`, each backed
+  by real `ctx.modules.inventory`/`ctx.modules.crm` calls) so it can only
+  ever discuss real listings and only ever create a real Lead — never a
+  hardcoded or model-fabricated response. Requires `ANTHROPIC_API_KEY` in
+  `apps/api/.env` (optional — the API starts fine without it; only the chat
+  endpoint itself errors clearly when called with no key set). See
+  `memory-bank/activeContext.md` for the full build and two real bugs
+  (a false "I submitted your details" claim with no tool call; a project
+  *name* passed instead of its id) caught and fixed during live testing.
   The typed client for the real backend is **`@era/api-client`**
   (`createApiClient({ baseUrl })`, tRPC, zero codegen) — see
   `apps/admin/src/data/` and `apps/client/src/lib/api.ts` for the pattern if
@@ -240,3 +248,14 @@ Rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 - **Document numbers** come from `ctx.modules.settings.nextNumber(prefix)` — an
   atomic `UPDATE ... RETURNING` against `settings_number_sequences`. Never
   generate a document number any other way.
+- **Customer-facing Inventory reads must filter `Project.isPublished = true`** ("Show on
+  website" — new properties default to hidden). Today that's `listPublicProjects`,
+  `getPublicProject` and `listPublicUnits` in `inventory.service.ts`; the AI assistant reuses
+  them. Any new public read of projects/units needs the same filter. Scripts that import real
+  listings set `isPublished: true` explicitly.
+- **`modules/assistant/`** is the odd one out: it has no Prisma tables of its
+  own and its cross-module `AssistantApi` is deliberately empty (nothing
+  calls back into it) — it only ever calls OUT to `ctx.modules.inventory`/
+  `ctx.modules.crm` and the Anthropic API. It's what powers `apps/client`'s
+  `ChatPage.tsx`; see `memory-bank/activeContext.md` for the full design
+  (tool use, rate limiting, why it's stateless server-side).

@@ -51,28 +51,22 @@ import {
   useUpdatePriceList,
   useUpdateProject,
   useUpdateUnit,
-  type ProjectFormInput,
   type UnitFormInput,
 } from '../data/inventory';
 import { useQuotations, useReservations, useContracts } from '../data/sales';
 import { useContacts, contactLabel } from '../data/crm';
 import { ImageGallery } from '../app/components/ImageGallery';
-import { LocationPicker } from '../app/components/LocationPicker';
+import { ProjectFormFields } from '../app/components/ProjectForm';
+import {
+  formToProjectInput,
+  projectFormMissing,
+  projectToForm,
+  type ProjectFormState,
+} from '../app/components/projectFormState';
 import { useCan } from '../store/auth';
 import { resolveUploadUrl } from '../lib/api';
 import { money, pct, date, titleCase } from '../lib/format';
-import {
-  LISTING_BADGES,
-  PROJECT_STATUSES,
-  PROPERTY_CATEGORIES,
-  PROPERTY_TYPES,
-  UNIT_STATUSES,
-  type ListingBadge,
-  type PropertyCategory,
-  type PropertyType,
-  type ProjectStatus,
-  type UnitStatus,
-} from '../data/types';
+import { UNIT_STATUSES, type UnitStatus } from '../data/types';
 
 type ProjectData = NonNullable<ReturnType<typeof useProject>['data']>;
 type UnitRow = ProjectData['units'][number];
@@ -106,199 +100,26 @@ function Fact({
   );
 }
 
-/* ── Edit project ── */
+/* ── Edit property ── */
 
-function EditProjectDrawer({ project, open, onClose }: { project: ProjectData; open: boolean; onClose: () => void }) {
-  const [form, setForm] = useState<ProjectFormInput>({
-    name: project.name,
-    province: project.province ?? undefined,
-    district: project.district ?? undefined,
-    commune: project.commune ?? undefined,
-    village: project.village ?? undefined,
-    phase: project.phase ?? '',
-    status: project.status,
-    category: project.category,
-    propertyType: project.propertyType,
-    coverColor: project.coverColor ?? '#001F5B',
-    badge: project.badge,
-    videoUrl: project.videoUrl ?? '',
-    startingPriceOverride: project.startingPriceOverride ?? undefined,
-    developer: project.developer ?? '',
-    tenure: project.tenure ?? '',
-    totalFloors: project.totalFloors ?? undefined,
-    disclosedUnitCount: project.disclosedUnitCount ?? undefined,
-  });
-  const [amenitiesText, setAmenitiesText] = useState(project.amenities.join(', '));
-  const [handoverDateStr, setHandoverDateStr] = useState(project.handoverDate ? project.handoverDate.slice(0, 10) : '');
+/** Mounted only while open, so every open starts from the latest saved data — never a stale or
+ * half-edited form left over from a previous open. */
+function EditProjectDrawer({ project, onClose }: { project: ProjectData; onClose: () => void }) {
+  const [form, setForm] = useState<ProjectFormState>(() => projectToForm(project));
   const updateProject = useUpdateProject();
-
-  const missing = [!form.name.trim() && 'Name'].filter((m): m is string => typeof m === 'string');
+  const missing = projectFormMissing(form, true);
+  const currentLocation =
+    project.city && !project.location.includes(project.city) ? `${project.location}, ${project.city}` : project.location;
 
   const submit = () => {
     if (missing.length > 0) return;
-    updateProject.mutate(
-      {
-        id: project.id,
-        ...form,
-        videoUrl: form.videoUrl || undefined,
-        handoverDate: handoverDateStr ? new Date(handoverDateStr) : undefined,
-        amenities: amenitiesText.split(',').map((s) => s.trim()).filter(Boolean),
-      },
-      { onSuccess: onClose },
-    );
+    updateProject.mutate({ id: project.id, ...formToProjectInput(form) }, { onSuccess: onClose });
   };
 
   return (
-    <Drawer open={open} onClose={onClose} title={`Edit ${project.name}`}>
+    <Drawer open onClose={onClose} title="Edit property">
       <div className="space-y-5">
-        <div>
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Basic info</h4>
-          <div className="space-y-4">
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Name</span>
-              <TextInput className="mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Phase</span>
-              <TextInput className="mt-1" value={form.phase} onChange={(e) => setForm({ ...form, phase: e.target.value })} />
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Property type</span>
-                <Select className="mt-1 w-full" value={form.propertyType} onChange={(e) => setForm({ ...form, propertyType: e.target.value as PropertyType })}>
-                  {PROPERTY_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Category</span>
-                <Select className="mt-1 w-full" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as PropertyCategory })}>
-                  {PROPERTY_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Status</span>
-                <Select className="mt-1 w-full" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as ProjectStatus })}>
-                  {PROJECT_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-100 pt-4">
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Location</h4>
-          <LocationPicker
-            value={{ province: form.province, district: form.district, commune: form.commune, village: form.village }}
-            onChange={(loc) => setForm({ ...form, ...loc })}
-          />
-        </div>
-
-        <div className="border-t border-gray-100 pt-4">
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Presentation</h4>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Handover date</span>
-                <TextInput
-                  type="date"
-                  className="mt-1"
-                  value={handoverDateStr}
-                  onChange={(e) => setHandoverDateStr(e.target.value)}
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Cover color</span>
-                <TextInput type="color" className="mt-1 h-10" value={form.coverColor} onChange={(e) => setForm({ ...form, coverColor: e.target.value })} />
-              </label>
-            </div>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Amenities (comma-separated)</span>
-              <TextInput className="mt-1" value={amenitiesText} onChange={(e) => setAmenitiesText(e.target.value)} />
-            </label>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-100 pt-4">
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Project facts</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Developer</span>
-              <TextInput className="mt-1" value={form.developer} onChange={(e) => setForm({ ...form, developer: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Tenure</span>
-              <TextInput className="mt-1" value={form.tenure} onChange={(e) => setForm({ ...form, tenure: e.target.value })} placeholder="Freehold" />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Total floors</span>
-              <TextInput
-                type="number"
-                className="mt-1"
-                value={form.totalFloors ?? ''}
-                onChange={(e) => setForm({ ...form, totalFloors: e.target.value ? Number(e.target.value) : undefined })}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Total units (disclosed)</span>
-              <TextInput
-                type="number"
-                className="mt-1"
-                value={form.disclosedUnitCount ?? ''}
-                onChange={(e) => setForm({ ...form, disclosedUnitCount: e.target.value ? Number(e.target.value) : undefined })}
-              />
-            </label>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-100 pt-4">
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Marketing</h4>
-          <div className="space-y-4">
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Listing badge</span>
-              <Select className="mt-1 w-full" value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value as ListingBadge })}>
-                {LISTING_BADGES.map((b) => (
-                  <option key={b} value={b}>
-                    {b === 'NONE' ? 'None' : titleCase(b)}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Video link (YouTube, Vimeo, …)</span>
-              <TextInput
-                className="mt-1"
-                placeholder="https://youtube.com/watch?v=..."
-                value={form.videoUrl}
-                onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                &quot;Starting from&quot; price override (USD)
-              </span>
-              <TextInput
-                type="number"
-                className="mt-1"
-                placeholder="Leave blank to use the cheapest unit's price automatically"
-                value={form.startingPriceOverride ?? ''}
-                onChange={(e) => setForm({ ...form, startingPriceOverride: e.target.value ? Number(e.target.value) : undefined })}
-              />
-            </label>
-          </div>
-        </div>
-
+        <ProjectFormFields form={form} onChange={setForm} currentLocation={currentLocation} />
         {missing.length > 0 && <p className="text-xs text-[var(--era-red)]">Required: {missing.join(', ')}.</p>}
         {updateProject.error && <p className="text-xs text-[var(--era-red)]">{updateProject.error.message}</p>}
         <Button onClick={submit} disabled={missing.length > 0 || updateProject.isPending}>
@@ -758,13 +579,14 @@ export function ProjectDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   // Prefer real browser "back" so we return to whichever bucket (Projects/Sales/Rent) the user
-  // actually came from, with their filters/scroll position intact — falling back to the Sales
-  // list only when there's no in-app history to go back to (e.g. a direct link or a fresh tab).
+  // actually came from, with their filters/scroll position intact — falling back to the page this
+  // property lives on only when there's no in-app history (e.g. a direct link or a fresh tab).
+  const { data: project } = useProject(id);
   const goBack = () => {
     if (location.key !== 'default') navigate(-1);
-    else navigate('/inventory/sales');
+    else if (project?.isDevelopment) navigate('/inventory/projects');
+    else navigate(project?.category === 'RENT' ? '/inventory/rent' : '/inventory/sales');
   };
-  const { data: project } = useProject(id);
   const { data: unitTypes } = useUnitTypes();
   const { data: allProjectsList } = useProjects();
   const { data: quotations } = useQuotations();
@@ -779,6 +601,7 @@ export function ProjectDetailPage() {
   const removeProjectImage = useRemoveProjectImage();
   const setSitePlan = useSetProjectSitePlan();
   const removeSitePlan = useRemoveProjectSitePlan();
+  const setPublished = useUpdateProject();
 
   const [tab, setTab] = useState('units');
   const [block, setBlock] = useState('ALL');
@@ -874,6 +697,8 @@ export function ProjectDetailPage() {
         }
         actions={
           <div className="flex items-center gap-2">
+            {project.isPublished ? <Badge tone="green">Published</Badge> : <Badge tone="slate">Private</Badge>}
+            <Badge tone="slate">{project.isDevelopment ? 'Development project' : 'Individual property'}</Badge>
             <Badge tone="slate">{titleCase(project.propertyType)}</Badge>
             <Badge tone="slate">{titleCase(project.category)}</Badge>
             <StatusBadge value={project.status} />
@@ -891,8 +716,16 @@ export function ProjectDetailPage() {
             {canWrite && (
               <>
                 <div className="h-5 w-px bg-gray-200" />
+                <Button
+                  size="sm"
+                  variant={project.isPublished ? 'outline' : undefined}
+                  disabled={setPublished.isPending}
+                  onClick={() => setPublished.mutate({ id: project.id, isPublished: !project.isPublished })}
+                >
+                  {project.isPublished ? 'Make private' : 'Publish'}
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => setEditingProject(true)}>
-                  Edit project
+                  Edit property
                 </Button>
               </>
             )}
@@ -1189,7 +1022,7 @@ export function ProjectDetailPage() {
         canWrite={canWrite}
         onClose={() => setOpenUnitId(null)}
       />
-      <EditProjectDrawer project={project} open={editingProject} onClose={() => setEditingProject(false)} />
+      {editingProject && <EditProjectDrawer project={project} onClose={() => setEditingProject(false)} />}
       <AddUnitDrawer projectId={id} blocks={blocks} unitTypes={allUnitTypes} open={addingUnit} onClose={() => setAddingUnit(false)} />
       <BulkAddUnitsDrawer projectId={id} blocks={blocks} unitTypes={allUnitTypes} open={bulkAdding} onClose={() => setBulkAdding(false)} />
       <BlockFormDrawer

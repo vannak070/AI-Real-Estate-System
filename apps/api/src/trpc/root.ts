@@ -18,6 +18,8 @@ import { marketingRouter } from '../modules/marketing/marketing.router.js';
 import { createSettingsService } from '../modules/settings/settings.service.js';
 import { settingsRouter } from '../modules/settings/settings.router.js';
 import { analyticsRouter } from '../modules/analytics/analytics.router.js';
+import { createAssistantService } from '../modules/assistant/assistant.service.js';
+import { assistantRouter } from '../modules/assistant/assistant.router.js';
 
 /**
  * The static, statically-typed router tree — this is what makes `AppRouter`
@@ -35,6 +37,7 @@ export function createAppRouter(moduleCtx: ModuleContext) {
   const opsService = createOpsService(moduleCtx);
   const marketingService = createMarketingService(moduleCtx);
   const settingsService = createSettingsService(moduleCtx);
+  const assistantService = createAssistantService(moduleCtx);
 
   return router({
     auth: authRouter,
@@ -47,6 +50,7 @@ export function createAppRouter(moduleCtx: ModuleContext) {
     marketing: marketingRouter(marketingService),
     settings: settingsRouter(settingsService),
     analytics: analyticsRouter(moduleCtx),
+    assistant: assistantRouter(assistantService),
   });
 }
 

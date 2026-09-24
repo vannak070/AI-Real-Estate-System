@@ -63,10 +63,11 @@ From `ARCHITECTURE.md`:
   plain `useEffect`/`useState` around the tRPC client's own promises in
   `apps/client` (no TanStack Query dependency there, kept that way on purpose).
   `@era/mock-data` has no consumers left in `apps/client` or `apps/admin` —
-  every screen in both apps, including `ChatPage.tsx`, now reads real data
-  (`ChatPage.tsx` is still a scripted decision tree, not a real LLM, but it's
-  no longer on mock data). Don't add a new `@era/mock-data` import to either
-  SPA — it's kept only for `apps/api`'s seed script.
+  every screen in both apps reads real data, including `ChatPage.tsx`, which
+  is a real Claude-backed AI assistant (`apps/api/src/modules/assistant/`,
+  tool use grounded in real inventory/CRM data — see
+  `memory-bank/activeContext.md`). Don't add a new `@era/mock-data` import
+  to either SPA — it's kept only for `apps/api`'s seed script.
 - Match the surrounding file: brand colours are still inline hex in most files
   (`#001F5B` navy, `#EF2D2C` red, `#8B0A1C` maroon) — don't refactor that as a
   side effect. Shared tokens live in `@era/theme`.

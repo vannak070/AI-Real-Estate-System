@@ -33,20 +33,23 @@ interface ProjectInput {
   district?: string;
   commune?: string;
   village?: string;
-  phase?: string;
+  /** `null` clears the stored value; omitted leaves it unchanged. */
+  phase?: string | null;
   status?: ProjectStatus;
   category?: PropertyCategory;
   propertyType?: PropertyType;
-  handoverDate?: Date;
+  handoverDate?: Date | null;
   amenities?: string[];
   coverColor?: string;
   badge?: ListingBadge;
-  videoUrl?: string;
-  startingPriceOverride?: number;
-  developer?: string;
-  tenure?: string;
-  totalFloors?: number;
-  disclosedUnitCount?: number;
+  isPublished?: boolean;
+  isDevelopment?: boolean;
+  videoUrl?: string | null;
+  startingPriceOverride?: number | null;
+  developer?: string | null;
+  tenure?: string | null;
+  totalFloors?: number | null;
+  disclosedUnitCount?: number | null;
 }
 
 /**
@@ -189,6 +192,11 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
 
     updateProject(id: string, input: Partial<ProjectInput>) {
       return db.project.update({ where: { id }, data: { ...input, ...deriveAddress(input) } });
+    },
+
+    async setProjectsPublished(ids: string[], isPublished: boolean) {
+      const { count } = await db.project.updateMany({ where: { id: { in: ids } }, data: { isPublished } });
+      return { count };
     },
 
     async addProjectImage(projectId: string, dataUrl: string) {
@@ -387,10 +395,24 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
      * row. Deliberately excludes gdv/soldValue/startingPriceOverride (only the already-computed
      * startingPrice) and priceLists (psf/premiums) — commercially sensitive, admin-only. ── */
 
-    async listPublicProjects() {
+    /** Only `isPublished` projects, always. `filter` is optional and additive — apps/client's
+     * Properties page calls this with no args and gets every published project (it filters
+     * client-side); the AI assistant (Tier 1)
+     * is the one caller that needs server-side narrowing, since it can't afford to put all
+     * ~700 projects in an LLM's context on every turn. */
+    async listPublicProjects(filter?: { category?: PropertyCategory; propertyType?: PropertyType; location?: string; limit?: number }) {
       const projects = await db.project.findMany({
+        where: {
+          isPublished: true,
+          ...(filter?.category ? { category: filter.category } : {}),
+          ...(filter?.propertyType ? { propertyType: filter.propertyType } : {}),
+          ...(filter?.location
+            ? { OR: [{ location: { contains: filter.location, mode: 'insensitive' } }, { city: { contains: filter.location, mode: 'insensitive' } }] }
+            : {}),
+        },
         include: { units: { select: { status: true, listPrice: true } } },
         orderBy: { createdAt: 'desc' },
+        take: filter?.limit,
       });
       return projects.map(({ units, startingPriceOverride, ...project }) => ({
         id: project.id,
@@ -406,6 +428,7 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
         coverColor: project.coverColor,
         imageUrls: project.imageUrls,
         badge: project.badge,
+        isDevelopment: project.isDevelopment,
         videoUrl: project.videoUrl,
         startingPrice: startingPriceFor(startingPriceOverride, units),
         totalUnits: units.length,
@@ -413,9 +436,10 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
       }));
     },
 
+    /** A hidden property is indistinguishable from a missing one — a direct link returns null. */
     async getPublicProject(id: string) {
-      const project = await db.project.findUnique({
-        where: { id },
+      const project = await db.project.findFirst({
+        where: { id, isPublished: true },
         include: { units: { select: { status: true, listPrice: true } } },
       });
       if (!project) return null;
@@ -452,7 +476,7 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
 
     async listPublicUnits(projectId: string) {
       const units = await db.unit.findMany({
-        where: { projectId },
+        where: { projectId, project: { isPublished: true } },
         include: { unitType: true },
         orderBy: { listPrice: 'asc' },
       });

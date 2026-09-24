@@ -96,6 +96,7 @@ async function main() {
   for (const r of records) {
     const project = await db.project.create({
       data: {
+        isPublished: true,
         name: r.name,
         location: r.location,
         city: r.city,

@@ -153,6 +153,8 @@ async function main() {
   await db.project.createMany({
     data: erpSeed.projects.map(({ totalUnits: _totalUnits, ...p }) => ({
       ...p,
+      isPublished: true,
+      isDevelopment: true,
       handoverDate: date(p.handoverDate),
     })),
   });

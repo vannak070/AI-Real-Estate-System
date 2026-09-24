@@ -12,20 +12,24 @@ const projectInput = z.object({
   district: z.string().optional(),
   commune: z.string().optional(),
   village: z.string().optional(),
-  phase: z.string().optional(),
+  // `null` = clear the value. Omitted (undefined) = leave it unchanged on update, so a blanked form
+  // field has to send null or the old value can never be removed.
+  phase: z.string().nullable().optional(),
   status: z.nativeEnum(ProjectStatus).optional(),
   category: z.nativeEnum(PropertyCategory).optional(),
   propertyType: z.nativeEnum(PropertyType).optional(),
-  handoverDate: z.coerce.date().optional(),
+  handoverDate: z.coerce.date().nullable().optional(),
   amenities: z.array(z.string()).optional(),
   coverColor: z.string().optional(),
   badge: z.nativeEnum(ListingBadge).optional(),
-  videoUrl: z.string().url().optional(),
-  startingPriceOverride: z.number().int().positive().optional(),
-  developer: z.string().optional(),
-  tenure: z.string().optional(),
-  totalFloors: z.number().int().positive().optional(),
-  disclosedUnitCount: z.number().int().positive().optional(),
+  isPublished: z.boolean().optional(),
+  isDevelopment: z.boolean().optional(),
+  videoUrl: z.string().url().nullable().optional(),
+  startingPriceOverride: z.number().int().positive().nullable().optional(),
+  developer: z.string().nullable().optional(),
+  tenure: z.string().nullable().optional(),
+  totalFloors: z.number().int().positive().nullable().optional(),
+  disclosedUnitCount: z.number().int().positive().nullable().optional(),
 });
 
 const imageDataUrl = z.string().regex(/^data:image\/(jpeg|jpg|png|webp);base64,/, 'invalid_image_data_url');
@@ -61,6 +65,11 @@ export function inventoryRouter(service: InventoryService) {
       update: withCapability('inventory:write')
         .input(projectInput.partial().extend({ id: z.string() }))
         .mutation(({ input: { id, ...data } }) => service.updateProject(id, data)),
+
+      /** Bulk "Publish" / "Make private" from the Inventory list. */
+      setPublished: withCapability('inventory:write')
+        .input(z.object({ ids: z.array(z.string()).min(1).max(1000), isPublished: z.boolean() }))
+        .mutation(({ input }) => service.setProjectsPublished(input.ids, input.isPublished)),
 
       addImage: withCapability('inventory:write')
         .input(z.object({ projectId: z.string(), dataUrl: imageDataUrl }))

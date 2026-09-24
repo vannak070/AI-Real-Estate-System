@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Camera, Video, BedDouble, Bath, Maximize2 } from 'lucide-react';
+import { Camera, Video, BedDouble, Bath, Maximize2, Check } from 'lucide-react';
 import { PageHeader, StatCard, StatusBadge, Badge, Drawer, Select, TextInput, Button, DataTable, Toolbar, type Column } from '@era/ui';
 import {
   useAddUnitTypeImage,
@@ -8,26 +8,25 @@ import {
   useCreateUnitType,
   useDeleteUnitType,
   useProjects,
+  useSetProjectsPublished,
   useRemoveUnitTypeFloorPlan,
   useRemoveUnitTypeImage,
   useSetUnitTypeFloorPlan,
   useUnitTypes,
   useUpdateUnitType,
-  type ProjectFormInput,
 } from '../data/inventory';
 import { ImageGallery } from '../app/components/ImageGallery';
-import { LocationPicker } from '../app/components/LocationPicker';
+import { ProjectFormFields } from '../app/components/ProjectForm';
+import {
+  emptyProjectForm,
+  formToProjectInput,
+  projectFormMissing,
+  type ProjectFormState,
+} from '../app/components/projectFormState';
 import { useCan } from '../store/auth';
 import { resolveUploadUrl } from '../lib/api';
 import { money, pct, date, titleCase } from '../lib/format';
-import {
-  PROJECT_STATUSES,
-  PROPERTY_CATEGORIES,
-  PROPERTY_TYPES,
-  type PropertyCategory,
-  type PropertyType,
-  type ProjectStatus,
-} from '../data/types';
+import { PROPERTY_TYPES, type PropertyCategory, type PropertyType } from '../data/types';
 
 function formatRange(range: [number, number] | null): string {
   if (!range) return '—';
@@ -41,14 +40,12 @@ interface InventoryPreset {
   /** Sales/Rent buckets pin the category so every project created here lands in the right bucket. */
   lockedCategory?: PropertyCategory;
   /**
-   * Which projects belong in this bucket, beyond type/category — data-driven, not a manual tag.
-   * "Projects" means an actual multi-unit developer project (matching eracambodia.com's own use
-   * of the word — a Time Square tower, a Le Condé building), regardless of property type or
-   * sale/rent; "Sales"/"Rent" means an individual listing (one specific real property), matching
-   * how every Pointer Asia listing already works. A project reclassifies automatically the moment
-   * its real unit count crosses 1 — no manual re-bucketing needed when data is corrected.
+   * true = "Projects": development projects (a developer's building/estate — a Time Square tower,
+   * a Le Condé building), any type or sale/rent. false = "Sales"/"Rent": individual properties.
+   * Driven by the admin-set `Project.isDevelopment`, not unit count — real towers often have only
+   * one sample unit entered, which the old "more than 1 unit" rule misfiled under Sales.
    */
-  membership?: (p: { totalUnits: number }) => boolean;
+  development: boolean;
   /**
    * Sales/Rent-only: bed/bath/area spec row, the bedroom filter, single-unit-vs-multi-unit card
    * branching, and "Price"/"Rent" (vs "Starting from") wording. Projects keeps its original
@@ -59,165 +56,51 @@ interface InventoryPreset {
   detailedCards?: boolean;
 }
 
-const EMPTY_PROJECT: ProjectFormInput = {
-  name: '',
-  phase: '',
-  status: 'PLANNING',
-  category: 'SALE',
-  propertyType: 'CONDO',
-  amenities: [],
-  coverColor: '#001F5B',
-};
-
 function NewProjectDrawer({
   open,
   onClose,
   allowedTypes,
   lockedCategory,
+  isDevelopment,
 }: {
   open: boolean;
   onClose: () => void;
   allowedTypes: PropertyType[];
   lockedCategory?: PropertyCategory;
+  /** Adding from the Projects page creates a development project; from Sales/Rent, an individual property. */
+  isDevelopment: boolean;
 }) {
-  const defaultForm = (): ProjectFormInput => ({
-    ...EMPTY_PROJECT,
-    propertyType: allowedTypes[0] ?? EMPTY_PROJECT.propertyType,
-    category: lockedCategory ?? EMPTY_PROJECT.category,
-  });
-  const [form, setForm] = useState<ProjectFormInput>(defaultForm);
-  const [amenitiesText, setAmenitiesText] = useState('');
-  const [handoverDateStr, setHandoverDateStr] = useState('');
+  const nav = useNavigate();
+  const defaultForm = () =>
+    emptyProjectForm({ propertyType: allowedTypes[0] ?? 'CONDO', category: lockedCategory ?? 'SALE', isDevelopment });
+  const [form, setForm] = useState<ProjectFormState>(defaultForm);
   const createProject = useCreateProject();
-
-  const missing = [!form.name.trim() && 'Name', !form.province && 'Province/City'].filter(
-    (m): m is string => typeof m === 'string',
-  );
+  const missing = projectFormMissing(form, false);
 
   const submit = () => {
     if (missing.length > 0) return;
     createProject.mutate(
+      { ...formToProjectInput(form), category: lockedCategory ?? form.category },
       {
-        ...form,
-        category: lockedCategory ?? form.category,
-        handoverDate: handoverDateStr ? new Date(handoverDateStr) : undefined,
-        amenities: amenitiesText.split(',').map((s) => s.trim()).filter(Boolean),
-      },
-      {
-        onSuccess: () => {
-          onClose();
+        // Photos, units and the site plan can only be added once the property exists — go straight
+        // there instead of leaving the admin to find it in a list of hundreds.
+        onSuccess: (created) => {
           setForm(defaultForm());
-          setAmenitiesText('');
-          setHandoverDateStr('');
+          onClose();
+          nav(`/inventory/${created.id}`);
         },
       },
     );
   };
 
   return (
-    <Drawer open={open} onClose={onClose} title="New project">
+    <Drawer open={open} onClose={onClose} title="New property">
       <div className="space-y-5">
-        <div>
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Basic info</h4>
-          <div className="space-y-4">
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Name</span>
-              <TextInput className="mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Phase</span>
-              <TextInput className="mt-1" value={form.phase} onChange={(e) => setForm({ ...form, phase: e.target.value })} />
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Property type</span>
-                <Select
-                  className="mt-1 w-full"
-                  value={form.propertyType}
-                  onChange={(e) => setForm({ ...form, propertyType: e.target.value as PropertyType })}
-                >
-                  {allowedTypes.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Category</span>
-                {lockedCategory ? (
-                  <TextInput className="mt-1" value={lockedCategory} disabled />
-                ) : (
-                  <Select
-                    className="mt-1 w-full"
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value as PropertyCategory })}
-                  >
-                    {PROPERTY_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Status</span>
-                <Select
-                  className="mt-1 w-full"
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as ProjectStatus })}
-                >
-                  {PROJECT_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-100 pt-4">
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Location</h4>
-          <LocationPicker
-            value={{ province: form.province, district: form.district, commune: form.commune, village: form.village }}
-            onChange={(loc) => setForm({ ...form, ...loc })}
-          />
-        </div>
-
-        <div className="border-t border-gray-100 pt-4">
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Presentation</h4>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Handover date</span>
-                <TextInput
-                  type="date"
-                  className="mt-1"
-                  value={handoverDateStr}
-                  onChange={(e) => setHandoverDateStr(e.target.value)}
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Cover color</span>
-                <TextInput type="color" className="mt-1 h-10" value={form.coverColor} onChange={(e) => setForm({ ...form, coverColor: e.target.value })} />
-              </label>
-            </div>
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Amenities (comma-separated)</span>
-              <TextInput className="mt-1" value={amenitiesText} onChange={(e) => setAmenitiesText(e.target.value)} placeholder="Pool, Gym, 24h Security" />
-            </label>
-          </div>
-        </div>
-
-        {missing.length > 0 && (
-          <p className="text-xs text-[var(--era-red)]">Required: {missing.join(', ')}.</p>
-        )}
+        <ProjectFormFields form={form} onChange={setForm} allowedTypes={allowedTypes} lockedCategory={lockedCategory} />
+        {missing.length > 0 && <p className="text-xs text-[var(--era-red)]">Required: {missing.join(', ')}.</p>}
         {createProject.error && <p className="text-xs text-[var(--era-red)]">{createProject.error.message}</p>}
         <Button onClick={submit} disabled={missing.length > 0 || createProject.isPending}>
-          Create project
+          Create property
         </Button>
       </div>
     </Drawer>
@@ -359,14 +242,33 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
   const [managingTypes, setManagingTypes] = useState(false);
   const [typeFilter, setTypeFilter] = useState<PropertyType | 'ALL'>('ALL');
   const [bedFilter, setBedFilter] = useState<'ALL' | '0' | '1' | '2' | '3' | '4'>('ALL');
+  const [websiteFilter, setWebsiteFilter] = useState<'ALL' | 'LIVE' | 'DRAFT'>('ALL');
+  // Bulk Publish / Make private: while selecting, clicking a card toggles it instead of opening it.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const setPublished = useSetProjectsPublished();
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+  const applyPublished = (isPublished: boolean) =>
+    setPublished.mutate({ ids: [...selected], isPublished }, { onSuccess: stopSelecting });
   const allRows = (projects ?? []).filter(
     (p) =>
       preset.allowedTypes.includes(p.propertyType) &&
       (!preset.lockedCategory || p.category === preset.lockedCategory) &&
-      (!preset.membership || preset.membership(p)),
+      p.isDevelopment === preset.development,
   );
   const rows = allRows
     .filter((p) => typeFilter === 'ALL' || p.propertyType === typeFilter)
+    .filter((p) => websiteFilter === 'ALL' || p.isPublished === (websiteFilter === 'LIVE'))
     .filter((p) => {
       if (!preset.detailedCards || bedFilter === 'ALL') return true;
       const min = p.bedroomsRange?.[0];
@@ -375,6 +277,7 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
     });
 
   const countByType = (t: PropertyType) => allRows.filter((p) => p.propertyType === t).length;
+  const liveCount = allRows.filter((p) => p.isPublished).length;
 
   const totals = rows.reduce(
     (a, p) => {
@@ -398,7 +301,7 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
               <Button variant="outline" onClick={() => setManagingTypes(true)}>
                 Manage unit types
               </Button>
-              <Button onClick={() => setCreating(true)}>New project</Button>
+              <Button onClick={() => setCreating(true)}>New property</Button>
             </div>
           )
         }
@@ -424,6 +327,11 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
             </option>
           ))}
         </Select>
+        <Select value={websiteFilter} onChange={(e) => setWebsiteFilter(e.target.value as typeof websiteFilter)}>
+          <option value="ALL">Website: all</option>
+          <option value="LIVE">Published ({liveCount})</option>
+          <option value="DRAFT">Private ({allRows.length - liveCount})</option>
+        </Select>
         {preset.detailedCards && (
           <Select value={bedFilter} onChange={(e) => setBedFilter(e.target.value as typeof bedFilter)}>
             <option value="ALL">Any beds</option>
@@ -435,16 +343,62 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
           </Select>
         )}
         <span className="text-sm text-gray-400">{rows.length} shown</span>
+        {canWrite && !selecting && (
+          <Button size="sm" variant="outline" onClick={() => setSelecting(true)}>
+            Select to publish / make private
+          </Button>
+        )}
       </Toolbar>
+
+      {selecting && (
+        <div className="sticky top-2 z-10 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--era-navy)]/20 bg-white p-3 shadow-md">
+          <span className="text-sm font-semibold text-[var(--era-navy)]">{selected.size} selected</span>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set(rows.map((p) => p.id)))}>
+            Select all shown ({rows.length})
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} disabled={selected.size === 0}>
+            Clear
+          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            {setPublished.error && <span className="text-xs text-[var(--era-red)]">{setPublished.error.message}</span>}
+            <Button size="sm" onClick={() => applyPublished(true)} disabled={selected.size === 0 || setPublished.isPending}>
+              Publish
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => applyPublished(false)}
+              disabled={selected.size === 0 || setPublished.isPending}
+            >
+              Make private
+            </Button>
+            <Button size="sm" variant="ghost" onClick={stopSelecting}>
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className={`grid gap-4 ${preset.detailedCards ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'md:grid-cols-2'}`}>
         {rows.map((p) => (
           <button
             key={p.id}
-            onClick={() => nav(`/inventory/${p.id}`)}
-            className="overflow-hidden rounded-xl border border-black/5 bg-white text-left shadow-sm transition hover:shadow-md"
+            onClick={() => (selecting ? toggleSelected(p.id) : nav(`/inventory/${p.id}`))}
+            aria-pressed={selecting ? selected.has(p.id) : undefined}
+            className={`overflow-hidden rounded-xl border bg-white text-left shadow-sm transition hover:shadow-md ${
+              selecting && selected.has(p.id) ? 'border-[var(--era-navy)] ring-2 ring-[var(--era-navy)]' : 'border-black/5'
+            }`}
           >
             <div className="relative h-32 w-full">
+              {selecting && (
+                <span
+                  className={`absolute bottom-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border-2 ${
+                    selected.has(p.id) ? 'border-[var(--era-navy)] bg-[var(--era-navy)] text-white' : 'border-white bg-white/80'
+                  }`}
+                >
+                  {selected.has(p.id) && <Check className="h-4 w-4" />}
+                </span>
+              )}
               {p.imageUrls[0] ? (
                 <img src={resolveUploadUrl(p.imageUrls[0])} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -452,11 +406,10 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
                   <span className="text-xs font-semibold uppercase tracking-wide text-white/80">{p.propertyType}</span>
                 </div>
               )}
-              {p.badge !== 'NONE' && (
-                <span className="absolute left-2 top-2">
-                  <Badge tone={p.badge === 'EXCLUSIVE' ? 'red' : 'amber'}>{titleCase(p.badge)}</Badge>
-                </span>
-              )}
+              <span className="absolute left-2 top-2 flex gap-1">
+                {p.isPublished ? <Badge tone="green">Published</Badge> : <Badge tone="slate">Private</Badge>}
+                {p.badge !== 'NONE' && <Badge tone={p.badge === 'EXCLUSIVE' ? 'red' : 'amber'}>{titleCase(p.badge)}</Badge>}
+              </span>
               {(p.imageUrls.length > 0 || p.videoUrl) && (
                 <span className="absolute right-2 top-2 flex items-center gap-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white">
                   {p.imageUrls.length > 0 && (
@@ -486,6 +439,17 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
                       {money(p.startingPrice, { compact: true })}
                       {preset.detailedCards && p.category === 'RENT' && p.totalUnits <= 1 ? '/mo' : ''}
                     </span>
+                  </p>
+                )}
+                {preset.development && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {[
+                      p.disclosedUnitCount != null ? `${p.disclosedUnitCount.toLocaleString()} units in building` : null,
+                      p.totalFloors != null ? `${p.totalFloors} floors` : null,
+                      p.developer,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </p>
                 )}
               </div>
@@ -522,7 +486,7 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
                 <div className="mt-4 grid grid-cols-4 gap-2 text-center">
                   <div>
                     <div className="text-lg font-bold text-[var(--era-navy)]">{p.totalUnits}</div>
-                    <div className="text-[11px] uppercase text-gray-400">Units</div>
+                    <div className="text-[11px] uppercase text-gray-400">Listed</div>
                   </div>
                   <div>
                     <div className="text-lg font-bold text-emerald-600">{p.available}</div>
@@ -574,33 +538,30 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
         onClose={() => setCreating(false)}
         allowedTypes={preset.allowedTypes}
         lockedCategory={preset.lockedCategory}
+        isDevelopment={preset.development}
       />
       <UnitTypesDrawer open={managingTypes} onClose={() => setManagingTypes(false)} />
     </div>
   );
 }
 
-// "Projects" = an actual multi-unit developer project (a Time Square tower, a Le Condé
-// building) — any property type, any category, data-driven by real unit count rather than a
-// manual tag. "Sales"/"Rent" = individual listings (exactly one real property), split by
-// category — matching how every Pointer Asia listing and every corrected ERA listing works.
 const PROJECTS_PRESET: InventoryPreset = {
   title: 'Projects',
   allowedTypes: PROPERTY_TYPES,
-  membership: (p) => p.totalUnits > 1,
+  development: true,
 };
 const SALES_PRESET: InventoryPreset = {
   title: 'Sales',
   allowedTypes: PROPERTY_TYPES,
   lockedCategory: 'SALE',
-  membership: (p) => p.totalUnits <= 1,
+  development: false,
   detailedCards: true,
 };
 const RENT_PRESET: InventoryPreset = {
   title: 'Rent',
   allowedTypes: PROPERTY_TYPES,
   lockedCategory: 'RENT',
-  membership: (p) => p.totalUnits <= 1,
+  development: false,
   detailedCards: true,
 };
 

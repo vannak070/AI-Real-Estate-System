@@ -20,6 +20,7 @@
     "schema": "prisma/schema"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@era/contracts": "workspace:*",
     "@era/mock-data": "workspace:*",
     "@era/shared": "workspace:*",

@@ -11,16 +11,19 @@ update this one when a whole area of work actually completes.
 - **CRM**: Contacts, Pipeline (Leads with real auto-assignment to the
   least-loaded agent), Tasks — per-agent ownership scoping, a real
   "Edit contact" form, Lead editing covering every field the schema supports.
-- **Inventory**: the real 637-listing dataset scraped from `eracambodia.com`
-  and `pointerasia.com` (see `apps/api/scripts/` and this file's "Incidents"
+- **Inventory**: real listings scraped from `eracambodia.com` and
+  `pointerasia.com` (see `apps/api/scripts/` and this file's "Incidents"
   section below for how it got wiped by a DB reset and recovered on
-  2026-09-21) — 669 real projects / 688 units as of that recovery, 637 of
-  the projects carrying real photos. This number moves with whatever's
-  seeded locally at the time; don't treat any figure here as fixed — check
+  2026-09-21, then had its ERA sale/condo portion re-scraped fresh from the
+  live site on 2026-09-24) — **667 projects** as of 2026-09-24 (45
+  ERA-sourced sale/condo + 592 Pointer Asia + ~30 other ERA-sourced
+  villas/rentals/commercial), all with real photos except a handful of
+  non-photographed categories. This number moves with whatever's seeded
+  locally at the time; don't treat any figure here as fixed — check
   `docker exec era-postgres psql -U era -d era -c "select count(*) from
   inventory_projects;"` if it matters, and if it ever comes back small
   again (~6 projects), that's the demo placeholder seed, not this real
-  data — see the Incidents entry before assuming it needs re-scraping.
+  data — see the Incidents entries before assuming it needs re-scraping.
   Full CRUD on projects/blocks/units/unit-types/price-lists, structured
   Cambodia location picker, photo upload with cropping, a searchable
   unit/project/contact picker pattern used everywhere a long list needs
@@ -38,16 +41,14 @@ update this one when a whole area of work actually completes.
 - **`apps/client`**: real Properties list + detail pages (real images,
   real availability, real filters), a real lead-capture enquiry form
   wired into the same CRM the admin reads, a real About page (Overview/
-  History/Team/Awards — Contact tab is static by design, out of scope).
+  History/Team/Awards — Contact tab is static by design, out of scope), and
+  `ChatPage.tsx` — a real Claude-backed AI assistant (Tier 1, 2026-09-24;
+  see `activeContext.md` for the full build and the two real bugs caught
+  and fixed during live verification) that searches real inventory and
+  submits real leads via tool use, not a scripted decision tree.
 
 ## What's explicitly not real, and why
 
-- **`apps/client`'s `ChatPage.tsx` has no real AI/LLM** — its Tier 0 fix
-  (2026-09-21) connected it to real inventory data and real lead
-  submission, but the conversation logic itself is still a scripted
-  decision tree with keyword matching, not an LLM. Building a real one is
-  a distinct, larger product decision that hasn't been made, not an
-  oversight.
 - **Real listing/team photos** — the upload pipeline exists everywhere it's
   needed; most rows just don't have a real photo uploaded yet. Placeholder/
   initials rendering is deliberate, not a bug, until real photos exist.
@@ -93,11 +94,29 @@ update this one when a whole area of work actually completes.
   queued for it.
 - **`ChatPage.tsx` was explicitly left alone** during the Public Listings
   Plan even though it was the most visible remaining piece of mock data at
-  the time; it got its own separate, smaller "Tier 0" pass later
-  (2026-09-21) that connected it to real data without giving it real AI —
-  building actual LLM-backed conversation is scoped, non-trivial product
-  work (LLM choice, conversation persistence, what it's allowed to do)
-  that's still a separate, not-yet-approved decision (Tier 1).
+  the time; it got a smaller "Tier 0" pass (2026-09-21, real data, still
+  scripted) and later a full "Tier 1" pass (2026-09-24, real Claude-backed
+  LLM via tool use) once the user explicitly approved that larger, separate
+  product decision (LLM choice: Claude/Anthropic API; the user provided
+  their own API key). Both tiers are done now — see `activeContext.md` for
+  the Tier 1 build.
+- **The AI assistant's tools call OUT through `ctx.modules.inventory`/
+  `ctx.modules.crm`, never a Prisma row or another module's service
+  directly** — same module-boundary rule as everything else in `apps/api`.
+  `InventoryApi`/`CrmApi` (each module's `index.ts`) grew new methods
+  (`searchPublicProjects`, `getPublicProject`, `listPublicUnits`,
+  `createLead`) that are thin wrappers around the exact same service
+  functions the public tRPC routers already used — no new data path, just a
+  new caller. `listPublicProjects` itself grew an optional
+  `{category, propertyType, location, limit}` filter (additive — the
+  existing no-arg call from `inventory.public.projects.list` is unaffected)
+  specifically so the AI's `search_properties` tool never has to put the
+  full ~700-project catalog in an LLM's context window.
+- **The AI assistant is stateless server-side — no conversation table.**
+  `apps/client` sends the full message history on every turn (already
+  persisted client-side in `sessionStorage` from the same-day persistence
+  fix); the backend never stores a transcript. Revisit only if admin-side
+  visibility into chat conversations becomes a real ask — it isn't one yet.
 - **`apps/client` did not get a TanStack Query dependency** when it was
   wired to the real API, even though `apps/admin` uses it everywhere — the
   scope was two pages' worth of data fetching, and adding a new dependency +
@@ -114,6 +133,23 @@ update this one when a whole area of work actually completes.
 
 ## Incidents worth remembering
 
+- **The AI assistant (Tier 1) claimed to have submitted a lead without
+  actually calling the `submit_lead` tool** — caught live 2026-09-24 by
+  checking Postgres after a "confirmed" submission and finding no new
+  Contact/Lead. An LLM's own text can fabricate a confirmation exactly like
+  hardcoded fake text can (this is what Tier 0 fixed for the *old*, scripted
+  version) — a passing `200 OK` and a friendly-sounding reply are not proof
+  an action happened; only checking the actual database is. Fixed with an
+  explicit, forceful system-prompt rule (never claim an action unless the
+  tool was actually called in that same response) and retested 3x
+  successfully — but this is a probabilistic model behavior fixed by
+  instruction, not a hard guarantee; re-verify if `submit_lead`'s prompt or
+  tool wiring ever changes. The same pass also caught the model passing a
+  property's *name* instead of its real id to `submit_lead`'s
+  `preferredProjectId` (a bare, unvalidated column with no DB-level FK) —
+  would have silently corrupted a real Lead record. Fixed by validating the
+  claimed id against a real project server-side before trusting it. See
+  `activeContext.md`'s "Where things stand" for the full build.
 - **A stray, unrelated git repo at the machine's home directory was
   silently acting as this project's repo** for an unknown stretch of time
   (this project's own `.git` didn't exist). Discovered via a port conflict

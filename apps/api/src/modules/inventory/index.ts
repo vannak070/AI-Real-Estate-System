@@ -1,3 +1,4 @@
+import type { ProjectStatus, PropertyCategory, PropertyType } from '@prisma/client';
 import type { AppModule, ModuleContext } from '../../platform/module.js';
 import { createInventoryService } from './inventory.service.js';
 import { registerInventorySubscriptions } from './inventory.events.js';
@@ -7,6 +8,44 @@ export interface InventoryUnitView {
   projectId: string;
   status: string;
   listPrice: number;
+}
+
+/** Same shape `inventory.public.projects.*` already serves apps/client — reused as-is for the
+ * AI assistant's tools (packages/contracts/... intentionally isn't the source of truth here;
+ * this module's own service projection is, same as every other public read). */
+export interface PublicProjectView {
+  id: string;
+  name: string;
+  location: string;
+  city: string | null;
+  status: ProjectStatus;
+  category: PropertyCategory;
+  propertyType: PropertyType;
+  amenities: string[];
+  imageUrls: string[];
+  startingPrice: number | null;
+  totalUnits: number;
+  availableUnits: number;
+}
+
+export interface PublicProjectDetailView extends PublicProjectView {
+  province: string | null;
+  district: string | null;
+  developer: string | null;
+  tenure: string | null;
+}
+
+export interface PublicUnitView {
+  id: string;
+  code: string;
+  listPrice: number;
+  status: 'AVAILABLE' | 'RESERVED' | 'SOLD';
+  areaSqm: number | null;
+  floor: number | null;
+  view: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  unitTypeName: string | null;
 }
 
 /** Full cross-module projection for customer-facing documents (quotation PDFs). */
@@ -33,6 +72,12 @@ export interface InventoryUnitDocumentView {
 export interface InventoryApi {
   getUnit(id: string): Promise<InventoryUnitView | null>;
   getUnitDocument(id: string): Promise<InventoryUnitDocumentView | null>;
+  /** Narrowed, capped project search — the AI assistant's `search_properties` tool. Never
+   * returns the full catalog; `limit` defaults small so a tool result stays a handful of
+   * projects, not hundreds. */
+  searchPublicProjects(filter?: { category?: PropertyCategory; propertyType?: PropertyType; location?: string; limit?: number }): Promise<PublicProjectView[]>;
+  getPublicProject(id: string): Promise<PublicProjectDetailView | null>;
+  listPublicUnits(projectId: string): Promise<PublicUnitView[]>;
 }
 
 // HTTP surface for this module is the tRPC router (inventory.router.ts),
@@ -74,6 +119,60 @@ export const inventoryModule: AppModule<InventoryApi> = {
               }
             : null,
         };
+      },
+      async searchPublicProjects(filter) {
+        const rows = await service.listPublicProjects({ limit: 8, ...filter });
+        return rows.map((p) => ({
+          id: p.id,
+          name: p.name,
+          location: p.location,
+          city: p.city,
+          status: p.status,
+          category: p.category,
+          propertyType: p.propertyType,
+          amenities: p.amenities,
+          imageUrls: p.imageUrls,
+          startingPrice: p.startingPrice,
+          totalUnits: p.totalUnits,
+          availableUnits: p.availableUnits,
+        }));
+      },
+      async getPublicProject(id) {
+        const p = await service.getPublicProject(id);
+        if (!p) return null;
+        return {
+          id: p.id,
+          name: p.name,
+          location: p.location,
+          city: p.city,
+          status: p.status,
+          category: p.category,
+          propertyType: p.propertyType,
+          amenities: p.amenities,
+          imageUrls: p.imageUrls,
+          startingPrice: p.startingPrice,
+          totalUnits: p.totalUnits,
+          availableUnits: p.availableUnits,
+          province: p.province,
+          district: p.district,
+          developer: p.developer,
+          tenure: p.tenure,
+        };
+      },
+      async listPublicUnits(projectId) {
+        const units = await service.listPublicUnits(projectId);
+        return units.map((u) => ({
+          id: u.id,
+          code: u.code,
+          listPrice: u.listPrice,
+          status: u.status,
+          areaSqm: u.areaSqm,
+          floor: u.floor,
+          view: u.view,
+          bedrooms: u.bedrooms,
+          bathrooms: u.bathrooms,
+          unitTypeName: u.unitTypeName,
+        }));
       },
     };
     return { api };

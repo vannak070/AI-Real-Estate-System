@@ -18,20 +18,24 @@ export interface ProjectFormInput {
   district?: string;
   commune?: string;
   village?: string;
-  phase?: string;
+  /** `null` clears the stored value on update; omitted leaves it unchanged. */
+  phase?: string | null;
   status?: ProjectStatus;
   category?: PropertyCategory;
   propertyType?: PropertyType;
-  handoverDate?: Date;
+  handoverDate?: Date | null;
   amenities?: string[];
   coverColor?: string;
   badge?: ListingBadge;
-  videoUrl?: string;
-  startingPriceOverride?: number;
-  developer?: string;
-  tenure?: string;
-  totalFloors?: number;
-  disclosedUnitCount?: number;
+  isPublished?: boolean;
+  /** true = Inventory → Projects (a developer's building/estate); false = Sales/Rent. */
+  isDevelopment?: boolean;
+  videoUrl?: string | null;
+  startingPriceOverride?: number | null;
+  developer?: string | null;
+  tenure?: string | null;
+  totalFloors?: number | null;
+  disclosedUnitCount?: number | null;
 }
 
 export interface UnitFormInput {
@@ -82,6 +86,15 @@ export function useUpdateProject() {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.projects() });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.project(input.id) });
     },
+  });
+}
+
+/** Bulk "Publish" / "Make private" for several properties at once. */
+export function useSetProjectsPublished() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { ids: string[]; isPublished: boolean }) => api.inventory.projects.setPublished.mutate(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory', 'projects'] }),
   });
 }
 

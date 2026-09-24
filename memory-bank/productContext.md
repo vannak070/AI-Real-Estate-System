@@ -29,14 +29,16 @@ leads straight into it.
 
 - **No public-facing pretty URLs.** Public project pages use the real Prisma
   `cuid`, not a slug. Revisit only if SEO becomes a stated priority.
-- **`ChatPage.tsx` (the "AI Property Assistant") isn't real AI, on purpose.**
-  As of its 2026-09-21 Tier 0 fix it reads real inventory and submits real
-  leads, so it's no longer disconnected from the backend — but its
-  conversation logic is still a scripted decision tree, not an LLM.
-  Building a real LLM-backed version is a distinct, larger product decision
-  (does the business want that here, which provider, what should it be
-  allowed to do) — not something to slip in as a side effect of another
-  task.
+- **`ChatPage.tsx` (the "AI Property Assistant") is now real AI** — Tier 0
+  (2026-09-21) connected it to real inventory/leads on a scripted decision
+  tree; Tier 1 (2026-09-24) replaced that with an actual Claude-backed
+  conversation (Anthropic API, `claude-haiku-4-5-20251001`, tool use
+  grounded in real inventory/CRM data — never a hardcoded response). Both
+  were separate, explicitly user-approved decisions, not slipped in as a
+  side effect of other work — see `activeContext.md`/`progress.md` for the
+  full build and the two real bugs it surfaced live. `ANTHROPIC_API_KEY` is
+  optional in `apps/api/.env`; without it the API still starts, only the
+  chat endpoint itself errors clearly when called.
 - **A quotation's discount above 15% needs a manager's sign-off before it can
   be *accepted* into a reservation** — it can still be freely edited/saved
   below that gate. This threshold is a business rule

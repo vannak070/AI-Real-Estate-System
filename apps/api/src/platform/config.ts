@@ -12,6 +12,10 @@ const schema = z.object({
     .string()
     .default('http://localhost:5173,http://localhost:5174')
     .transform((s) => s.split(',').map((o) => o.trim()).filter(Boolean)),
+  /** Optional on purpose — the whole API must still start for everyone who hasn't set up the
+   * AI assistant (Tier 1) yet. `assistant.router.ts`'s `chat` procedure is what actually
+   * requires this, and throws a clear error there if it's missing. */
+  anthropicApiKey: z.string().min(1).optional(),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -25,6 +29,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     eventBus: env.EVENT_BUS,
     natsUrl: env.NATS_URL,
     corsOrigins: env.CORS_ORIGINS,
+    anthropicApiKey: env.ANTHROPIC_API_KEY,
   });
   if (!parsed.success) {
     throw new Error(`Invalid environment:\n${parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n')}`);
