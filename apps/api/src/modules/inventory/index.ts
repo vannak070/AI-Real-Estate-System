@@ -26,6 +26,10 @@ export interface PublicProjectView {
   startingPrice: number | null;
   totalUnits: number;
   availableUnits: number;
+  /** Distinct bedroom counts among available units (0 = studio); empty = not recorded. */
+  bedrooms: number[];
+  /** Size range of available units, m²; null = not recorded. */
+  sizeSqm: { min: number; max: number } | null;
 }
 
 export interface PublicProjectDetailView extends PublicProjectView {
@@ -75,7 +79,22 @@ export interface InventoryApi {
   /** Narrowed, capped project search — the AI assistant's `search_properties` tool. Never
    * returns the full catalog; `limit` defaults small so a tool result stays a handful of
    * projects, not hundreds. */
-  searchPublicProjects(filter?: { category?: PropertyCategory; propertyType?: PropertyType; location?: string; limit?: number }): Promise<PublicProjectView[]>;
+  /** Up to `limit` (default 8) matches — in budget, listings with photos first, then newest —
+   * plus how many matched in total. */
+  searchPublicProjects(filter?: {
+    category?: PropertyCategory;
+    propertyType?: PropertyType;
+    location?: string;
+    name?: string;
+    /** Exact bedroom count (0 = studio), or a minimum — matched against available units. */
+    bedrooms?: number;
+    minBedrooms?: number;
+    minAreaSqm?: number;
+    /** USD; compared with the listing's starting price (sale price, or monthly rent). */
+    minPrice?: number;
+    maxPrice?: number;
+    limit?: number;
+  }): Promise<{ total: number; results: PublicProjectView[] }>;
   getPublicProject(id: string): Promise<PublicProjectDetailView | null>;
   listPublicUnits(projectId: string): Promise<PublicUnitView[]>;
 }
@@ -121,8 +140,17 @@ export const inventoryModule: AppModule<InventoryApi> = {
         };
       },
       async searchPublicProjects(filter) {
-        const rows = await service.listPublicProjects({ limit: 8, ...filter });
-        return rows.map((p) => ({
+        const { limit = 8, minPrice, maxPrice, ...where } = filter ?? {};
+        // All matches (newest first), then budget + ranking in code: startingPrice is derived
+        // (override or cheapest unit), not a column the DB can filter on.
+        const rows = (await service.listPublicProjects(where)).filter(
+          (p) =>
+            (maxPrice == null || (p.startingPrice != null && p.startingPrice <= maxPrice)) &&
+            (minPrice == null || (p.startingPrice != null && p.startingPrice >= minPrice)),
+        );
+        // Listings with photos first (the chat bots show them as photo cards); stable, so newest-first holds within each.
+        const ranked = [...rows].sort((a, b) => Number(b.imageUrls.length > 0) - Number(a.imageUrls.length > 0));
+        return { total: rows.length, results: ranked.slice(0, limit).map((p) => ({
           id: p.id,
           name: p.name,
           location: p.location,
@@ -135,7 +163,9 @@ export const inventoryModule: AppModule<InventoryApi> = {
           startingPrice: p.startingPrice,
           totalUnits: p.totalUnits,
           availableUnits: p.availableUnits,
-        }));
+          bedrooms: p.bedrooms,
+          sizeSqm: p.sizeSqm,
+        })) };
       },
       async getPublicProject(id) {
         const p = await service.getPublicProject(id);

@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Link, useLocation } from "react-router";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api, resolveUploadUrl } from "../../lib/api";
+import { currentCampaignCode } from "../../lib/attribution";
 import logo from "figma:asset/d35bb1cd7b17aae1ece93ea47adf754effd39a17.png";
 
 /** The property cards a bot reply can carry — exactly what the assistant's search_properties/
@@ -59,6 +60,9 @@ interface PersistedChat {
   messages: Message[];
   propertyId?: string;
   propertyName?: string;
+  /** Signed reference to the lead this conversation created, so a later correction of phone/email
+   * updates that same CRM record instead of being lost (or duplicated). Opaque — never parsed here. */
+  leadToken?: string;
 }
 
 function loadPersistedChat(): PersistedChat | null {
@@ -100,6 +104,7 @@ export function ChatPage() {
   const [messages, setMessages] = useState<Message[]>(initial?.messages ?? [greetingFor(effectivePropertyName)]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [leadToken, setLeadToken] = useState<string | undefined>(initial?.leadToken);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -118,8 +123,8 @@ export function ChatPage() {
   // on a property card) can resume this conversation instead of restarting it — see
   // loadPersistedChat()/the `initial` state above for the restore side of this.
   useEffect(() => {
-    savePersistedChat({ messages, propertyId: effectivePropertyId, propertyName: effectivePropertyName });
-  }, [messages, effectivePropertyId, effectivePropertyName]);
+    savePersistedChat({ messages, propertyId: effectivePropertyId, propertyName: effectivePropertyName, leadToken });
+  }, [messages, effectivePropertyId, effectivePropertyName, leadToken]);
 
   /** The one real write path this page ever triggers is inside the assistant's own submit_lead
    * tool (assistant.service.ts, server-side) — this function only ever sends the visitor's
@@ -138,7 +143,10 @@ export function ChatPage() {
         messages: history.map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('assistant' as const), content: m.message })),
         propertyId: effectivePropertyId,
         propertyName: effectivePropertyName,
+        leadToken,
+        campaignCode: currentCampaignCode(),
       });
+      if (result.leadToken) setLeadToken(result.leadToken);
       setMessages((prev) => [
         ...prev,
         {

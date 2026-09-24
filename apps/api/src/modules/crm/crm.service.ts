@@ -1,5 +1,5 @@
 import { CrmEvents } from '@era/contracts';
-import type { ActivityType, ContactType, LeadSource, LeadStage, Temperature } from '@prisma/client';
+import type { ActivityType, ContactType, LeadStage, Temperature } from '@prisma/client';
 import type { ModuleContext } from '../../platform/module.js';
 
 export function createCrmService({ db, bus, modules }: ModuleContext) {
@@ -60,7 +60,8 @@ export function createCrmService({ db, bus, modules }: ModuleContext) {
       phone?: string;
       nationality?: string;
       company?: string;
-      source: LeadSource;
+      /** A marketing channel key — validated by the router against Marketing's channel list. */
+      source: string;
       consentMarketing?: boolean;
       ownerId?: string;
       tags?: string[];
@@ -112,25 +113,73 @@ export function createCrmService({ db, bus, modules }: ModuleContext) {
       });
     },
 
+    /** A website visitor correcting details they already submitted (AI chat): updates that lead's
+     * own contact in place and logs exactly what changed as a NOTE, instead of creating a second,
+     * duplicate contact/lead that leaves the old details on the original. Blank fields are ignored,
+     * never used to wipe a value. Returns null if the lead no longer exists. */
+    async updateLeadContact(
+      leadId: string,
+      patch: { name?: string; phone?: string; email?: string; message?: string; preferredProjectId?: string },
+    ) {
+      const lead = await db.lead.findUnique({ where: { id: leadId }, include: { contact: true } });
+      if (!lead) return null;
+
+      const data: { name?: string; phone?: string; email?: string } = {};
+      const changes: string[] = [];
+      for (const field of ['name', 'phone', 'email'] as const) {
+        const next = patch[field]?.trim();
+        const current = lead.contact[field] ?? '';
+        if (next && next !== current) {
+          data[field] = next;
+          changes.push(`${field} ${current || '(none)'} → ${next}`);
+        }
+      }
+      if (changes.length > 0) await db.contact.update({ where: { id: lead.contactId }, data });
+      if (patch.preferredProjectId && patch.preferredProjectId !== lead.preferredProjectId) {
+        await db.lead.update({ where: { id: leadId }, data: { preferredProjectId: patch.preferredProjectId } });
+      }
+
+      const subject = [
+        changes.length > 0 ? `Visitor updated their details via website chat: ${changes.join('; ')}` : null,
+        patch.message,
+      ]
+        .filter(Boolean)
+        .join(' — ');
+      if (subject) {
+        await db.activity.create({
+          data: { type: 'NOTE', subject, leadId, contactId: lead.contactId, ownerId: lead.ownerId },
+        });
+      }
+      return { id: lead.id, changed: changes };
+    },
+
     async createLead(input: {
       contact: { name: string; email?: string; phone?: string };
-      source: LeadSource;
+      /** A marketing channel key (see Contact.source). */
+      source: string;
       ownerId?: string;
       preferredProjectId?: string;
       /** Free text from an inbound enquiry (e.g. the public site's "Request info" form) —
        * stored as a NOTE activity rather than a new column, matching how every other
        * free-text note on a lead is already recorded. */
       message?: string;
+      /** Set directly by an admin, or resolved from an ad link's `?utm_campaign=` code (website/chat). */
+      campaignId?: string | null;
+      campaignCode?: string;
     }) {
       // No owner named explicitly (e.g. a manager adding an inbound lead with
       // nobody claimed yet) -> hand it to whoever has the lightest open pipeline.
       const ownerId = input.ownerId ?? (await pickLeastLoadedAgent());
+      // An unknown/expired code just means "no campaign" — never block a real enquiry over it.
+      const campaignId =
+        input.campaignId ?? (input.campaignCode ? await modules.marketing.findCampaignIdByCode(input.campaignCode) : null);
 
       const lead = await db.lead.create({
         data: {
           source: input.source,
           ownerId,
           preferredProjectId: input.preferredProjectId,
+          campaignId,
           contact: {
             create: {
               name: input.contact.name,
@@ -183,9 +232,30 @@ export function createCrmService({ db, bus, modules }: ModuleContext) {
         timeline: string | null;
         ownerId: string | null;
         lostReason: string | null;
+        campaignId: string | null;
       }>,
     ) {
       return db.lead.update({ where: { id }, data: input });
+    },
+
+    /** Just what campaign attribution needs (marketing module) — no contact details. */
+    listLeadsForAttribution() {
+      return db.lead.findMany({
+        select: { id: true, contactId: true, campaignId: true, source: true, stage: true, createdAt: true },
+      });
+    },
+
+    countLeadsForCampaign(campaignId: string) {
+      return db.lead.count({ where: { campaignId } });
+    },
+
+    /** Leads + contacts recorded with this source — Marketing refuses to delete a channel in use. */
+    async countRecordsWithSource(source: string) {
+      const [leads, contacts] = await Promise.all([
+        db.lead.count({ where: { source } }),
+        db.contact.count({ where: { source } }),
+      ]);
+      return leads + contacts;
     },
 
     /* ── Activities ── */

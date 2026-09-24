@@ -1,23 +1,22 @@
-// New in Phase 0 #1 — reconciled with packages/mock-data/src/erp/types.ts.
-// Leads/deals/revenue attributed to a channel or campaign are NOT stored here
-// — count them from crm_leads.campaignId / sales_contracts, same rule as
-// Project.totalUnits. Full CRUD lands in Phase 6.
+// Leads/deals/revenue attributed to a channel or campaign are NOT stored here — they're computed
+// from CRM leads (Lead.source / Lead.campaignId) and Sales contracts (see marketing.service.ts).
 
-enum ChannelPlatform {
-  FACEBOOK
-  TELEGRAM
-  WHATSAPP
-  WEBSITE
-  WALK_IN
-  REFERRAL
-}
-
+/// A lead/contact source and campaign channel (Facebook, TikTok, Walk-in, …). Admin-managed: the
+/// list is editable, so a new channel needs no code change or migration.
 model Channel {
-  id        String          @id @default(cuid())
-  name      String
-  platform  ChannelPlatform
-  connected Boolean         @default(false)
-  autoReply Boolean         @default(false)
+  id          String   @id @default(cuid())
+  /// Permanent identifier stored on leads/contacts/campaigns (e.g. "TIKTOK"). Never changes, so
+  /// renaming a channel never touches the records that point at it.
+  key         String   @unique
+  /// Display name, e.g. "TikTok". Freely renamable.
+  name        String
+  description String?
+  /// Hidden channels drop out of the pickers but still show on the records that already use them.
+  active      Boolean  @default(true)
+  /// WEBSITE is written by the public site itself — it can be renamed but not hidden or deleted.
+  isSystem    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
 
   @@map("marketing_channels")
 }
@@ -32,7 +31,11 @@ enum CampaignStatus {
 model Campaign {
   id        String          @id @default(cuid())
   name      String
-  platform  ChannelPlatform
+  /// Goes in ad links as `?utm_campaign=<code>` — a website visit carrying it links that visitor's
+  /// enquiry/chat lead to this campaign automatically. Readable slug set on create; cuid fallback.
+  code      String          @unique @default(cuid())
+  /// A Channel.key — see Channel.
+  channel   String
   status    CampaignStatus  @default(DRAFT)
   budget    Int             @default(0)
   spend     Int             @default(0)

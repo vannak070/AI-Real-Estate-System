@@ -9,6 +9,7 @@ import { marketingModule } from './marketing/index.js';
 import { settingsModule } from './settings/index.js';
 import { analyticsModule } from './analytics/index.js';
 import { assistantModule } from './assistant/index.js';
+import { messagingModule } from './messaging/index.js';
 
 /**
  * The modules this process runs. Order is not a dependency order — every
@@ -27,4 +28,5 @@ export const modules: AppModule[] = [
   settingsModule,
   analyticsModule,
   assistantModule,
+  messagingModule,
 ];

@@ -249,12 +249,34 @@ async function main() {
     })),
   });
 
+  // Same shape the 20260924080000_editable_channels migration produced: the mock data's long name
+  // becomes the description, the platform becomes the permanent key.
+  const CHANNEL_NAMES: Record<string, string> = {
+    FACEBOOK: 'Facebook',
+    TELEGRAM: 'Telegram',
+    WHATSAPP: 'WhatsApp',
+    WEBSITE: 'Website',
+    WALK_IN: 'Walk-in',
+    REFERRAL: 'Referral',
+  };
   await db.channel.createMany({
-    data: erpSeed.channels.map(({ leads30d: _leads30d, ...c }) => c), // derived, not stored
+    data: [
+      ...erpSeed.channels.map((c, i) => ({
+        id: c.id,
+        key: c.platform,
+        name: CHANNEL_NAMES[c.platform] ?? c.name,
+        description: c.name,
+        isSystem: c.platform === 'WEBSITE',
+        sortOrder: (i + 1) * 10,
+      })),
+      // The mock leads also use a generic CAMPAIGN source, which has no channel of its own.
+      { id: 'ch-campaign', key: 'CAMPAIGN', name: 'Campaign', active: false, sortOrder: 900 },
+    ],
   });
   await db.campaign.createMany({
-    data: erpSeed.campaigns.map(({ leads: _leads, deals: _deals, revenue: _revenue, ...c }) => ({
+    data: erpSeed.campaigns.map(({ leads: _leads, deals: _deals, revenue: _revenue, platform, ...c }) => ({
       ...c,
+      channel: platform,
       startDate: dateOrNull(c.startDate),
       endDate: dateOrNull(c.endDate),
     })),

@@ -1,0 +1,46 @@
+// Chat-app conversations (Telegram today; Messenger/WhatsApp later) handled by the AI assistant.
+// Unlike the website chat — where the browser holds the history — these platforms only ever send
+// the newest message, so the server keeps each conversation here.
+
+enum MessagingRole {
+  USER
+  ASSISTANT
+}
+
+model MessagingConversation {
+  id             String             @id @default(cuid())
+  /// A marketing channel key (marketing_channels.key), e.g. "TELEGRAM" — also the lead's source.
+  channel        String
+  /// The platform's own chat id (Telegram chat.id).
+  externalChatId String
+  /// As the platform reports it — unverified, not necessarily the customer's real name.
+  displayName    String?
+  username       String?
+  /// The CRM lead this conversation created (crm_leads.id, no FK — module rule). Later contact
+  /// corrections update that lead instead of creating a new one.
+  leadId         String?
+  /// From a campaign deep link (t.me/<bot>?start=<code>) — attributes the lead to that campaign.
+  campaignCode   String?
+  lastMessageAt  DateTime           @default(now())
+  createdAt      DateTime           @default(now())
+  messages       MessagingMessage[]
+
+  @@unique([channel, externalChatId])
+  @@map("messaging_conversations")
+}
+
+model MessagingMessage {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   MessagingConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessagingRole
+  text           String
+  /// The platform's message id for inbound messages — unique per conversation, so a redelivered
+  /// update (webhook retry) is recognised and skipped instead of answered twice.
+  externalId     String?
+  createdAt      DateTime              @default(now())
+
+  @@unique([conversationId, externalId])
+  @@index([conversationId, createdAt])
+  @@map("messaging_messages")
+}

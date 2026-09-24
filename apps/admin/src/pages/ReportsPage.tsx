@@ -2,11 +2,11 @@ import { PageHeader, Card, CardTitle, DataTable, Badge, type Column } from '@era
 import { useArAging } from '../data/finance';
 import { useLeads, groupLeadsByStage } from '../data/crm';
 import { useProjects } from '../data/inventory';
-import { useCampaigns } from '../data/marketing';
+import { useCampaigns, useCampaignStats, useChannelOptions } from '../data/marketing';
 import { useContracts } from '../data/sales';
 import { useUsers } from '../data/identity';
 import { useCommissions } from '../data/finance';
-import { computeAgentLeaderboard, computeCampaignStats } from '../lib/analytics';
+import { campaignRoiPct, computeAgentLeaderboard } from '../lib/analytics';
 import { money, pct, num, titleCase } from '../lib/format';
 
 type ProjectRow = NonNullable<ReturnType<typeof useProjects>['data']>[number];
@@ -17,6 +17,8 @@ export function ReportsPage() {
   const { data: leads } = useLeads();
   const { data: projects } = useProjects();
   const { data: campaigns } = useCampaigns();
+  const { label: channelLabel } = useChannelOptions();
+  const { data: campaignStats } = useCampaignStats();
   const { data: contracts } = useContracts();
   const { data: users } = useUsers();
   const { data: commissions } = useCommissions();
@@ -38,11 +40,11 @@ export function ReportsPage() {
     { key: 'sv', header: 'Sold value', align: 'right', render: (r) => money(r.soldValue, { compact: true }) },
   ];
 
-  const campRows = [...(campaigns ?? [])].sort((a, b) => {
-    const sa = computeCampaignStats(a.id, allLeads, allContracts);
-    const sb = computeCampaignStats(b.id, allLeads, allContracts);
-    return sb.revenue - b.spend - (sa.revenue - a.spend);
-  });
+  const statsById = new Map((campaignStats ?? []).map((s) => [s.campaignId, s]));
+  const statsFor = (id: string) => statsById.get(id) ?? { leads: 0, deals: 0, revenue: 0 };
+  const campRows = [...(campaigns ?? [])].sort(
+    (a, b) => statsFor(b.id).revenue - b.spend - (statsFor(a.id).revenue - a.spend),
+  );
 
   const leaderboard = computeAgentLeaderboard(users ?? [], allLeads, allContracts, commissions ?? []);
 
@@ -99,21 +101,22 @@ export function ReportsPage() {
       <DataTable
         columns={[
           { key: 'n', header: 'Campaign', render: (c: CampaignRow) => c.name },
-          { key: 'p', header: 'Channel', render: (c: CampaignRow) => titleCase(c.platform) },
+          { key: 'p', header: 'Channel', render: (c: CampaignRow) => channelLabel(c.channel) },
           { key: 's', header: 'Spend', align: 'right', render: (c: CampaignRow) => money(c.spend) },
-          { key: 'l', header: 'Leads', align: 'right', render: (c: CampaignRow) => num(computeCampaignStats(c.id, allLeads, allContracts).leads) },
-          { key: 'd', header: 'Deals', align: 'right', render: (c: CampaignRow) => computeCampaignStats(c.id, allLeads, allContracts).deals },
-          { key: 'r', header: 'Revenue', align: 'right', render: (c: CampaignRow) => money(computeCampaignStats(c.id, allLeads, allContracts).revenue) },
+          { key: 'l', header: 'Leads', align: 'right', render: (c: CampaignRow) => num(statsFor(c.id).leads) },
+          { key: 'd', header: 'Deals', align: 'right', render: (c: CampaignRow) => statsFor(c.id).deals },
+          { key: 'r', header: 'Revenue', align: 'right', render: (c: CampaignRow) => money(statsFor(c.id).revenue) },
           {
             key: 'roi',
             header: 'ROI',
             align: 'right',
             render: (c: CampaignRow) => {
-              const revenue = computeCampaignStats(c.id, allLeads, allContracts).revenue;
-              return (
-                <Badge tone={revenue > c.spend ? 'green' : 'red'}>
-                  {pct(((revenue - c.spend) / Math.max(c.spend, 1)) * 100)}
-                </Badge>
+              const s = statsFor(c.id);
+              const roi = campaignRoiPct(c.spend, s.revenue, s.deals);
+              return roi == null ? (
+                <span className="text-gray-400">—</span>
+              ) : (
+                <Badge tone={roi > 0 ? 'green' : 'red'}>{pct(roi)}</Badge>
               );
             },
           },

@@ -16,7 +16,8 @@ import {
 } from '../data/crm';
 import { useUsers, userLabel } from '../data/identity';
 import { useProjects, projectLabel } from '../data/inventory';
-import { LEAD_STAGES, LEAD_SOURCES, type LeadSource, type LeadStage, type Temperature } from '../data/types';
+import { DEFAULT_MANUAL_SOURCE, useCampaigns, useChannelOptions } from '../data/marketing';
+import { LEAD_STAGES, type LeadStage, type Temperature } from '../data/types';
 import { ProjectPicker } from '../app/components/ProjectPicker';
 import { money, date, relDays, titleCase, initials } from '../lib/format';
 
@@ -42,11 +43,18 @@ function NewLeadDrawer({ open, onClose }: { open: boolean; onClose: () => void }
   const { data: users } = useUsers();
   const agents = (users ?? []).filter((u) => u.role.key === 'AGENT');
   const createLead = useCreateLead();
+  // Campaign picker only for roles that can see Marketing (agents can't list campaigns).
+  const canSeeCampaigns = useCan('marketing:read');
+  const { data: campaigns } = useCampaigns({ enabled: canSeeCampaigns });
+  const [campaignId, setCampaignId] = useState('');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [source, setSource] = useState<LeadSource>('WALK_IN');
+  const { options: channelOptions, pickDefault } = useChannelOptions();
+  const [source, setSource] = useState('');
+  // Filled once the channel list loads — Walk-in if it's still active, else the first channel.
+  const effectiveSource = source || pickDefault(DEFAULT_MANUAL_SOURCE);
   const [ownerId, setOwnerId] = useState('');
 
   const { data: duplicate } = useFindDuplicateContact({ email: email || undefined, phone: phone || undefined });
@@ -55,14 +63,22 @@ function NewLeadDrawer({ open, onClose }: { open: boolean; onClose: () => void }
     setName('');
     setEmail('');
     setPhone('');
-    setSource('WALK_IN');
+    setSource('');
     setOwnerId('');
+    setCampaignId('');
   }
 
   function submit() {
-    if (!name.trim()) return;
+    if (!name.trim() || !effectiveSource) return;
     createLead.mutate(
-      { name: name.trim(), email: email || undefined, phone: phone || undefined, source, ownerId: ownerId || undefined },
+      {
+        name: name.trim(),
+        email: email || undefined,
+        phone: phone || undefined,
+        source: effectiveSource,
+        ownerId: ownerId || undefined,
+        campaignId: campaignId || undefined,
+      },
       { onSuccess: () => { reset(); onClose(); } },
     );
   }
@@ -92,14 +108,28 @@ function NewLeadDrawer({ open, onClose }: { open: boolean; onClose: () => void }
 
         <label className="block">
           <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Source</span>
-          <Select className="mt-1 w-full" value={source} onChange={(e) => setSource(e.target.value as LeadSource)}>
-            {LEAD_SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {titleCase(s)}
+          <Select className="mt-1 w-full" value={effectiveSource} onChange={(e) => setSource(e.target.value)}>
+            {channelOptions.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.name}
               </option>
             ))}
           </Select>
         </label>
+
+        {canSeeCampaigns && (
+          <label className="block">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Campaign (optional)</span>
+            <Select className="mt-1 w-full" value={campaignId} onChange={(e) => setCampaignId(e.target.value)}>
+              <option value="">None</option>
+              {(campaigns ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+        )}
 
         {canAssign ? (
           <label className="block">
@@ -154,6 +184,9 @@ export function LeadsPage() {
   const { data: openActs } = useActivities(openId ? { leadId: openId } : {});
   const changeStage = useChangeLeadStage();
   const updateLead = useUpdateLead();
+  const canSeeCampaigns = useCan('marketing:read');
+  const { data: campaigns } = useCampaigns({ enabled: canSeeCampaigns });
+  const { label: channelLabel } = useChannelOptions();
   const toggleActivityDone = useToggleActivityDone();
 
   const [editingLead, setEditingLead] = useState(false);
@@ -456,7 +489,7 @@ export function LeadsPage() {
                 </Field>
                 <Field label="Wants">{open.unitTypeWanted ? titleCase(open.unitTypeWanted) : '—'}</Field>
                 <Field label="Timeline">{open.timeline ?? '—'}</Field>
-                <Field label="Source">{titleCase(open.source)}</Field>
+                <Field label="Source">{channelLabel(open.source)}</Field>
                 <Field label="Owner">{userLabel(users, open.ownerId)}</Field>
                 <Field label="Created">{date(open.createdAt)}</Field>
                 <Field label="Last activity">{date(open.updatedAt)}</Field>
@@ -476,6 +509,31 @@ export function LeadsPage() {
                 </div>
               ) : (
                 <p className="mt-1 text-sm text-gray-800">{projectLabel(projects, open.preferredProjectId)}</p>
+              )}
+            </div>
+            )}
+
+            {!editingLead && canSeeCampaigns && (
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wide text-gray-400">Campaign</label>
+              {canWrite ? (
+                <Select
+                  className="mt-1 w-full"
+                  value={open.campaignId ?? ''}
+                  disabled={updateLead.isPending}
+                  onChange={(e) => updateLead.mutate({ id: open.id, campaignId: e.target.value || null })}
+                >
+                  <option value="">None</option>
+                  {(campaigns ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <p className="mt-1 text-sm text-gray-800">
+                  {(campaigns ?? []).find((c) => c.id === open.campaignId)?.name ?? '—'}
+                </p>
               )}
             </div>
             )}

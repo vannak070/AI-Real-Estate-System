@@ -42,7 +42,7 @@ const CAPABILITY_GROUPS: { label: string; caps: Capability[] }[] = [
   { label: 'Sales', caps: ['sales:read', 'sales:write', 'sales:sign'] },
   { label: 'Finance', caps: ['finance:read', 'finance:write', 'commission:approve'] },
   { label: 'Approvals', caps: ['approvals:decide'] },
-  { label: 'Marketing', caps: ['marketing:read'] },
+  { label: 'Marketing', caps: ['marketing:read', 'marketing:write'] },
   { label: 'Reports & Docs', caps: ['reports:read', 'documents:read'] },
   { label: 'Settings', caps: ['settings:write'] },
 ];

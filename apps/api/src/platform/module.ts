@@ -19,6 +19,11 @@ export interface ModuleRegistration<TApi> {
   api: TApi;
   /** Optional HTTP surface for this module. */
   routes?: (app: FastifyInstance) => Promise<void> | void;
+  /** Called once every module has registered and the HTTP server is set up — start background
+   * work here (e.g. the Telegram bot), when `ctx.modules.*` is safe to call. */
+  start?: () => Promise<void> | void;
+  /** Called on shutdown, before the DB disconnects. */
+  stop?: () => Promise<void> | void;
 }
 
 export interface AppModule<TApi = unknown> {
@@ -43,4 +48,5 @@ export interface ModuleApis {
   settings: import('../modules/settings/index.js').SettingsApi;
   analytics: import('../modules/analytics/index.js').AnalyticsApi;
   assistant: import('../modules/assistant/index.js').AssistantApi;
+  messaging: import('../modules/messaging/index.js').MessagingApi;
 }

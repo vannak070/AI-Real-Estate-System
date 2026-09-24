@@ -20,6 +20,7 @@ import { settingsRouter } from '../modules/settings/settings.router.js';
 import { analyticsRouter } from '../modules/analytics/analytics.router.js';
 import { createAssistantService } from '../modules/assistant/assistant.service.js';
 import { assistantRouter } from '../modules/assistant/assistant.router.js';
+import { messagingRouter } from '../modules/messaging/messaging.router.js';
 
 /**
  * The static, statically-typed router tree — this is what makes `AppRouter`
@@ -51,6 +52,7 @@ export function createAppRouter(moduleCtx: ModuleContext) {
     settings: settingsRouter(settingsService),
     analytics: analyticsRouter(moduleCtx),
     assistant: assistantRouter(assistantService),
+    messaging: messagingRouter(moduleCtx),
   });
 }
 

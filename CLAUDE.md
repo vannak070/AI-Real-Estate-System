@@ -239,8 +239,10 @@ Rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
   on an incompatible payload change; handlers must be idempotent.
 - Prisma uses the multi-file schema folder `apps/api/prisma/schema/`.
 - **HTTP is tRPC, not REST** — every module gets a `*.router.ts` composed in
-  `src/trpc/root.ts`; there are no more `*.routes.ts` files. `/health` is the
-  only plain REST endpoint, on purpose.
+  `src/trpc/root.ts`; there are no more `*.routes.ts` files. The only plain
+  REST endpoints, on purpose, are `/health` and chat-platform webhooks
+  (`POST /webhooks/telegram`, registered in `modules/messaging/index.ts`'s
+  `routes`) — platforms POST their own payload format, so tRPC can't apply.
 - **Auth is real**: bcrypt password hashes, DB-backed sessions (`identity_sessions`,
   cookie = session id, no JWT). `withCapability(cap)` in `trpc/trpc.ts` enforces
   `@era/contracts`' `ROLE_CAPS` server-side — the same map `apps/admin` uses to
@@ -253,9 +255,19 @@ Rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
   `getPublicProject` and `listPublicUnits` in `inventory.service.ts`; the AI assistant reuses
   them. Any new public read of projects/units needs the same filter. Scripts that import real
   listings set `isPublished: true` explicitly.
-- **`modules/assistant/`** is the odd one out: it has no Prisma tables of its
-  own and its cross-module `AssistantApi` is deliberately empty (nothing
-  calls back into it) — it only ever calls OUT to `ctx.modules.inventory`/
-  `ctx.modules.crm` and the Anthropic API. It's what powers `apps/client`'s
-  `ChatPage.tsx`; see `memory-bank/activeContext.md` for the full design
-  (tool use, rate limiting, why it's stateless server-side).
+- **`modules/assistant/`** has no Prisma tables of its own — it calls OUT to
+  `ctx.modules.inventory`/`ctx.modules.crm` and the Anthropic API. It powers
+  `apps/client`'s `ChatPage.tsx` (tRPC `assistant.public.chat`, browser holds
+  the history) and, via `AssistantApi.replyToMessage`, the chat-app bots.
+- **`modules/messaging/`** owns the chat-app side (Telegram today; Messenger/
+  WhatsApp next): its own tables (`messaging.prisma` — server-stored
+  conversation history, lead link, dedupe on the platform's message id),
+  long polling in dev / signed webhook when `PUBLIC_API_URL` is set, and
+  replies from `ctx.modules.assistant`. Optional: nothing starts without
+  `TELEGRAM_BOT_TOKEN`. Background work uses the `AppModule` `start`/`stop`
+  hooks (`platform/module.ts`, run by `app.ts`).
+- **Lead/contact `source` and campaign `channel` are keys into
+  `marketing_channels`** (admin-editable list), not enums — validate new
+  values with `ctx.modules.marketing.isActiveChannel(key)`; bots pass their
+  own channel key (e.g. `TELEGRAM`) to `CrmApi.createLead`. See
+  `memory-bank/activeContext.md` for both designs.

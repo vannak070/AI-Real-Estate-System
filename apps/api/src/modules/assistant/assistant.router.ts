@@ -19,6 +19,10 @@ export function assistantRouter(service: AssistantService) {
             messages: z.array(messageInput).min(1),
             propertyId: z.string().optional(),
             propertyName: z.string().optional(),
+            /** Signed reference to the lead this conversation already created (see assistant.service.ts). */
+            leadToken: z.string().max(200).optional(),
+            /** From the visitor's ad link (`?utm_campaign=`), captured by apps/client. */
+            campaignCode: z.string().max(80).optional(),
           }),
         )
         .mutation(({ input, ctx }) => service.chat(input, { ip: ctx.req.ip })),

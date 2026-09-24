@@ -1,10 +1,27 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { can } from '@era/contracts';
-import { ActivityType, ContactType, LeadSource, LeadStage, Temperature } from '@prisma/client';
+import { ActivityType, ContactType, LeadStage, Temperature } from '@prisma/client';
 import { router, withCapability, publicProcedure } from '../../trpc/trpc.js';
 import { scopedOwnerId } from '../../trpc/scoping.js';
+import type { ModuleContext } from '../../platform/module.js';
 import type { CrmService } from './crm.service.js';
+
+/** campaignId is a bare cross-module id (no FK), so check it against the marketing module. */
+async function assertCampaignExists(ctx: Pick<ModuleContext, 'modules'>, campaignId: string | null | undefined) {
+  if (campaignId && !(await ctx.modules.marketing.campaignExists(campaignId))) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'unknown_campaign' });
+  }
+}
+
+/** Sources are keys into Marketing's editable channel list (no FK), so check they name an active one. */
+async function assertActiveChannel(ctx: Pick<ModuleContext, 'modules'>, source: string) {
+  if (!(await ctx.modules.marketing.isActiveChannel(source))) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Unknown or hidden channel — pick one from the list.' });
+  }
+}
+
+const sourceInput = z.string().trim().min(1).max(40);
 
 export function crmRouter(service: CrmService) {
   return router({
@@ -46,15 +63,16 @@ export function crmRouter(service: CrmService) {
             phone: z.string().optional(),
             nationality: z.string().optional(),
             company: z.string().optional(),
-            source: z.nativeEnum(LeadSource),
+            source: sourceInput,
             consentMarketing: z.boolean().optional(),
             ownerId: z.string().optional(),
             tags: z.array(z.string()).optional(),
           }),
         )
-        .mutation(({ input, ctx }) =>
-          service.createContact({ ...input, ownerId: scopedOwnerId(ctx.user, 'crm:read:all', input.ownerId) }),
-        ),
+        .mutation(async ({ input, ctx }) => {
+          await assertActiveChannel(ctx, input.source);
+          return service.createContact({ ...input, ownerId: scopedOwnerId(ctx.user, 'crm:read:all', input.ownerId) });
+        }),
 
       // Ownership check mirrors quotations.update: a plain crm:write holder may only act
       // on their own contacts unless they also hold crm:read:all.
@@ -114,17 +132,21 @@ export function crmRouter(service: CrmService) {
             name: z.string().min(1),
             email: z.string().email().optional(),
             phone: z.string().optional(),
-            source: z.nativeEnum(LeadSource),
+            source: sourceInput,
             ownerId: z.string().optional(),
+            campaignId: z.string().nullable().optional(),
           }),
         )
-        .mutation(({ input, ctx }) =>
-          service.createLead({
+        .mutation(async ({ input, ctx }) => {
+          await assertActiveChannel(ctx, input.source);
+          await assertCampaignExists(ctx, input.campaignId);
+          return service.createLead({
             contact: { name: input.name, email: input.email, phone: input.phone },
             source: input.source,
             ownerId: scopedOwnerId(ctx.user, 'crm:read:all', input.ownerId),
-          }),
-        ),
+            campaignId: input.campaignId,
+          });
+        }),
 
       // Ownership check mirrors leads.update.
       changeStage: withCapability('crm:write')
@@ -152,6 +174,7 @@ export function crmRouter(service: CrmService) {
             timeline: z.string().nullable().optional(),
             ownerId: z.string().nullable().optional(),
             lostReason: z.string().nullable().optional(),
+            campaignId: z.string().nullable().optional(),
           }),
         )
         .mutation(async ({ input: { id, ...data }, ctx }) => {
@@ -159,6 +182,7 @@ export function crmRouter(service: CrmService) {
           if (lead && !can(ctx.user.capabilities, 'crm:read:all') && lead.ownerId !== ctx.user.id) {
             throw new TRPCError({ code: 'FORBIDDEN', message: 'This lead belongs to another agent' });
           }
+          await assertCampaignExists(ctx, data.campaignId);
           return service.updateLead(id, data);
         }),
     }),
@@ -175,6 +199,8 @@ export function crmRouter(service: CrmService) {
             phone: z.string().optional(),
             message: z.string().optional(),
             preferredProjectId: z.string().optional(),
+            /** From the visitor's ad link (`?utm_campaign=`), captured by apps/client. */
+            campaignCode: z.string().max(80).optional(),
           }),
         )
         .mutation(({ input }) =>
@@ -183,6 +209,7 @@ export function crmRouter(service: CrmService) {
             source: 'WEBSITE',
             preferredProjectId: input.preferredProjectId,
             message: input.message,
+            campaignCode: input.campaignCode,
           }),
         ),
     }),

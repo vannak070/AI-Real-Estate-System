@@ -29,7 +29,8 @@ import {
 import { useUsers, userLabel } from '../data/identity';
 import { useProjects, projectLabel } from '../data/inventory';
 import { CONTACT_TYPES } from '../data/types';
-import { LEAD_SOURCES, type ContactType, type LeadSource } from '../data/types';
+import { type ContactType } from '../data/types';
+import { DEFAULT_MANUAL_SOURCE, useChannelOptions } from '../data/marketing';
 import { date, initials, money, titleCase } from '../lib/format';
 
 type ContactRow = NonNullable<ReturnType<typeof useContacts>['data']>[number];
@@ -136,18 +137,21 @@ function NewContactDrawer({ open, onClose }: { open: boolean; onClose: () => voi
   const createContact = useCreateContact();
 
   const [form, setForm] = useState<ContactFormState>(EMPTY_CONTACT_FORM);
-  const [source, setSource] = useState<LeadSource>('WALK_IN');
+  const { options: channelOptions, pickDefault } = useChannelOptions();
+  const [source, setSource] = useState('');
+  // Filled once the channel list loads — Walk-in if it's still active, else the first channel.
+  const effectiveSource = source || pickDefault(DEFAULT_MANUAL_SOURCE);
 
   const { data: duplicate } = useFindDuplicateContact({ email: form.email || undefined, phone: form.phone || undefined });
   const missing = !form.name.trim() ? ['Name'] : [];
 
   function reset() {
     setForm(EMPTY_CONTACT_FORM);
-    setSource('WALK_IN');
+    setSource('');
   }
 
   function submit() {
-    if (missing.length > 0) return;
+    if (missing.length > 0 || !effectiveSource) return;
     createContact.mutate(
       {
         name: form.name.trim(),
@@ -157,7 +161,7 @@ function NewContactDrawer({ open, onClose }: { open: boolean; onClose: () => voi
         company: form.company || undefined,
         consentMarketing: form.consentMarketing,
         type: form.type,
-        source,
+        source: effectiveSource,
       },
       { onSuccess: () => { reset(); onClose(); } },
     );
@@ -177,10 +181,10 @@ function NewContactDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
         <label className="block">
           <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Source</span>
-          <Select className="mt-1 w-full" value={source} onChange={(e) => setSource(e.target.value as LeadSource)}>
-            {LEAD_SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {titleCase(s)}
+          <Select className="mt-1 w-full" value={effectiveSource} onChange={(e) => setSource(e.target.value)}>
+            {channelOptions.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.name}
               </option>
             ))}
           </Select>
@@ -203,6 +207,7 @@ export function ContactsPage() {
   const canWrite = useCan('crm:write');
   const canSeeAll = useCan('crm:read:all');
   const { user } = useAuth();
+  const { label: channelLabel } = useChannelOptions();
   // crm:read:all holders (managers, admins, …) are rarely assigned contacts
   // themselves — default them to the team-wide view instead of "My contacts",
   // which would otherwise look empty. Safe as a lazy initializer: <RequireAuth>
@@ -299,7 +304,7 @@ export function ContactsPage() {
         );
       },
     },
-    { key: 'src', header: 'Source', render: (c) => titleCase(c.source) },
+    { key: 'src', header: 'Source', render: (c) => channelLabel(c.source) },
     { key: 'owner', header: 'Owner', render: (c) => userLabel(users, c.ownerId) },
   ];
 
@@ -429,7 +434,7 @@ export function ContactsPage() {
                 <Field label="Phone">{open.phone ?? '—'}</Field>
                 <Field label="Nationality">{open.nationality ?? '—'}</Field>
                 <Field label="Company">{open.company ?? '—'}</Field>
-                <Field label="Source">{titleCase(open.source)}</Field>
+                <Field label="Source">{channelLabel(open.source)}</Field>
                 <Field label="Marketing consent">{open.consentMarketing ? 'Yes' : 'No'}</Field>
                 <Field label="Owner">{userLabel(users, open.ownerId)}</Field>
                 <Field label="Since">{date(open.createdAt)}</Field>

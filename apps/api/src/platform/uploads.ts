@@ -64,4 +64,12 @@ export async function deleteImage(url: string): Promise<void> {
   await unlink(path.join(UPLOADS_ROOT, relativePath)).catch(() => {});
 }
 
+/** "/uploads/projects/x/0.jpg" → its absolute path on disk; null for anything that isn't an
+ * upload or that would escape the uploads folder. */
+export function resolveUploadPath(url: string): string | null {
+  if (!url.startsWith('/uploads/')) return null;
+  const absolutePath = path.resolve(UPLOADS_ROOT, url.slice('/uploads/'.length));
+  return absolutePath.startsWith(UPLOADS_ROOT + path.sep) ? absolutePath : null;
+}
+
 export { UPLOADS_ROOT };

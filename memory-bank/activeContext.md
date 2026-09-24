@@ -16,7 +16,203 @@ real data (Tier 0, 2026-09-21). `@era/mock-data` has zero consumers in
 
 Most recent work, newest first:
 
-1. **Admin Projects vs Sales/Rent is now an explicit setting —
+1. **Telegram AI bot (2026-09-24, built + tested against a fake Telegram
+   API; needs a real bot token from the user, admin UI check pending
+   sign-in)** — new `apps/api/src/modules/messaging/` module (own tables in
+   `prisma/schema/messaging.prisma`: `messaging_conversations` keyed by
+   (channel, externalChatId) with `leadId`/`campaignCode`, and
+   `messaging_messages` with a unique (conversationId, externalId) so a
+   redelivered update is skipped, not answered twice). It owns the platform
+   side and asks the assistant for each reply through the new
+   `AssistantApi.replyToMessage` (the assistant's tool-use loop was
+   extracted into a shared `converse()`; the website `chat` and chat-app
+   `replyToMessage` are thin wrappers). Chat-app specifics: server-stored
+   history (last 20 msgs; leading assistant turns dropped because the API
+   needs a user turn first), leads created with `source: 'TELEGRAM'`
+   (`CrmApi.createLead` now takes an optional `source` — only for callers
+   that verified the origin), tool results carry a website `url` per
+   property (`PUBLIC_SITE_URL`), replies forced to plain text by
+   `toPlainText()` (**seen live: Haiku used `**bold**` on Telegram despite
+   the prompt forbidding it** — so it's stripped server-side, a guarantee
+   not a request), `/start <campaign-code>` deep links
+   (`t.me/<bot>?start=<code>`) attribute the lead to a campaign, a
+   "📱 Share my phone number" `request_contact` keyboard (someone else's
+   contact is refused), `/new` resets history, non-text → "text only",
+   group chats ignored, per-chat serialization, typing indicator, never
+   throws into the customer's face (`MessagingReply` result type).
+   Transport: **long polling when `PUBLIC_API_URL` is unset** (works on
+   localhost, no tunnel — it calls `deleteWebhook` first), **webhook at
+   `POST /webhooks/telegram` when it's set** (registered via `setWebhook`
+   on every boot with a random per-process `secret_token`, checked with
+   `timingSafeEqual`; replies 200 at once, processes in the background).
+   Webhooks are the deliberate second exception to "HTTP is tRPC" (after
+   `/health`). New `AppModule` hooks `start`/`stop` (app.ts runs them;
+   `stop` aborts the poll and waits ≤8s for in-flight replies).
+   `messaging.status` (marketing:read) feeds the Channels tab's Telegram card
+   ("AI bot on · @name" / "not set up" / error) and the campaign drawer's
+   "Telegram bot link". Env: `TELEGRAM_BOT_TOKEN` (optional — nothing starts
+   without it), `PUBLIC_API_URL`, `PUBLIC_SITE_URL`, `TELEGRAM_API_BASE`
+   (tests only). Verified: full conversation via a local fake Bot API + real
+   Claude + real DB (grounded listings with links, contact share → exactly
+   one TELEGRAM lead auto-assigned, phone correction updated the same lead,
+   duplicate/group/photo handled, campaign code stored), webhook mode
+   (wrong/no secret → 401, right → 200 + reply). Test data cleaned up.
+   **Live since 2026-09-24 as @ERACambodiaAI_bot** (user tested on their
+   phone; lead "Vannak" landed with source TELEGRAM). The token was pasted
+   into chat, so it's treated as exposed — user told to `/revoke` and
+   re-set it (hidden-input command given) before real customers use it.
+   **Photo cards (same day, user asked "image instead of link"):** the
+   model still writes each recommended property's website url on its own
+   line; `replyToMessage` turns those into `cards` (only ids a tool returned
+   this turn, max 5) and strips the links from the sent text, while the
+   stored transcript keeps them so "the first one" still resolves next turn.
+   The bot sends cards first (photo + name / "From $X[/month]" / 📍 area),
+   then the text. Photos are local `/uploads` files, which Telegram can't
+   fetch from localhost → uploaded as multipart from disk
+   (`resolveUploadPath`, traversal-safe) the first time, then re-sent by the
+   returned `file_id` (in-memory cache); with `PUBLIC_API_URL` set it passes
+   the URL instead. A "View details" link button is added only when
+   `PUBLIC_SITE_URL` is public (Telegram rejects localhost button URLs). No
+   photo / failed photo → text card fallback.
+   **Bug the user hit on their phone ("photos don't show"):** cards were
+   only built for properties a tool returned *in the same turn*, but the
+   links were stripped regardless — so a follow-up turn where the model
+   repeated a url from history (no tool call) sent "The link is right here:"
+   and nothing; and a detailed get_property answer that forgot the url sent
+   no photo. Fixed: `extractCards` re-looks-up any linked id via
+   `getPublicProject` (published-only → invented ids yield no card), a turn
+   with exactly one get_property and no url still gets that property's
+   card (`ConversationState.detailedIds`), and the prompt says customers
+   never see urls (never mention links/paste/browser; to re-show a photo,
+   repeat the url). Re-verified: search → details → "can I see a picture?"
+   each send the photo.
+   **"The bot doesn't understand customer replies" (user, same day)** — the
+   real transcript showed "I love this"/"This property" after 5 photos and
+   "Yes" after an "A, or B?" question going round in circles. Fixes: cards
+   are numbered ("2. …") and carry inline callback buttons "ℹ️ More details"
+   (`d:<projectId>`) / "📅 Book a viewing" (`v:<projectId>`) — a tap
+   (`callback_query`, now in `allowed_updates`) is answered at once
+   (`answerCallbackQuery`) and processed as the customer's message
+   ("Tell me more about "X" (property id …)", published-only lookup;
+   dedupe key `cb:<callback id>`); a swipe-reply (`reply_to_message`) to a
+   card is prefixed "[Replying to photo card: "X" (property id …)]" via an
+   in-memory message-id → property map (caption fallback after restart);
+   the stored transcript replaces each link with "[Photo card N shown: name
+   — price — area — url]" so later turns know exactly what was on screen
+   (lines echoing that note are stripped from sent text); prompt rules for
+   brief replies (number after a budget question = budget, "2"/"the second"
+   = card 2, one question at a time, viewing requests re-call submit_lead
+   with the property id). Verified by replaying the user's own conversation
+   in the harness. Still on Haiku 4.5 — a stronger model (Sonnet 5, ~2× the
+   per-token price) is the next lever if comprehension (esp. Khmer) is still
+   weak; not changed without the user's say-so.
+   **Found while testing: location search missed most of the inventory.**
+   Listings spell areas in romanised Khmer ("Boeng Keng Kang", "Tuol
+   Kouk") while customers type "BKK1"/"Toul Kork" — "BKK1 rent" found 5
+   (the photo-less demo rows) instead of 93. Fixed with `LOCATION_ALIASES` +
+   `locationSpellings()` in `inventory.service.ts` (matches location, city
+   and district), which also fixes the website chat. `searchPublicProjects`
+   now takes `minPrice`/`maxPrice` (filtered in code — `startingPrice` is
+   derived), ranks listings with photos first, and returns
+   `{ total, results }` so the AI can say "36 condos under $800" truthfully. Then Messenger/WhatsApp (Meta
+   app + App Review / WhatsApp Business verification — slow, start early)
+   and an admin Inbox for human handoff.
+2. **Channels are an editable list (2026-09-24, admin UI check pending
+   sign-in)** — the `LeadSource` and `ChannelPlatform` Postgres enums are
+   gone: `Contact.source`/`Lead.source` and `Campaign.channel` (renamed from
+   `platform`) are plain text keys into `marketing_channels` (`key` unique &
+   permanent, `name`, `description`, `active`, `isSystem`, `sortOrder`;
+   `platform`/`connected`/`autoReply` dropped — `connected` was a
+   hand-ticked flag; bot connection is now read live from
+   `messaging.status`). Hand-written, data-preserving migration
+   `20260924080000_editable_channels` (nice names, old long names →
+   description, WEBSITE `isSystem`, and a **hidden `CAMPAIGN` channel** so
+   the 6 leads/6 contacts with the old enum's CAMPAIGN source keep a label).
+   First attempt failed on the old `platform` NOT NULL — Postgres rolled the
+   whole migration back, fixed order, `migrate resolve --rolled-back`, redeploy.
+   Marketing: `channels.create/update/delete` (marketing:write; key =
+   UPPER_SNAKE of the name with numeric suffix on clash, never editable;
+   WEBSITE can be renamed but not hidden/deleted; delete refused while any
+   lead/contact (`CrmApi.countRecordsWithSource`) or campaign uses it —
+   "hide it instead"); `channels.list` is now `protectedProcedure` (agents
+   pick Source from it). CRM `leads.create`/`contacts.create` validate the
+   source via `MarketingApi.isActiveChannel`; campaigns must pick an active
+   channel (keeping a since-hidden one on edit is allowed). Admin:
+   `useChannelOptions(keep?)` (active options + current value, label lookup
+   with title-case fallback, `pickDefault`) drives Leads/Contacts Source
+   pickers and labels, the campaign Channel picker, Reports; Channels tab has
+   New channel, click-to-edit drawer (name, description, Active, shows the
+   key), two-click delete, "Show hidden". Verified via harness (create/key
+   suffix/permission/system/in-use refusals/hidden refusals/stats) — all test
+   rows removed.
+3. **Marketing / Campaigns rebuilt + ad-link auto-attribution
+   (2026-09-24, admin UI check pending sign-in)** — review found the
+   `/campaigns` page was display-only (backend had only `list`; no
+   `marketing:write` capability existed), nothing anywhere could set
+   `Lead.campaignId` (only demo seed data had it), Marketing-role users saw
+   $0 revenue / −100% ROI because the page fetched `sales.contracts.list`
+   which they can't read, CPL/ROI were misleading with 0 leads/deals,
+   revenue double-counted, and the Channels tab showed fake "connected / AI
+   auto-reply" flags. Done (user approved): **deleted the 8 demo
+   campaigns** (unlinked their 13 demo leads, leads kept); migration
+   `…_add_campaign_code` adds `Campaign.code` (unique; readable slug like
+   `qa-facebook-promo-5af0` generated on create, **not editable** — would
+   break live ads; hand-written migration backfills from id, applied with
+   `migrate deploy` because `migrate dev` refuses non-interactively for a
+   new required unique column); new capability **`marketing:write`**
+   (contracts + DB roles ADMIN/MARKETING + UsersPage group). Marketing
+   module: create/update/delete (delete refused while leads are linked →
+   "set it to Ended"), date validation, server-side `campaigns.stats`
+   (leads by `campaignId`; each ACTIVE/COMPLETED contract credited to one
+   campaign = the contact's latest campaign lead created on/before the
+   contract) and `channels.stats` (leads per source, 30 days) — reads CRM/
+   Sales only via new `CrmApi.listLeadsForAttribution/countLeadsForCampaign`
+   and `SalesApi.listContractsForAttribution`. New `MarketingApi`
+   (`findCampaignIdByCode`, `campaignExists`) used by CRM. CRM: admin
+   `leads.create/update` accept `campaignId` (validated); `createLead`
+   resolves `campaignCode` (unknown code → no campaign, never an error).
+   **Auto-link**: `apps/client/src/lib/attribution.ts` captures
+   `?utm_campaign=` on any page (CustomerLayout effect) into localStorage
+   for 30 days, last click wins; sent as `campaignCode` by the enquiry form
+   and the AI chat (assistant passes it to `createLead`). Admin: new
+   Campaigns page (New/edit drawer with copyable ad link, two-click delete,
+   "—" for CPL/ROI until meaningful via `costPerLead`/`campaignRoiPct` in
+   lib/analytics, honest Channels tab), Reports' Campaign ROI uses server
+   stats; Leads: Campaign picker on New lead + lead detail (only for
+   `marketing:read` holders — agents can't list campaigns). Old client-side
+   `computeCampaignStats` removed. Verified with a server-side harness
+   (real procedures, fake admin/marketing/agent users) + real browser:
+   ad link → browse → enquiry form lead linked; AI chat lead linked; stats
+   2 leads / 1 deal / $50k (pre-ad contract excluded), identical for
+   Marketing-only role; delete-with-leads refused; unknown campaign
+   rejected. All test rows deleted; 0 campaigns now. Gate 17/17.
+4. **AI chat: visitors can now correct their contact details
+   (2026-09-24)** — user report: customer updated their contact in chat but
+   admin still showed the old one. Cause: system prompt said "Never call
+   submit_lead more than once per conversation" and the server was
+   stateless, so a correction was silently dropped (a second call would
+   have created a *duplicate* contact+lead anyway). Fix: the chat response
+   now returns an HMAC-signed `leadToken` (`<leadId>.<sig>`, secret
+   `CHAT_TOKEN_SECRET` — new optional env var, generated into the local
+   `.env`; falls back to a per-process random secret with a startup warning).
+   `ChatPage.tsx` persists it in sessionStorage with the conversation and
+   sends it back each turn. With a valid token, `submit_lead` calls new
+   `CrmApi.updateLeadContact` (crm.service.ts) → updates that lead's own
+   contact in place (blank fields never wipe values) and logs a NOTE like
+   `phone 012 345 678 → 098 765 432; email (none) → …`. Forged/invalid
+   token → ignored (verified: can't touch another lead). Also added server
+   email/phone sanity checks in the tool. **Live finding**: after a
+   rejected email, Haiku still told the visitor "I've updated your email"
+   even with an explicit prompt rule — so it's now a server guarantee: if
+   the turn's last save attempt was rejected, the server writes the reply
+   itself ("Sorry — I couldn't save that. … nothing has changed"). Tool
+   calls are logged as `assistant.tool {tool, outcome}` (no PII). Verified
+   live: create → correct phone+email → same single record updated + note;
+   bad email → honest reply, DB unchanged; correction still works after an
+   API restart; forged token rejected. Test rows deleted. Existing leads
+   from before this fix (e.g. "Vannak" 016966036) can't be matched to their
+   old chats — fix those by hand in admin. Gate 17/17.
+5. **Admin Projects vs Sales/Rent is now an explicit setting —
    `Project.isDevelopment` (2026-09-24, admin UI check pending sign-in)** —
    the Projects page used to mean "more than 1 unit row", which filed the 45
    real ERA developer towers (1 sample unit each) under Sales and put 8
@@ -53,7 +249,7 @@ Most recent work, newest first:
    same as the back office's Sales/Rent pages). Note the 45 projects were
    re-created on 2026-09-24, so they're the newest rows — that's why they
    had to be *excluded* from For Sale, not just un-sorted. Verified live.
-2. **"Show on website" flag — `Project.isPublished` (2026-09-24, admin UI
+6. **"Show on website" flag — `Project.isPublished` (2026-09-24, admin UI
    check pending sign-in)** — before this, *every* Inventory row was on the
    customer site the moment it was created (status/badge only changed
    labels). New column `isPublished Boolean @default(false)` (migration
@@ -74,7 +270,7 @@ Most recent work, newest first:
    `scripts/*.ts` that create projects) now set `isPublished: true` —
    re-running any of them would otherwise create hidden listings.
    Sold Out/Completed are NOT auto-hidden (user agreed). Gate 17/17.
-3. **Admin Add/Edit property forms unified (2026-09-24, live UI check
+7. **Admin Add/Edit property forms unified (2026-09-24, live UI check
    pending an admin sign-in)** — `NewProjectDrawer` (ProjectsPage.tsx) and
    `EditProjectDrawer` (ProjectDetailPage.tsx) were two hand-written copies
    that had drifted: Add lacked the Property facts (developer/tenure/
@@ -98,7 +294,7 @@ Most recent work, newest first:
    property" everywhere; dropdowns show readable labels. Phase 2 (price/
    bed/bath on Add for Sales/Rent, auto-creating the first unit) proposed,
    not approved. Gate 17/17.
-4. **`/properties` tabs + pagination — current shape (2026-09-24)**: tabs
+8. **`/properties` tabs + pagination — current shape (2026-09-24)**: tabs
    are **Exclusive Property | For Sale | For Rent** — tab *membership* was
    later changed (see item 1's follow-up: Exclusive now also holds the
    published development projects, and Sale/Rent exclude them; current
@@ -119,7 +315,7 @@ Most recent work, newest first:
    **Known limitation**: pagination is client-side — the page still
    fetches all 667 projects up front (see "Known open items"). Verified
    live incl. 375px width (no horizontal overflow). Gate: 17/17.
-5. **ERA sale/condo listings refreshed from a live re-scrape of
+9. **ERA sale/condo listings refreshed from a live re-scrape of
    eracambodia.com/projects (2026-09-24)** — user asked to delete existing
    Inventory and re-scrape from that URL. Scoped down from a literal full
    wipe after confirming with the user: "delete the existing Project" would
@@ -154,7 +350,7 @@ Most recent work, newest first:
    project detail page (G.A.T.O Tower) both show the real current price/
    location/developer/photo. Full `pnpm turbo run typecheck lint build`:
    17/17.
-6. **`ChatPage.tsx` Tier 1 — real LLM-backed AI assistant (2026-09-24)**,
+10. **`ChatPage.tsx` Tier 1 — real LLM-backed AI assistant (2026-09-24)**,
    replacing the scripted decision-tree from Tier 0 with an actual
    Claude-powered conversation. New backend module
    `apps/api/src/modules/assistant/` (`assistant.public.chat`, public/
@@ -224,7 +420,7 @@ Most recent work, newest first:
    real inventory, real property cards with working `/properties/:id`
    links, real lead submitted and visible in Postgres, test rows cleaned
    up each time. `pnpm turbo run typecheck lint build`: 17/17.
-7. **`ChatPage.tsx` conversation persistence — completed (2026-09-24)**,
+11. **`ChatPage.tsx` conversation persistence — completed (2026-09-24)**,
    finishing a fix left mid-implementation at hand-off on 2026-09-21 (user
    reported that clicking "View Details" on a "Compare with Other
    Properties" card — or any nav away from `/chat` and back — unmounted
@@ -254,7 +450,7 @@ Most recent work, newest first:
    through to submission — `crm.public.submitLead` still returned `200 OK`
    and a real Contact/Lead landed in Postgres, confirmed via `psql`, then
    deleted. Full `pnpm turbo run typecheck lint build` gate: 17/17.
-8. **`ChatPage.tsx` silently dropped leads with a malformed phone/email —
+12. **`ChatPage.tsx` silently dropped leads with a malformed phone/email —
    fixed (2026-09-21)** — user report: submitted a full chat conversation,
    got a generic "I couldn't submit your details" error, and (correctly,
    this time) found nothing in the back office. Root cause: the free-text
@@ -285,7 +481,7 @@ Most recent work, newest first:
    exact repro) → caught with a retry prompt and **no** `submitLead` request
    fired, valid email → `200 OK` and a real Contact/Lead landed in Postgres
    with the correct phone/email. Test data cleaned up afterward.
-9. **Contacts/Pipeline default view fixed for `crm:read:all` holders**
+13. **Contacts/Pipeline default view fixed for `crm:read:all` holders**
    (2026-09-21) — reported as "chat submits leads but nothing shows up in
    the back office." Investigated live: the lead/contact was landing
    correctly (`crm.public.submitLead` → 200 OK, confirmed in Postgres,
@@ -304,7 +500,7 @@ Most recent work, newest first:
    no manual toggle needed. No backend change — the data was always
    correct, this is purely a "which agent does this account behave like by
    default" UX fix.
-10. **`prisma/seed.ts` now refuses to wipe non-demo data — safety guard added
+14. **`prisma/seed.ts` now refuses to wipe non-demo data — safety guard added
    (2026-09-21)**, closing the loop on item 4 below. New `assertSafeToReset()`
    runs before `reset()`: if `Project` holds any row whose id isn't one of
    `erpSeed.projects`' own ids (i.e. anything this seed script didn't itself
@@ -320,7 +516,7 @@ Most recent work, newest first:
    `db:seed`, deliberately or accidentally, through any channel, can repeat
    it without explicitly opting in. `CLAUDE.md`'s Commands section updated
    to describe the guard instead of just "optional demo data."
-11. **Real 637-project scraped dataset recovered after a DB reset wiped it
+15. **Real 637-project scraped dataset recovered after a DB reset wiped it
    (2026-09-21)** — Inventory is now the real, previously-scraped dataset
    again, not the small demo seed. What happened: `apps/api/scripts/`
    contains a real scraping pipeline (`reseed-inventory-real-data.ts`,
@@ -397,7 +593,7 @@ Most recent work, newest first:
    what's inspectable here. Rather than keep hunting, item 1 above closes
    this by making the mechanism not matter — `prisma/seed.ts` now refuses
    to run against non-demo data at all.
-12. **`ChatPage.tsx` quick-reply buttons were silently broken — fixed
+16. **`ChatPage.tsx` quick-reply buttons were silently broken — fixed
    (2026-09-21)** — found while verifying the customer site's DB
    connectivity end-to-end (see `techContext.md`'s browser-verification
    note for the general method). `handleOptionClick` called `setInput(option)`
@@ -422,7 +618,7 @@ Most recent work, newest first:
    rows. The two option-branches that don't route through `handleSend`
    (property-specific quick actions, and the post-summary follow-up options)
    were never affected — they push messages directly.
-13. **"Auto-complete contract on all-invoices-paid" investigated and rejected**
+17. **"Auto-complete contract on all-invoices-paid" investigated and rejected**
    (2026-09-21) — this was on the open-items list as a missing automation,
    but `sales.service.ts`'s `completeContract` already has a deliberate
    comment explaining why it's manual-only: a contract can be COMPLETED
@@ -435,7 +631,7 @@ Most recent work, newest first:
    Handover-milestone-done, or leave manual) — user chose to leave it
    manual. No code changed; this closes the open item as "already correct
    by design," not "still needs doing."
-14. **CRM ownership-check audit** (2026-09-21, commit `fc0a846`) — closed the
+18. **CRM ownership-check audit** (2026-09-21, commit `fc0a846`) — closed the
    gap flagged below: `crm.router.ts`'s `contacts.update`, `leads.update`,
    `contacts.verifyKyc`, `leads.changeStage`, and `activities.toggleDone` now
    all fetch the record first and throw `FORBIDDEN` unless the caller holds
@@ -453,13 +649,13 @@ Most recent work, newest first:
    and Marketing for the same gap and found none apply — see "Known open
    items" below for why. The ownership-check audit is now complete
    module-by-module; no more modules are queued for it.
-15. **Documentation consistency sweep** — after the Tier 0 fix below shipped,
+19. **Documentation consistency sweep** — after the Tier 0 fix below shipped,
    corrected every file in this session that still claimed `ChatPage.tsx`
    was "the only remaining mock screen, zero backend" (this file,
    `progress.md`, `productContext.md`, `CLAUDE.md`, `claude/config.md`, and
    this assistant's own private memory) to instead say it's connected to
    real data but still not a real AI. Pure doc correction, no code changed.
-16. **`ChatPage.tsx` Tier 0 fix** — the "AI Property Assistant" widget was
+20. **`ChatPage.tsx` Tier 0 fix** — the "AI Property Assistant" widget was
    auditing as fully disconnected: hardcoded `@era/mock-data` properties
    (stale `P001`-style ids that no longer matched real project ids after
    the Public Listings Plan), a false "securely stored in Odoo CRM" claim,
@@ -469,7 +665,7 @@ Most recent work, newest first:
    `apps/client/package.json` entirely (it was the last consumer). Still
    no LLM — free text is matched with simple heuristics, not understood.
    Tier 1 (real LLM integration) was explicitly scoped out and not done.
-17. **`ManageAboutPage` CMS** — was pure decorative `useState`, is now a real
+21. **`ManageAboutPage` CMS** — was pure decorative `useState`, is now a real
    backend (new Prisma models: `AboutPageContent`/`AboutMilestone`/
    `AboutTeamMember`/`AboutAward`) + full admin editor + the client's
    `AboutPage.tsx` Overview/History/Team/Awards tabs reading real data.
@@ -477,27 +673,49 @@ Most recent work, newest first:
    (`prisma/seed-about.ts`, idempotent, safe to re-run). Team photos are
    deliberately blank (initials avatar) rather than carrying over the mock's
    fake stock photos.
-18. **Public Listings Plan** — `apps/client`'s Properties list/detail pages
+22. **Public Listings Plan** — `apps/client`'s Properties list/detail pages
    and a real lead-capture form, wired to new `inventory.public.*` and
    `crm.public.submitLead` endpoints. Full loop verified: a public enquiry
    really lands as a Lead the admin Pipeline shows.
-19. **Reservation form polish** — deposit auto-suggest, configurable hold
+23. **Reservation form polish** — deposit auto-suggest, configurable hold
    duration, required payment plan + schedule preview on Sign Contract, a
    search box on the Reservations list.
-20. **Reservation & Contract lifecycle overhaul** — manual reservation
+24. **Reservation & Contract lifecycle overhaul** — manual reservation
     creation (previously only reachable via accepting a quotation), a real
     Sign Contract form, auto-generated milestones at signing (previously
     never created outside the seed script), Terminate/Complete contract
     actions, ownership checks added to every sales write mutation that
     lacked them.
-21. **`identity.users.list`/`.get` passwordHash leak** — fixed (explicit
+25. **`identity.users.list`/`.get` passwordHash leak** — fixed (explicit
     `select`, not Prisma `omit` — see `techContext.md` for why `omit` didn't
     work here).
-22. **This memory bank + `CLAUDE.md`/`claude/config.md` refresh** — both rule
+26. **This memory bank + `CLAUDE.md`/`claude/config.md` refresh** — both rule
     files had drifted (still describing an old "Phase 8, partially wired"
     state); corrected to match the above.
 
 ## Known open items (not yet done)
+
+- **30 published listings have no photos** (e.g. the 5 demo BKK1 rentals
+  J Tower 1/2, M Residence, Le Condé BKK1 (For Rent), Navikah Residence;
+  Vue Aston (For Rent); most COMMERCIAL/TOWNHOUSE sale rows) — the bots
+  rank them last and send a text card instead of a photo. Content fix:
+  upload photos in admin. `LOCATION_ALIASES` only covers the common
+  Phnom Penh areas + Sihanoukville; add rows when a new spelling shows up.
+- **Telegram token was exposed in chat** — revoke + re-set before launch.
+- ~~AI chat can't look a property up by name~~ — **closed 2026-09-24.**
+  `listPublicProjects` takes an optional `name`: matched in code (not
+  ILIKE — no `unaccent` extension) after `normalizeName()` (lowercase,
+  accents stripped, punctuation → spaces), and every typed word must *start*
+  a word of the name ("odom" → Odom Tower/Living, not "Norodom"; "le conde"
+  → Le Condé …). Still published-only. `search_properties` exposes `name`,
+  and the prompt says to name-search before ever saying "not listed".
+  Verified live: "UC88 Wyndham Garden" and "Le Conde 2" both found with
+  the real prices. Known miss: spelling variants ("Picasso" vs the listing's
+  "Piccasso") and run-together words ("timesquare") won't match.
+- **AI chat could still *claim* a save it never attempted.** The server now
+  guarantees an honest reply when a save is *rejected*, but if the model
+  simply doesn't call `submit_lead` and says "noted/updated", only the prompt
+  rule stops it. Verify live whenever the assistant prompt changes.
 
 - **Customer site fetches the full catalog client-side.** `PropertiesPage.tsx`
   calls `inventory.public.projects.list` with no args (all 667 projects) and
@@ -577,7 +795,14 @@ Most recent work, newest first:
 
 ## If asked "what's next" with no other steer
 
-The only remaining gap-category above is a **content problem** (upload real
-photos for About-page team members) — both the ownership-check audit and the
-`ChatPage.tsx` Tier 1 AI build are now fully closed. There is no obvious next
-*engineering* task queued; ask what area of the system to look at next.
+1. **Telegram bot go-live** — the user creates the bot with @BotFather and
+   sets `TELEGRAM_BOT_TOKEN`; then check it end-to-end on a real phone and
+   do the pending admin UI checks (Channels tab, campaign drawer links).
+2. **Facebook Messenger, then WhatsApp** on the same `messaging` module
+   (one Meta webhook for both; Messenger needs App Review for
+   `pages_messaging`, WhatsApp needs a Business account + number; both have
+   a 24h reply window). A privacy-policy page on the client site is a Meta
+   prerequisite.
+3. **Admin Inbox + human handoff** — agents read bot conversations
+   (`messaging_messages`) and take over.
+4. Content: real photos for About-page team members.

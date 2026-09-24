@@ -56,19 +56,18 @@ export function computeAgentLeaderboard(
     .sort((a, b) => b.revenue - a.revenue);
 }
 
-export interface CampaignStats {
-  leads: number;
-  deals: number;
-  revenue: number;
+// Campaign leads/deals/revenue come from the server (`marketing.campaigns.stats`) — see
+// marketing.service.ts for the attribution rule. These two only decide what's worth displaying.
+
+/** null (show "—") when there are no leads to spread the spend over. */
+export function costPerLead(spend: number, leads: number): number | null {
+  return leads > 0 ? spend / leads : null;
 }
 
-export function computeCampaignStats(campaignId: string, leads: LeadRow[], contracts: ContractRow[]): CampaignStats {
-  const campaignLeads = leads.filter((l) => l.campaignId === campaignId);
-  const wonContactIds = new Set(campaignLeads.filter((l) => l.stage === 'WON').map((l) => l.contactId));
-  const revenue = contracts
-    .filter((c) => wonContactIds.has(c.contactId) && CLOSED_WON_STATUSES.includes(c.status))
-    .reduce((a, c) => a + c.netPrice, 0);
-  return { leads: campaignLeads.length, deals: wonContactIds.size, revenue };
+/** null (show "—") until at least one deal has closed: a running campaign whose sales simply
+ * haven't closed yet isn't "-100% ROI". */
+export function campaignRoiPct(spend: number, revenue: number, deals: number): number | null {
+  return deals > 0 && spend > 0 ? ((revenue - spend) / spend) * 100 : null;
 }
 
 export function contractedValue(contracts: ContractRow[]) {

@@ -16,6 +16,21 @@ const schema = z.object({
    * AI assistant (Tier 1) yet. `assistant.router.ts`'s `chat` procedure is what actually
    * requires this, and throws a clear error there if it's missing. */
   anthropicApiKey: z.string().min(1).optional(),
+  /** Signs the chat's "lead created in this conversation" reference so a website visitor can
+   * correct their own details without being able to touch anyone else's lead. Optional: without
+   * it a random per-process secret is used, so references stop working after an API restart
+   * (a correction then creates a new lead instead of updating). */
+  chatTokenSecret: z.string().min(16).optional(),
+  /** From @BotFather. Optional — without it the Telegram bot simply doesn't start. */
+  telegramBotToken: z.string().min(20).optional(),
+  /** Telegram Bot API base — only overridden by tests (a local fake of the API). */
+  telegramApiBase: z.string().url().default('https://api.telegram.org'),
+  /** This API's public HTTPS address (e.g. https://api.eracambodia.com). Set → the bot uses a
+   * webhook at <url>/webhooks/telegram. Unset (local dev) → it long-polls Telegram instead, which
+   * needs no public address at all. */
+  publicApiUrl: z.string().url().optional(),
+  /** The customer website's address — bots link customers to property pages there. */
+  publicSiteUrl: z.string().url().default('http://localhost:5173'),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -30,6 +45,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     natsUrl: env.NATS_URL,
     corsOrigins: env.CORS_ORIGINS,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
+    chatTokenSecret: env.CHAT_TOKEN_SECRET,
+    telegramBotToken: env.TELEGRAM_BOT_TOKEN || undefined,
+    telegramApiBase: env.TELEGRAM_API_BASE || undefined,
+    publicApiUrl: env.PUBLIC_API_URL || undefined,
+    publicSiteUrl: env.PUBLIC_SITE_URL || undefined,
   });
   if (!parsed.success) {
     throw new Error(`Invalid environment:\n${parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n')}`);

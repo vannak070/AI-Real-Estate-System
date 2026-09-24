@@ -6,14 +6,14 @@
  */
 export type ContactType = 'PROSPECT' | 'BUYER' | 'TENANT' | 'OWNER' | 'BROKER' | 'REFERRER';
 export type KycStatus = 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED';
-export type LeadSource = 'FACEBOOK' | 'TELEGRAM' | 'WHATSAPP' | 'WEBSITE' | 'WALK_IN' | 'REFERRAL' | 'CAMPAIGN';
 export type LeadStage = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'VIEWING' | 'NEGOTIATION' | 'WON' | 'LOST';
 export type Temperature = 'HOT' | 'WARM' | 'COLD';
 export type ActivityType = 'CALL' | 'EMAIL' | 'MEETING' | 'VIEWING' | 'NOTE' | 'TASK' | 'STATUS_CHANGE';
 
 export const LEAD_STAGES: LeadStage[] = ['NEW', 'CONTACTED', 'QUALIFIED', 'VIEWING', 'NEGOTIATION', 'WON', 'LOST'];
 export const CONTACT_TYPES: ContactType[] = ['PROSPECT', 'BUYER', 'TENANT', 'OWNER', 'BROKER', 'REFERRER'];
-export const LEAD_SOURCES: LeadSource[] = ['WEBSITE', 'WALK_IN', 'REFERRAL', 'FACEBOOK', 'TELEGRAM', 'WHATSAPP', 'CAMPAIGN'];
+// Lead/contact `source` is no longer an enum: it's a key into Marketing's editable channel list
+// (useChannelOptions in data/marketing.ts).
 
 export type InvoiceStatus = 'DRAFT' | 'ISSUED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 export type PaymentMethod = 'BANK_TRANSFER' | 'CHEQUE' | 'CARD' | 'CASH';
@@ -90,5 +90,4 @@ export const DOC_TYPES: DocType[] = [
   'OTHER',
 ];
 
-export type ChannelPlatform = 'FACEBOOK' | 'TELEGRAM' | 'WHATSAPP' | 'WEBSITE' | 'WALK_IN' | 'REFERRAL';
 export type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ENDED';

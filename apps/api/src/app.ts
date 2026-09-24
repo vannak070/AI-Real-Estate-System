@@ -40,10 +40,14 @@ export async function buildApp() {
     }),
   };
 
+  const starters: (() => Promise<void> | void)[] = [];
+  const stoppers: (() => Promise<void> | void)[] = [];
   for (const mod of modules) {
-    const { api, routes } = await mod.register(ctx);
+    const { api, routes, start, stop } = await mod.register(ctx);
     apis[mod.name] = api as never;
     if (routes) await routes(app);
+    if (start) starters.push(start);
+    if (stop) stoppers.push(stop);
     logger.info('module.registered', { module: mod.name });
   }
 
@@ -78,6 +82,8 @@ export async function buildApp() {
     },
   });
 
+  for (const start of starters) await start();
+
   return {
     app,
     config,
@@ -85,6 +91,7 @@ export async function buildApp() {
     bus,
     async shutdown() {
       clearInterval(expirySweepTimer);
+      for (const stop of stoppers) await stop();
       await app.close();
       await bus.stop();
       await db.$disconnect();

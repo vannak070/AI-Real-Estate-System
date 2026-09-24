@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { LEAD_STAGES, type ActivityType, type ContactType, type LeadSource, type LeadStage, type Temperature } from './types';
+import { LEAD_STAGES, type ActivityType, type ContactType, type LeadStage, type Temperature } from './types';
 
 export const crmKeys = {
   contacts: (filter?: { type?: ContactType; ownerId?: string; q?: string }) =>
@@ -39,7 +39,8 @@ export function useCreateContact() {
       phone?: string;
       nationality?: string;
       company?: string;
-      source: LeadSource;
+      /** A channel key (useChannelOptions). */
+      source: string;
       consentMarketing?: boolean;
       ownerId?: string;
       tags?: string[];
@@ -108,8 +109,15 @@ export function useLeads(filter?: { ownerId?: string }) {
 export function useCreateLead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; email?: string; phone?: string; source: LeadSource; ownerId?: string }) =>
-      api.crm.leads.create.mutate(input),
+    mutationFn: (input: {
+      name: string;
+      email?: string;
+      phone?: string;
+      /** A channel key (useChannelOptions). */
+      source: string;
+      ownerId?: string;
+      campaignId?: string | null;
+    }) => api.crm.leads.create.mutate(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crm', 'leads'] }),
   });
 }
@@ -147,6 +155,7 @@ export function useUpdateLead() {
       timeline?: string | null;
       ownerId?: string | null;
       lostReason?: string | null;
+      campaignId?: string | null;
     }) => api.crm.leads.update.mutate(input),
     onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: crmKeys.leads() });

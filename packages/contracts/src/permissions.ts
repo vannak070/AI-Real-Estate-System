@@ -28,6 +28,7 @@ export type Capability =
   | 'commission:approve'
   | 'approvals:decide'
   | 'marketing:read'
+  | 'marketing:write'
   | 'reports:read'
   | 'documents:read'
   | 'settings:write';
@@ -47,6 +48,7 @@ export const ALL_CAPABILITIES: Capability[] = [
   'commission:approve',
   'approvals:decide',
   'marketing:read',
+  'marketing:write',
   'reports:read',
   'documents:read',
   'settings:write',
@@ -130,7 +132,7 @@ export const DEFAULT_ROLES: DefaultRole[] = [
     name: 'Marketing',
     description: 'Campaigns and channel performance.',
     isSystem: true,
-    capabilities: ['marketing:read', 'crm:read', 'crm:read:all', 'reports:read'],
+    capabilities: ['marketing:read', 'marketing:write', 'crm:read', 'crm:read:all', 'reports:read'],
   },
   { key: 'VIEWER', name: 'Viewer', description: 'Read-only access everywhere.', isSystem: true, capabilities: READ_ONLY },
 ];

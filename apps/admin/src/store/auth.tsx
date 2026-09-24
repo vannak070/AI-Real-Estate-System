@@ -37,7 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user, isLoading } = useQuery({
     queryKey: ME_KEY,
     queryFn: () => api.auth.me.query(),
-    staleTime: 5 * 60 * 1000,
+    // Short, so permission changes (an admin editing a role) reach open tabs when they're next
+    // focused — with 5 minutes a newly granted capability stayed hidden until a manual reload.
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
     retry: false,
   });
 

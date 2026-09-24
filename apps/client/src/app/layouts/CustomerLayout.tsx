@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router";
 import { MessageSquare, Home, Building2, Menu, X, Phone, Mail, ChevronDown, Info, MapPin, Facebook, Linkedin, Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { captureCampaignFromUrl } from "../../lib/attribution";
 import headerLogo from "figma:asset/d35bb1cd7b17aae1ece93ea47adf754effd39a17.png";
 import footerLogo from "figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png";
 
@@ -8,6 +9,11 @@ export function CustomerLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [aboutDropdownOpen, setAboutDropdownOpen] = useState(false);
   const location = useLocation();
+
+  // Every page can be an ad's landing page, so capture ?utm_campaign= wherever the visitor lands.
+  useEffect(() => {
+    captureCampaignFromUrl(location.search);
+  }, [location.search]);
 
   const isActive = (path: string) => {
     return location.pathname === path;

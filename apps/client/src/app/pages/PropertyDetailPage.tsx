@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api, resolveUploadUrl } from "../../lib/api";
+import { currentCampaignCode } from "../../lib/attribution";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -82,7 +83,14 @@ function EnquiryForm({ projectId, projectName }: { projectId: string; projectNam
     if (missing.length > 0) return;
     setStatus('sending');
     api.crm.public.submitLead
-      .mutate({ name, email: email || undefined, phone: phone || undefined, message, preferredProjectId: projectId })
+      .mutate({
+        name,
+        email: email || undefined,
+        phone: phone || undefined,
+        message,
+        preferredProjectId: projectId,
+        campaignCode: currentCampaignCode(),
+      })
       .then(() => setStatus('sent'))
       .catch(() => setStatus('error'));
   }

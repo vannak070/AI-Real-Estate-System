@@ -15,6 +15,47 @@ function startingPriceFor(override: number | null, units: { listPrice: number }[
   return units.length ? Math.min(...units.map((u) => u.listPrice)) : null;
 }
 
+/** "Le Condé, BKK1" → "le conde bkk1": lowercase, accents stripped, punctuation → spaces, so a
+ * visitor typing "le conde" or "time square 9" still finds the real listing name. */
+function normalizeName(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Areas the listings spell several ways (romanised Khmer vs. what customers type). Seen live: the
+ * AI bot's "BKK1" search found 5 listings and missed 88 filed under "Boeng Keng Kang". A search
+ * for any spelling in a group matches all of them. Compared after normalizeName().
+ */
+const LOCATION_ALIASES: string[][] = [
+  ['bkk', 'bkk1', 'bkk 1', 'bkk2', 'bkk 2', 'bkk3', 'bkk 3', 'boeng keng kang', 'boeung keng kang', 'beong keng kang'],
+  ['toul kork', 'tuol kork', 'tuol kouk', 'toul kouk'],
+  ['chamkar mon', 'chamkarmon'],
+  ['daun penh', 'doun penh', 'duan penh'],
+  ['chroy changvar', 'chroy changva', 'chraoy chongvar', 'chrouy changvar'],
+  ['sen sok', 'sensok', 'saensokh'],
+  ['7 makara', 'khan 7 makara', 'prampir makara', 'prampir meakkakra'],
+  ['koh pich', 'diamond island'],
+  ['por sen chey', 'pur senchey', 'pou senchey', 'por senchey'],
+  ['mean chey', 'meanchey'],
+  ['russey keo', 'russei keo', 'ruessei kaev'],
+  ['dangkao', 'dangkor', 'khan dangkor'],
+  ['toul tompoung', 'tuol tompoung', 'toul tom poung', 'russian market'],
+  ['beoung tompun', 'boeung tumpun', 'boeng tumpun'],
+  ['sihanoukville', 'preah sihanouk', 'kampong som'],
+];
+
+/** Every spelling to search for: the aliases of any group the query belongs to, else the query. */
+function locationSpellings(query: string): string[] {
+  const q = normalizeName(query);
+  const group = LOCATION_ALIASES.find((g) => g.some((alias) => q === alias || q.includes(alias)));
+  return group ?? [query.trim()];
+}
+
 /** The public site never shows the internal 8-value operational status — just whether a unit
  * can still be bought (AVAILABLE), is spoken for (HELD/RESERVED/BOOKED/BLOCKED), or is gone (SOLD/CONTRACTED/HANDED_OVER). */
 function publicUnitStatus(status: UnitStatus): 'AVAILABLE' | 'RESERVED' | 'SOLD' {
@@ -400,21 +441,64 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
      * client-side); the AI assistant (Tier 1)
      * is the one caller that needs server-side narrowing, since it can't afford to put all
      * ~700 projects in an LLM's context on every turn. */
-    async listPublicProjects(filter?: { category?: PropertyCategory; propertyType?: PropertyType; location?: string; limit?: number }) {
+    async listPublicProjects(filter?: {
+      category?: PropertyCategory;
+      propertyType?: PropertyType;
+      location?: string;
+      /** Part of a property name, e.g. "UC88" or "le conde" — every word must start a word of the name. */
+      name?: string;
+      /** Exact bedroom count (0 = studio) — a listing matches if one of its available units has it. */
+      bedrooms?: number;
+      minBedrooms?: number;
+      /** Smallest acceptable unit size, m². Bedroom and size filters must hold for the SAME unit. */
+      minAreaSqm?: number;
+      limit?: number;
+    }) {
+      const unitWhere = {
+        ...(filter?.bedrooms != null || filter?.minBedrooms != null
+          ? { unitType: { bedrooms: filter.bedrooms != null ? filter.bedrooms : { gte: filter.minBedrooms! } } }
+          : {}),
+        ...(filter?.minAreaSqm != null ? { areaSqm: { gte: filter.minAreaSqm } } : {}),
+      };
+      const where = {
+        isPublished: true,
+        ...(Object.keys(unitWhere).length ? { units: { some: { status: 'AVAILABLE' as const, ...unitWhere } } } : {}),
+        ...(filter?.category ? { category: filter.category } : {}),
+        ...(filter?.propertyType ? { propertyType: filter.propertyType } : {}),
+        ...(filter?.location
+          ? {
+              OR: locationSpellings(filter.location).flatMap((spelling) =>
+                (['location', 'city', 'district'] as const).map((field) => ({
+                  [field]: { contains: spelling, mode: 'insensitive' as const },
+                })),
+              ),
+            }
+          : {}),
+      };
+      // Name matching runs in code (not ILIKE) so accents and punctuation don't cause misses —
+      // Postgres here has no unaccent extension. Only names are fetched, so it stays cheap.
+      let nameMatchIds: string[] | undefined;
+      const words = filter?.name ? normalizeName(filter.name).split(' ').filter(Boolean) : [];
+      if (words.length > 0) {
+        const candidates = await db.project.findMany({ where, select: { id: true, name: true } });
+        // Each typed word must start a word in the name: "odom" finds "Odom Tower", not "Norodom".
+        nameMatchIds = candidates
+          .filter((c) => {
+            const nameWords = normalizeName(c.name).split(' ');
+            return words.every((w) => nameWords.some((nw) => nw.startsWith(w)));
+          })
+          .map((c) => c.id);
+      }
       const projects = await db.project.findMany({
-        where: {
-          isPublished: true,
-          ...(filter?.category ? { category: filter.category } : {}),
-          ...(filter?.propertyType ? { propertyType: filter.propertyType } : {}),
-          ...(filter?.location
-            ? { OR: [{ location: { contains: filter.location, mode: 'insensitive' } }, { city: { contains: filter.location, mode: 'insensitive' } }] }
-            : {}),
-        },
-        include: { units: { select: { status: true, listPrice: true } } },
+        where: nameMatchIds ? { ...where, id: { in: nameMatchIds } } : where,
+        include: { units: { select: { status: true, listPrice: true, areaSqm: true, unitType: { select: { bedrooms: true } } } } },
         orderBy: { createdAt: 'desc' },
         take: filter?.limit,
       });
-      return projects.map(({ units, startingPriceOverride, ...project }) => ({
+      return projects.map(({ units, startingPriceOverride, ...project }) => {
+        const available = units.filter((u) => u.status === 'AVAILABLE');
+        const sizes = available.map((u) => u.areaSqm).filter((a): a is number => a != null);
+        return {
         id: project.id,
         name: project.name,
         location: project.location,
@@ -432,8 +516,13 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
         videoUrl: project.videoUrl,
         startingPrice: startingPriceFor(startingPriceOverride, units),
         totalUnits: units.length,
-        availableUnits: units.filter((u) => u.status === 'AVAILABLE').length,
-      }));
+        availableUnits: available.length,
+        /** Distinct bedroom counts among available units, ascending (0 = studio). Empty = unknown. */
+        bedrooms: [...new Set(available.map((u) => u.unitType?.bedrooms).filter((b): b is number => b != null))].sort((a, b) => a - b),
+        /** Size range of available units, m²; null = unknown. */
+        sizeSqm: sizes.length ? { min: Math.min(...sizes), max: Math.max(...sizes) } : null,
+        };
+      });
     },
 
     /** A hidden property is indistinguishable from a missing one — a direct link returns null. */

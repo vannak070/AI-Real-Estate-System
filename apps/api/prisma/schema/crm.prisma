@@ -16,17 +16,6 @@ enum KycStatus {
   REJECTED
 }
 
-/// Shared by Contact.source and Lead.source — where the relationship started.
-enum LeadSource {
-  FACEBOOK
-  TELEGRAM
-  WHATSAPP
-  WEBSITE
-  WALK_IN
-  REFERRAL
-  CAMPAIGN
-}
-
 model Contact {
   id               String      @id @default(cuid())
   name             String
@@ -36,7 +25,9 @@ model Contact {
   nationality      String?
   company          String?
   kycStatus        KycStatus   @default(NONE)
-  source           LeadSource  @default(WEBSITE)
+  /// A marketing channel key (marketing_channels.key, e.g. "WEBSITE", "TIKTOK") — where the
+  /// relationship started. Plain text, no FK (module rule); validated against Marketing on write.
+  source           String      @default("WEBSITE")
   consentMarketing Boolean     @default(false)
   ownerId          String? //  -> identity_users.id (no FK: module boundary)
   tags             String[]
@@ -76,7 +67,8 @@ model Lead {
   unitTypeWanted     String?
   timeline           String?
   ownerId            String? //  -> identity_users.id
-  source             LeadSource  @default(WEBSITE)
+  /// A marketing channel key — see Contact.source.
+  source             String      @default("WEBSITE")
   campaignId         String? //  -> marketing_campaigns.id
   lostReason         String?
   createdAt          DateTime    @default(now())

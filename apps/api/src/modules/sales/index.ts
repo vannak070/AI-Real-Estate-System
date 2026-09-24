@@ -22,6 +22,8 @@ export interface SalesContractView {
 export interface SalesApi {
   getContract(id: string): Promise<SalesContractView | null>;
   getContractsByIds(ids: string[]): Promise<Record<string, { number: string }>>;
+  /** Minimal contract facts for campaign attribution (marketing module). */
+  listContractsForAttribution(): Promise<{ id: string; contactId: string; status: string; netPrice: number; createdAt: Date }[]>;
   /** Called on an interval by app.ts — flips overdue quotations/reservations to EXPIRED. */
   expireStale(): Promise<{ quotationsExpired: number; reservationsExpired: number }>;
 }
@@ -50,6 +52,10 @@ export const salesModule: AppModule<SalesApi> = {
         if (ids.length === 0) return {};
         const rows = await service.getContractNumbers(ids);
         return Object.fromEntries(rows.map((r) => [r.id, { number: r.number }]));
+      },
+      async listContractsForAttribution() {
+        const rows = await service.listContracts();
+        return rows.map((c) => ({ id: c.id, contactId: c.contactId, status: c.status, netPrice: c.netPrice, createdAt: c.createdAt }));
       },
       expireStale: () => service.expireStaleQuotationsAndReservations(),
     };

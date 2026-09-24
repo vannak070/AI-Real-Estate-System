@@ -6,6 +6,13 @@ update this one when a whole area of work actually completes.
 
 ## What works (all real, not mock)
 
+- **Telegram AI bot** (2026-09-24): the website chat's Claude assistant on
+  Telegram — `modules/messaging/` (conversation store, long polling in dev /
+  signed webhook in prod, contact-share button, campaign deep links), leads
+  land in CRM with source TELEGRAM. Needs `TELEGRAM_BOT_TOKEN` to run.
+- **Editable marketing channels** (2026-09-24): lead/contact Source and
+  campaign Channel are keys into an admin-managed list (create, rename,
+  hide, delete-when-unused) — no enum, no migration for a new channel.
 - **Identity/RBAC**: DB-backed roles/capabilities, full Users & Roles CRUD,
   real auth (bcrypt + DB sessions), temporary-password issuance.
 - **CRM**: Contacts, Pipeline (Leads with real auto-assignment to the
@@ -133,6 +140,18 @@ update this one when a whole area of work actually completes.
 
 ## Incidents worth remembering
 
+- **The Telegram bot's replies came out with literal `**asterisks**`** —
+  caught 2026-09-24 in the fake-Telegram harness on the very first property
+  answer, even though the prompt said "no markdown at all". Same lesson as
+  the false-save incident below: an instruction the model must never break
+  gets enforced in code (`toPlainText()` in `assistant.service.ts`), not
+  just asked for in the prompt.
+- **A hand-written migration failed halfway through writing it** (2026-09-24,
+  editable channels): an INSERT into `marketing_channels` ran before the old
+  `platform NOT NULL` column was dropped. Postgres ran the migration in one
+  transaction, so nothing was half-applied — fix the SQL order,
+  `prisma migrate resolve --rolled-back <name>`, then `migrate deploy`
+  again. Check `\d <table>` before assuming a partial state.
 - **The AI assistant (Tier 1) claimed to have submitted a lead without
   actually calling the `submit_lead` tool** — caught live 2026-09-24 by
   checking Postgres after a "confirmed" submission and finding no new
