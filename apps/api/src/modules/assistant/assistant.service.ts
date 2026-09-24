@@ -4,6 +4,7 @@ import { TRPCError } from '@trpc/server';
 import type { PropertyCategory, PropertyType } from '@prisma/client';
 import type { ModuleContext } from '../../platform/module.js';
 import type { PublicProjectView } from '../inventory/index.js';
+import { createKnowledgeStore } from './knowledge.js';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 1024;
@@ -47,11 +48,8 @@ export function toPlainText(text: string): string {
 }
 
 /** Chat apps show raw text, and the customer can't see the website's property cards. */
-function messagingPrompt(platform: string, customer: MessagingCustomer) {
-  const known = [
-    customer.displayName ? `display name "${customer.displayName}"` : null,
-    customer.username ? `username @${customer.username}` : null,
-  ].filter(Boolean);
+/** The fixed part of a chat app's instructions — identical for every customer, so it caches. */
+function messagingPrompt(platform: string) {
   return `${INTRO} You chat with customers on ${platform}.
 
 ${RULES}
@@ -62,8 +60,18 @@ ${RULES}
 - Customers often answer briefly or refer back: "yes", "ok", "5000", "the second one", "2", "this one", "I love this". Read every short reply against your own last message: a bare number after you asked about budget is the budget in USD; "2" or "the second" means photo card 2; "yes" answers the question you just asked. A message starting with "[Replying to photo card …]" or mentioning "(property id …)" is about exactly that property — call get_property with that id straight away and never ask which one they mean.
 - Ask ONE simple question at a time — never "A, or B?" (a customer answering "yes" to that is ambiguous). If they clearly like a property but it's unclear which one, ask them to tap "More details" under its photo or reply with its number.
 - Booking a viewing: if you already saved their details in this conversation, call submit_lead again with the same details plus that property's id and a message like "Viewing request" — it updates the same record — then confirm an agent will call to arrange it. Otherwise ask for their name and phone number first.
-- ${known.length ? `${platform} shows this customer's ${known.join(' and ')} — unverified, so use it only as a friendly greeting, and ask for their real name before saving their details if you're not sure.` : 'You do not know the customer\'s name yet.'}
 - To be contacted by an agent they can tap the "Share my phone number" button, or just type their name and phone number.`;
+}
+
+/** The per-customer part, sent after the cached instructions. */
+function customerNote(platform: string, customer: MessagingCustomer) {
+  const known = [
+    customer.displayName ? `display name "${customer.displayName}"` : null,
+    customer.username ? `username @${customer.username}` : null,
+  ].filter(Boolean);
+  return known.length
+    ? `${platform} shows this customer's ${known.join(' and ')} — unverified, so use it only as a friendly greeting, and ask for their real name before saving their details if you're not sure.`
+    : "You do not know the customer's name yet.";
 }
 
 interface ChatMessage {
@@ -109,7 +117,7 @@ export type MessagingReply =
 const TOOLS: Anthropic.Tool[] = [
   {
     name: 'search_properties',
-    description: "Search ERA Cambodia's real, currently-listed properties — by what the visitor wants (category/type/location/budget) or by name. Returns up to 8 matches (listings with photos first) plus totalMatches, the full count.",
+    description: "Search ERA Cambodia's real, currently-listed properties — by what the visitor wants (category/type/location/budget/bedrooms/size) or by name. Returns up to 8 matches (listings with photos first) plus totalMatches, the full count. Each result's \"bedrooms\" lists the bedroom counts it has available (empty = not recorded — don't guess) and \"sizeSqm\" its size range.",
     input_schema: {
       type: 'object',
       properties: {
@@ -122,6 +130,12 @@ const TOOLS: Anthropic.Tool[] = [
           type: 'string',
           description: 'One area or city, e.g. "BKK1", "Toul Kork" or "Siem Reap". Common alternative spellings (BKK1 / Boeng Keng Kang, Toul Kork / Tuol Kouk, …) are matched automatically.',
         },
+        bedrooms: {
+          type: 'integer',
+          description: 'Exact number of bedrooms the visitor wants (0 = studio), e.g. "2-bedroom condo" → 2. Each result lists its available "bedrooms".',
+        },
+        minBedrooms: { type: 'integer', description: 'At least this many bedrooms, e.g. "3 bedrooms or more" → 3. Use instead of bedrooms, not with it.' },
+        minAreaSqm: { type: 'number', description: 'Smallest acceptable unit size in square metres, e.g. "at least 80 sqm" → 80.' },
         minPrice: { type: 'number', description: 'Lowest starting price in USD (sale price, or monthly rent for RENT).' },
         maxPrice: {
           type: 'number',
@@ -201,6 +215,19 @@ function allowRequest(key: string): boolean {
 
 export function createAssistantService(ctx: ModuleContext) {
   const client = ctx.config.anthropicApiKey ? new Anthropic({ apiKey: ctx.config.anthropicApiKey }) : null;
+  const knowledge = createKnowledgeStore(ctx.db);
+
+  /**
+   * Instructions + ERA's company knowledge form one block marked for prompt caching (after the
+   * tools, which never change): repeat turns and tool rounds re-read it at a fraction of the cost.
+   * Anything that varies per visitor goes in a second, uncached block after it.
+   */
+  async function systemBlocks(fixed: string, perVisitor?: string): Promise<Anthropic.TextBlockParam[]> {
+    return [
+      { type: 'text', text: `${fixed}\n\n${await knowledge.promptSection()}`, cache_control: { type: 'ephemeral' } },
+      ...(perVisitor ? [{ type: 'text' as const, text: perVisitor }] : []),
+    ];
+  }
   const siteBase = ctx.config.publicSiteUrl.replace(/\/$/, '');
   const propertyUrl = (id: string) => `${siteBase}/properties/${id}`;
   const escapedSiteBase = siteBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -292,6 +319,7 @@ export function createAssistantService(ctx: ModuleContext) {
     switch (name) {
       case 'search_properties': {
         const price = (v: unknown) => (typeof v === 'number' && v > 0 ? v : undefined);
+        const count = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 50 ? v : undefined);
         const { total, results } = await ctx.modules.inventory.searchPublicProjects({
           category: input.category as PropertyCategory | undefined,
           propertyType: input.propertyType as PropertyType | undefined,
@@ -299,6 +327,9 @@ export function createAssistantService(ctx: ModuleContext) {
           name: input.name as string | undefined,
           minPrice: price(input.minPrice),
           maxPrice: price(input.maxPrice),
+          bedrooms: count(input.bedrooms),
+          minBedrooms: count(input.bedrooms) == null ? count(input.minBedrooms) : undefined,
+          minAreaSqm: price(input.minAreaSqm),
         });
         for (const p of results) collected.set(p.id, p);
         return {
@@ -383,7 +414,7 @@ export function createAssistantService(ctx: ModuleContext) {
   /** The tool-use loop shared by the website chat and the chat apps. */
   async function converse(
     anthropic: Anthropic,
-    system: string,
+    system: Anthropic.TextBlockParam[],
     history: ChatMessage[],
     conversation: ConversationState,
   ): Promise<{ reply: string; properties: PublicProjectView[] }> {
@@ -406,6 +437,13 @@ export function createAssistantService(ctx: ModuleContext) {
         system,
         messages,
         tools: TOOLS,
+      });
+      ctx.logger.info('assistant.usage', {
+        source: conversation.source,
+        input: response.usage.input_tokens,
+        cacheRead: response.usage.cache_read_input_tokens ?? 0,
+        cacheWrite: response.usage.cache_creation_input_tokens ?? 0,
+        output: response.usage.output_tokens,
       });
 
       if (response.stop_reason !== 'tool_use') {
@@ -439,6 +477,9 @@ export function createAssistantService(ctx: ModuleContext) {
   }
 
   return {
+    /** ERA's company knowledge — edited on the admin's AI Knowledge page. */
+    knowledge,
+
     /** The website chat (apps/client ChatPage.tsx) — the browser holds the history. */
     async chat(
       input: { messages: ChatMessage[]; propertyId?: string; propertyName?: string; leadToken?: string; campaignCode?: string },
@@ -462,9 +503,12 @@ export function createAssistantService(ctx: ModuleContext) {
         throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many messages — please wait a moment and try again.' });
       }
 
-      const system = input.propertyId
-        ? `${WEBSITE_PROMPT}\n\nThe visitor arrived from the page for a specific property: id "${input.propertyId}"${input.propertyName ? ` ("${input.propertyName}")` : ''}. If this is the start of the conversation, call get_property with that id right away so your first reply is grounded in its real details.`
-        : WEBSITE_PROMPT;
+      const system = await systemBlocks(
+        WEBSITE_PROMPT,
+        input.propertyId
+          ? `The visitor arrived from the page for a specific property: id "${input.propertyId}"${input.propertyName ? ` ("${input.propertyName}")` : ''}. If this is the start of the conversation, call get_property with that id right away so your first reply is grounded in its real details.`
+          : undefined,
+      );
 
       const conversation: ConversationState = {
         leadId: verifyLeadToken(input.leadToken),
@@ -513,7 +557,8 @@ export function createAssistantService(ctx: ModuleContext) {
         detailedIds: [],
       };
       try {
-        const { reply, properties } = await converse(client, messagingPrompt(input.platform, input.customer), history, conversation);
+        const system = await systemBlocks(messagingPrompt(input.platform), customerNote(input.platform, input.customer));
+        const { reply, properties } = await converse(client, system, history, conversation);
         const extracted = await extractCards(toPlainText(reply), properties, conversation.detailedIds);
         return { ok: true, ...extracted, leadId: conversation.leadId };
       } catch (err) {

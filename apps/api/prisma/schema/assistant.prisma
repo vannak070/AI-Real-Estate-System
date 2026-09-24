@@ -1,0 +1,19 @@
+// The AI assistant's company knowledge — answers ERA staff write in the back office (AI Knowledge
+// page) about the company, its services and processes. Every active entry goes into the
+// assistant's instructions on the website chat and the chat-app bots.
+
+model AssistantKnowledge {
+  id          String   @id @default(cuid())
+  /// The topic or customer question, e.g. "Can foreigners buy a condo?"
+  title       String
+  /// ERA's answer, in plain language.
+  content     String
+  /// Hidden entries are kept (drafts, seasonal info) but the assistant doesn't see them.
+  active      Boolean  @default(true)
+  /// identity_users.id of the last editor (no FK — module rule).
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("assistant_knowledge")
+}

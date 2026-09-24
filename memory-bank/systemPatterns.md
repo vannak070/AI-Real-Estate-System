@@ -25,18 +25,32 @@ building on top of it.
   raw type strings. Bump `version` on an incompatible payload change. Handlers
   must be idempotent (a re-delivered "unit reserved" event for an
   already-reserved unit is a success, not an error).
+- **A cross-module value that isn't an id is still a bare key, validated
+  through the owner's API** — e.g. lead/contact `source` and campaign
+  `channel` are `marketing_channels.key` strings; CRM checks them with
+  `ctx.modules.marketing.isActiveChannel(key)`, never a join.
+- **Background work** (the Telegram poller) uses the `AppModule` `start`/
+  `stop` hooks (`platform/module.ts`, run by `app.ts` after every module has
+  registered / on shutdown) — `ctx.modules.*` is only safe from `start` on.
 
-## HTTP: tRPC end to end, no REST
+## HTTP: tRPC end to end, two deliberate exceptions
 
-- Every module gets a `*.router.ts` composed in `src/trpc/root.ts`. `/health`
-  is the only plain REST endpoint, on purpose.
+- Every module gets a `*.router.ts` composed in `src/trpc/root.ts`. The only
+  plain REST endpoints are `/health` and chat-platform webhooks
+  (`POST /webhooks/telegram`, in `modules/messaging/index.ts`'s `routes`) —
+  platforms post their own payload format. A webhook verifies the platform's
+  secret before doing anything, answers 200 at once and works in the
+  background, and dedupes on the platform's message id (retries happen).
 - **`withCapability(cap)`** gates a protected procedure server-side against
   `@era/contracts`'s `ROLE_CAPS` — the same map `apps/admin` uses to gate its
   own UI, so a hidden button and a blocked request are backed by the same rule.
 - **`publicProcedure`** (no capability check) is how `apps/client` talks to
   the backend with no auth — used for read-only public projections
-  (`inventory.public.projects/units`, `settings.public.about`) and the one
-  real write path a stranger can trigger (`crm.public.submitLead`). A public
+  (`inventory.public.projects/units`, `settings.public.about`) and the write
+  paths a stranger can trigger: `crm.public.submitLead` and
+  `assistant.public.chat` (whose `submit_lead` tool creates/updates leads;
+  rate-limited per IP). Public reads of Inventory **must filter
+  `isPublished: true`** — new listings are hidden by default. A public
   procedure's result must be a **hand-written safe projection**, same
   discipline as a cross-module `index.ts` — explicitly list what's exposed,
   don't just return the Prisma row (see `listPublicProjects` excluding
@@ -46,9 +60,9 @@ building on top of it.
   `apps/api/src/trpc/scoping.ts`'s `scopedOwnerId(user, allCap, requested)`,
   used on `list`/`create` inputs; a `get`/mutation on a *specific* id does its
   own explicit check (`!can(ctx.user.capabilities, allCap) && row.ownerId
-  !== ctx.user.id` → `FORBIDDEN`). **This ownership check on mutations is not
-  yet applied uniformly everywhere** — see `progress.md` for exactly where
-  it's confirmed present vs. still missing.
+  !== ctx.user.id` → `FORBIDDEN`). Applied across all of CRM and Sales
+  (audit completed 2026-09-21); Inventory, Finance and Marketing don't need
+  it — see `progress.md` for why.
 
 ## RBAC: DB-backed, not a fixed enum
 
@@ -134,7 +148,21 @@ what makes concurrent callers safe without an explicit transaction.
    `.git` is broken — a parent directory's unrelated `.git` can silently
    become the effective repo root if this one is ever missing. It happened
    once; see `progress.md`.
-6. **Before trusting any "X is done" claim in this file or `progress.md`**
+6. **Anything an LLM must never get wrong is enforced in code, not asked for
+   in the prompt.** Seen three times: the model claimed a save after the
+   server rejected it (server now writes that reply), used markdown on
+   Telegram (stripped by `toPlainText`), and passed a name where an id was
+   required (ids are checked against real published projects). Prompts steer;
+   code guarantees. And verify an AI "done" against the database, not its
+   reply.
+7. **When you remove something from output, make sure its replacement
+   always exists.** Property links were stripped from Telegram replies but a
+   photo card was only built in some cases — the customer got "here is the
+   link:" and nothing.
+8. **Count results against the database when testing search.** "BKK1"
+   quietly matched 5 listings instead of 93 (spelling variants) — nothing
+   errored, the answers just looked plausible.
+9. **Before trusting any "X is done" claim in this file or `progress.md`**
    for an area not touched recently, verify against the actual code
    (`grep`, open the router/service). These files describe a point in time
    and can go stale exactly like `CLAUDE.md` did once.

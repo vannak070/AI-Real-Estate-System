@@ -21,24 +21,34 @@ leads straight into it.
   `approvals:decide`.
 - **Admin** (`ADMIN`): everything, including Users & Roles and the About-page
   CMS (`settings:write`).
-- **Marketing** (`MARKETING`): campaigns, channel performance, read-only CRM.
-- **Prospective buyers** (`apps/client`, unauthenticated): browse real listed
-  projects/units, submit an enquiry that becomes a real Lead an agent picks up.
+- **Marketing** (`MARKETING`): manages campaigns, channels and the AI's
+  company knowledge (`marketing:write`); read-only CRM.
+- **Prospective buyers** (`apps/client` and Telegram, unauthenticated): browse
+  published listings, ask the AI assistant, submit an enquiry or share their
+  phone number — each becomes a real Lead auto-assigned to an agent.
 
 ## Product decisions already made (don't re-litigate without reason)
 
 - **No public-facing pretty URLs.** Public project pages use the real Prisma
   `cuid`, not a slug. Revisit only if SEO becomes a stated priority.
-- **`ChatPage.tsx` (the "AI Property Assistant") is now real AI** — Tier 0
-  (2026-09-21) connected it to real inventory/leads on a scripted decision
-  tree; Tier 1 (2026-09-24) replaced that with an actual Claude-backed
-  conversation (Anthropic API, `claude-haiku-4-5-20251001`, tool use
-  grounded in real inventory/CRM data — never a hardcoded response). Both
-  were separate, explicitly user-approved decisions, not slipped in as a
-  side effect of other work — see `activeContext.md`/`progress.md` for the
-  full build and the two real bugs it surfaced live. `ANTHROPIC_API_KEY` is
-  optional in `apps/api/.env`; without it the API still starts, only the
-  chat endpoint itself errors clearly when called.
+- **The AI assistant is real AI, grounded in real data** — Claude
+  (`claude-haiku-4-5-20251001`, chosen for the demo budget; a stronger model
+  only with the user's say-so) with tool use over real Inventory/CRM, on the
+  website chat and Telegram. It never states a property fact it didn't get
+  from a tool, and answers questions about ERA itself only from the
+  staff-written AI Knowledge — otherwise it offers an agent. Legal/process
+  answers are written by ERA staff, never generated. `ANTHROPIC_API_KEY` /
+  `TELEGRAM_BOT_TOKEN` are optional; without them the API still starts.
+- **New properties are hidden from the website until published** ("Show on
+  website", `isPublished`). Sold Out/Completed aren't auto-hidden.
+- **Website tabs**: Exclusive Property (development projects + EXCLUSIVE
+  badge) | For Sale | For Rent (individual listings, newest first). Pages of
+  21/51/99. Don't bring back a CONDO/BOREY "Project" tab without asking.
+- **Lead channels are an editable list**, not a fixed set — a new channel
+  (TikTok, Khmer24, …) needs no developer. Renaming never changes old
+  records; a channel in use can only be hidden.
+- **A campaign's ad-link code never changes** once created (it's in running
+  ads), and a campaign with leads can't be deleted — set it to Ended.
 - **A quotation's discount above 15% needs a manager's sign-off before it can
   be *accepted* into a reservation** — it can still be freely edited/saved
   below that gate. This threshold is a business rule

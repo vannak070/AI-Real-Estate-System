@@ -22,6 +22,7 @@ export const ROUTE_CAPS: { prefix: string; cap: Capability }[] = [
   { prefix: '/payments', cap: 'finance:read' },
   { prefix: '/commissions', cap: 'finance:read' },
   { prefix: '/campaigns', cap: 'marketing:read' },
+  { prefix: '/ai-knowledge', cap: 'marketing:read' },
   { prefix: '/agents', cap: 'reports:read' },
   { prefix: '/documents', cap: 'documents:read' },
   { prefix: '/users', cap: 'settings:write' },

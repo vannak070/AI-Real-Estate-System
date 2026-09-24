@@ -19,6 +19,25 @@
 - **Database**: Postgres via `docker-compose.yml`, container `era-postgres`,
   **port 5435** (not 5432–5434 — those are other unrelated projects on this
   machine).
+- **AI**: `@anthropic-ai/sdk`, model `claude-haiku-4-5-20251001`, manual
+  tool-use loop in `modules/assistant/assistant.service.ts`; token usage per
+  call is logged as `assistant.usage`. Telegram via plain `fetch` to the Bot
+  API (`modules/messaging/telegram.ts`, no SDK).
+
+## Environment variables (`.env` at the repo root, git-ignored)
+
+Required: `DATABASE_URL`. Optional — the API starts without any of them:
+- `ANTHROPIC_API_KEY` — the AI chat and bot (errors clearly if missing).
+- `CHAT_TOKEN_SECRET` — signs the website chat's lead reference; without it
+  a random per-process secret is used (corrections break across restarts).
+- `TELEGRAM_BOT_TOKEN` — starts the Telegram bot; without it nothing starts.
+- `PUBLIC_API_URL` — set → Telegram webhook at `<url>/webhooks/telegram`;
+  unset → long polling (local dev). Only one process may poll a bot.
+- `PUBLIC_SITE_URL` — customer site address for links/buttons (default
+  `http://localhost:5173`; Telegram rejects localhost button URLs).
+- `TELEGRAM_API_BASE` — tests only (point the bot at a fake Bot API).
+The API reads `.env` via Prisma at startup — a change needs an API restart
+(touching a source file makes `tsx watch` restart it).
 
 ## Auth & sessions
 
@@ -79,14 +98,49 @@ pnpm api      # :4000
 
 **`db:seed` (`prisma/seed.ts`) is a full destructive wipe-and-recreate** — it
 deletes essentially every table and rebuilds from `@era/mock-data/erp`'s
-static fixture. Never run it against a database that has any real
-session/demo work you want to keep; there is no confirmation prompt. Any new
+static fixture. Its `assertSafeToReset()` guard refuses (exit 1) when
+Inventory holds anything beyond the demo dataset's own rows; `--force` /
+`SEED_FORCE=1` overrides it — never pass that against real data. Any new
 one-off content seed should be its own **separate, idempotent** script (see
 `prisma/seed-about.ts` for the pattern: `count() === 0` guards, upsert for
 singletons) — never added into `seed.ts`'s destructive path.
 
 CI (`.github/workflows/ci.yml`): `pnpm install → prisma:generate → turbo run
 typecheck lint build`.
+
+## Database changes: `prisma migrate dev` refuses here
+
+Run non-interactively (as an agent does), `prisma migrate dev` refuses to
+create a migration. What works, used for every 2026-09-24 schema change:
+
+```bash
+cd apps/api
+URL="$(grep '^DATABASE_URL=' ../../.env | cut -d= -f2- | tr -d '"')"
+mkdir -p prisma/migrations/<timestamp>_<name>
+pnpm exec prisma migrate diff --from-url "$URL" --to-schema-datamodel prisma/schema --script \
+  > prisma/migrations/<timestamp>_<name>/migration.sql   # or hand-write it
+pnpm exec prisma migrate deploy && pnpm exec prisma generate
+pnpm exec prisma migrate diff --from-url "$URL" --to-schema-datamodel prisma/schema --script
+# ↑ must print "-- This is an empty migration."
+```
+
+Hand-write the SQL instead of using the diff whenever data must survive
+(column type changes, enum → text, backfills) — the generated diff drops and
+re-adds columns. If a migration fails, Postgres rolled it back: fix it,
+`prisma migrate resolve --rolled-back <name>`, deploy again.
+
+## Testing without a UI
+
+- **Backend procedures**: a scratch `.mts` script under `apps/api/src/` that
+  builds the real modules and calls `createAppRouter(ctx).createCaller({...
+  user: { capabilities: [...] } })` with fake users per role; run with
+  `pnpm exec tsx --env-file=../../.env <file>` from `apps/api`. The logger
+  stub needs `child`. Delete the script and every test row afterwards.
+- **The Telegram bot**: set `TELEGRAM_BOT_TOKEN` to any fake value and
+  `TELEGRAM_API_BASE` to a local `http.createServer` that answers `getMe`/
+  `getUpdates`/`sendMessage`/`sendPhoto`/`answerCallbackQuery`, then
+  `buildApp()` and feed updates — the real engine, real Claude, real DB, no
+  real Telegram. Uses real Anthropic credit (cents).
 
 ## Environment gotcha: git repo root
 
@@ -138,8 +192,7 @@ most conclusive first:
    dev`) could silently cascade into the destructive command.
 
 For the 2026-09-21 incident (a full reset of the real 637-project Inventory
-scrape back to the demo seed, see `progress.md`'s Incidents section and
-`activeContext.md` item 1/2), steps 1 and 4 came back clean, and step 2
+scrape back to the demo seed, see `progress.md`'s Incidents section), steps 1 and 4 came back clean, and step 2
 found exactly which session had the real data intact vs. reverted (bracketing
 the reset to sometime within one specific ~9-day-long continuous session)
 but never found the literal command — searched every `Bash` tool_use in

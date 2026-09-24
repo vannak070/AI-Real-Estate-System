@@ -17,7 +17,7 @@ packages/contracts   @era/contracts   — versioned event & command schemas (zod
 packages/shared      @era/shared      — ids, logger
 packages/api-client  @era/api-client  — tRPC client typed against @era/api's AppRouter
 packages/ui          @era/ui          — shared React primitives
-packages/mock-data   @era/mock-data   — legacy fixtures, now used only by ChatPage.tsx
+packages/mock-data   @era/mock-data   — legacy fixtures, used only by apps/api's prisma/seed.ts (demo seed)
 packages/theme       @era/theme       — shared brand tokens
 ```
 
@@ -30,13 +30,19 @@ office; the back office links out to the customer site via a plain `<a href>`.
 Everything a real estate agency needs to run its business, wired together
 through one backend rather than duct-taped Odoo/Excel/WhatsApp workflows:
 - **CRM**: contacts, leads, a real sales pipeline with per-agent ownership.
-- **Inventory**: projects, blocks, units, unit types, price lists — real data,
-  not a demo dataset (637 real projects / 893 real units seeded).
+- **Inventory**: projects, blocks, units, unit types, price lists — real data
+  scraped from eracambodia.com and pointerasia.com, not a demo dataset (667
+  projects / 684 units on 2026-09-24).
+- **Marketing**: campaigns with ad-link attribution and an editable list of
+  lead channels.
 - **Sales**: quotations → reservations → signed contracts, with a real
   discount-approval workflow and expiry handling.
 - **Finance**: invoices, payments, receipts, commissions.
 - **A public site** that actually captures leads into the same CRM, not a
   disconnected marketing page.
+- **An AI assistant** (Claude, via the Anthropic API) on the website chat and
+  on Telegram, answering from real listings and staff-written company
+  knowledge, and saving leads into the CRM.
 
 ## Full context
 

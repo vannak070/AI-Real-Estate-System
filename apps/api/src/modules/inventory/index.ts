@@ -183,6 +183,8 @@ export const inventoryModule: AppModule<InventoryApi> = {
           startingPrice: p.startingPrice,
           totalUnits: p.totalUnits,
           availableUnits: p.availableUnits,
+          bedrooms: p.bedrooms,
+          sizeSqm: p.sizeSqm,
           province: p.province,
           district: p.district,
           developer: p.developer,

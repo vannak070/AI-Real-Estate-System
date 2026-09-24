@@ -2,248 +2,238 @@
 
 Stable narrative of what's built and how it got there. `activeContext.md` is
 the "right now" companion to this — update that one for a shift in focus,
-update this one when a whole area of work actually completes.
+move work here once it's done and verified. Detail that only mattered while
+debugging lives in git history, not here.
 
 ## What works (all real, not mock)
 
-- **Telegram AI bot** (2026-09-24): the website chat's Claude assistant on
-  Telegram — `modules/messaging/` (conversation store, long polling in dev /
-  signed webhook in prod, contact-share button, campaign deep links), leads
-  land in CRM with source TELEGRAM. Needs `TELEGRAM_BOT_TOKEN` to run.
-- **Editable marketing channels** (2026-09-24): lead/contact Source and
-  campaign Channel are keys into an admin-managed list (create, rename,
-  hide, delete-when-unused) — no enum, no migration for a new channel.
 - **Identity/RBAC**: DB-backed roles/capabilities, full Users & Roles CRUD,
   real auth (bcrypt + DB sessions), temporary-password issuance.
 - **CRM**: Contacts, Pipeline (Leads with real auto-assignment to the
   least-loaded agent), Tasks — per-agent ownership scoping, a real
-  "Edit contact" form, Lead editing covering every field the schema supports.
+  "Edit contact" form, Lead editing covering every field the schema supports,
+  a Campaign picker on leads. Lead/contact **Source** is a key into the
+  editable channel list (below).
 - **Inventory**: real listings scraped from `eracambodia.com` and
-  `pointerasia.com` (see `apps/api/scripts/` and this file's "Incidents"
-  section below for how it got wiped by a DB reset and recovered on
-  2026-09-21, then had its ERA sale/condo portion re-scraped fresh from the
-  live site on 2026-09-24) — **667 projects** as of 2026-09-24 (45
-  ERA-sourced sale/condo + 592 Pointer Asia + ~30 other ERA-sourced
-  villas/rentals/commercial), all with real photos except a handful of
-  non-photographed categories. This number moves with whatever's seeded
-  locally at the time; don't treat any figure here as fixed — check
-  `docker exec era-postgres psql -U era -d era -c "select count(*) from
-  inventory_projects;"` if it matters, and if it ever comes back small
-  again (~6 projects), that's the demo placeholder seed, not this real
-  data — see the Incidents entries before assuming it needs re-scraping.
-  Full CRUD on projects/blocks/units/unit-types/price-lists, structured
-  Cambodia location picker, photo upload with cropping, a searchable
-  unit/project/contact picker pattern used everywhere a long list needs
-  picking from.
-- **Sales**: Quotations (with sequential discount tiers, a real
-  discount-approval gate above 15%, DRAFT-only editing, PDF generation),
-  Reservations (manual creation, deposit editing, configurable hold
-  duration, the saga-based HELD→CONFIRMED flow, expiry sweep), Contracts
-  (Sign Contract with a real form + schedule preview, milestones
-  auto-generated at signing, Terminate/Mark completed actions).
-- **Finance**: Invoices, Payments (with proper error/pending UI, fixed a
-  premature-drawer-close bug), Receipts, Commissions.
+  `pointerasia.com` (`apps/api/scripts/`) — **667 projects / 684 units** as
+  of 2026-09-24 (45 ERA developer condos, re-scraped fresh that day + 592
+  Pointer Asia + ~30 other ERA villas/rentals/commercial). The number moves
+  with what's seeded locally; if it ever comes back ~6, that's the demo seed,
+  not this data — read the Incidents below before re-scraping. Full CRUD on
+  projects/blocks/units/unit-types/price-lists, structured Cambodia location
+  picker, photo upload with cropping, searchable pickers. One shared
+  New/Edit property form (`ProjectForm.tsx` + `projectFormState.ts`).
+  - **"Show on website"** (`Project.isPublished`, default **false** for new
+    listings) + bulk Publish / Make private.
+  - **Development vs individual** (`Project.isDevelopment`) decides whether
+    a listing lives on the admin's Projects page or Sales/Rent.
+- **Sales**: Quotations (sequential discount tiers, discount-approval gate
+  above 15%, DRAFT-only editing, PDF), Reservations (manual creation, deposit
+  editing, configurable hold, saga-based HELD→CONFIRMED, expiry sweep),
+  Contracts (Sign Contract form + schedule preview, auto milestones,
+  Terminate/Complete).
+- **Finance**: Invoices, Payments, Receipts, Commissions.
+- **Marketing**: Campaigns with create/edit/delete, a permanent ad-link
+  code (`?utm_campaign=<code>` on the website, `t.me/<bot>?start=<code>` on
+  Telegram) that auto-links the resulting leads, server-side stats
+  (leads/deals/revenue/CPL/ROI). **Channels are an admin-editable list**
+  (create, rename, hide, delete-when-unused) — no enum, no migration for a
+  new channel. Capability `marketing:write` (ADMIN, MARKETING).
 - **Settings**: Company profile, Tax rates, Number sequences, Payment Plan
-  CRUD (was previously read-only reference data), and the About-page CMS.
-- **`apps/client`**: real Properties list + detail pages (real images,
-  real availability, real filters), a real lead-capture enquiry form
-  wired into the same CRM the admin reads, a real About page (Overview/
-  History/Team/Awards — Contact tab is static by design, out of scope), and
-  `ChatPage.tsx` — a real Claude-backed AI assistant (Tier 1, 2026-09-24;
-  see `activeContext.md` for the full build and the two real bugs caught
-  and fixed during live verification) that searches real inventory and
-  submits real leads via tool use, not a scripted decision tree.
+  CRUD, About-page CMS.
+- **AI assistant** (`modules/assistant/`, Claude Haiku 4.5 via the Anthropic
+  API, tool use over real Inventory/CRM only): the website chat
+  (`ChatPage.tsx`) and the **Telegram bot** (`modules/messaging/`,
+  @ERACambodiaAI_bot) share one engine. Search by type/area (with spelling
+  aliases)/budget/bedrooms/size/name; saves and corrects leads; on Telegram
+  sends numbered photo cards with "More details"/"Book a viewing" buttons and
+  understands swipe-replies. **AI Knowledge** (admin page, `/ai-knowledge`) —
+  company answers written by ERA staff, given to the AI on every chat.
+- **`apps/client`**: Properties list (tabs Exclusive Property / For Sale /
+  For Rent, client-side pagination 21/51/99) + detail pages, a real
+  lead-capture enquiry form, a real About page (Contact tab static by
+  design), the AI chat, campaign attribution from ad links.
 
 ## What's explicitly not real, and why
 
-- **Real listing/team photos** — the upload pipeline exists everywhere it's
-  needed; most rows just don't have a real photo uploaded yet. Placeholder/
-  initials rendering is deliberate, not a bug, until real photos exist.
+- **Some listing photos and all team photos** — the upload pipeline exists
+  everywhere; 30 published listings and every About-page team member simply
+  have no real photo yet. Placeholder/initials rendering is deliberate.
+- **Listing data gaps** the AI can't work around: amenities are empty on all
+  667 listings, 217 have no bedroom data, there's no description field.
 
 ## How some non-obvious decisions were reached
 
-- **Payment Plans were "reference data, read-only" until asked to be made
-  editable.** Reworked into full CRUD (`sales.paymentPlans.*`) gated
-  `settings:write` (not `sales:write` — this is admin configuration, not
-  day-to-day sales work), with installments validated to sum to ~100%.
-- **A quotation's `contactId`/`unitId`/`ownerId` are excluded from its edit
-  input entirely** (not just disabled in the UI) — the reasoning written
-  into the code itself: "changing the customer or unit isn't editing, it's
-  a different quotation." The same reasoning was applied to a reservation's
-  unit/contact/agent when its deposit-editing was added later — deposit can
-  change, identity fields can't.
-- **A contract's `completeContract` is manual-only on purpose, not an
-  unfinished automation** — it might look like a missing "all invoices
-  paid → COMPLETED" trigger, but the code comment on it explains why that
-  would be wrong: completion tracks handover, not payment-in-full. Proven
-  by real seed data: the "Post-handover 50/50" payment plan pays 50% of
-  the price across 3 years *after* handover, so a payment-driven
-  auto-complete would leave an already-handed-over contract stuck ACTIVE
-  for years. Investigated 2026-09-21 as a candidate feature, and the user
-  chose to keep it manual once this was surfaced — recheck this reasoning
-  before ever building payment-driven contract completion.
-- **The ownership-check shape (fetch record → `can(ctx.user.capabilities,
-  '<module>:read:all')` → compare `ownerId`/`agentId` → `FORBIDDEN`) is now
-  the standing convention for any mutation that acts on an existing owned
-  row**, proven first in `sales.router.ts` (quotations, reservations) and
-  extended to all of `crm.router.ts` in the 2026-09-21 audit (`contacts.
-  update`/`.verifyKyc`, `leads.update`/`.changeStage`, `activities.
-  toggleDone`). A record with a null `ownerId` (never explicitly assigned)
-  still requires the module's `:read:all` capability to touch — that's a
-  deliberate "unassigned means restricted, not open" choice, not an
-  oversight. `activities.create` was also brought in line with `contacts.
-  create`/`leads.create`'s use of `scopedOwnerId()` on its `ownerId` field,
-  since it was the one create-style CRM mutation letting a plain `crm:write`
-  holder assign a task to someone else. A same-day follow-up audited
-  Inventory, Finance, and Marketing for the same gap and found the pattern
-  doesn't apply to any of them — see `activeContext.md`'s "Known open items"
-  for the per-module reasoning. The audit is complete; no modules remain
-  queued for it.
-- **`ChatPage.tsx` was explicitly left alone** during the Public Listings
-  Plan even though it was the most visible remaining piece of mock data at
-  the time; it got a smaller "Tier 0" pass (2026-09-21, real data, still
-  scripted) and later a full "Tier 1" pass (2026-09-24, real Claude-backed
-  LLM via tool use) once the user explicitly approved that larger, separate
-  product decision (LLM choice: Claude/Anthropic API; the user provided
-  their own API key). Both tiers are done now — see `activeContext.md` for
-  the Tier 1 build.
-- **The AI assistant's tools call OUT through `ctx.modules.inventory`/
-  `ctx.modules.crm`, never a Prisma row or another module's service
-  directly** — same module-boundary rule as everything else in `apps/api`.
-  `InventoryApi`/`CrmApi` (each module's `index.ts`) grew new methods
-  (`searchPublicProjects`, `getPublicProject`, `listPublicUnits`,
-  `createLead`) that are thin wrappers around the exact same service
-  functions the public tRPC routers already used — no new data path, just a
-  new caller. `listPublicProjects` itself grew an optional
-  `{category, propertyType, location, limit}` filter (additive — the
-  existing no-arg call from `inventory.public.projects.list` is unaffected)
-  specifically so the AI's `search_properties` tool never has to put the
-  full ~700-project catalog in an LLM's context window.
-- **The AI assistant is stateless server-side — no conversation table.**
-  `apps/client` sends the full message history on every turn (already
-  persisted client-side in `sessionStorage` from the same-day persistence
-  fix); the backend never stores a transcript. Revisit only if admin-side
-  visibility into chat conversations becomes a real ask — it isn't one yet.
-- **`apps/client` did not get a TanStack Query dependency** when it was
-  wired to the real API, even though `apps/admin` uses it everywhere — the
-  scope was two pages' worth of data fetching, and adding a new dependency +
-  provider for that felt like more machinery than the job needed. Plain
-  `useEffect`/`useState` around the tRPC client's promises was judged
-  sufficient. Revisit if `apps/client` grows enough real-data pages that the
-  lack of caching/reuse starts to hurt.
-- **Team member photos deliberately were not carried over from the old mock
-  `AboutPage.tsx`** — those were stock Unsplash photos standing in for named,
-  real people, which is a worse thing to persist as "real data" than an
-  honest placeholder. Every place a real name is paired with a photo in this
-  system should follow the same rule: a real uploaded photo, or an honest
-  fallback (initials/icon) — never a stock photo pretending to be someone.
+### Inventory & the customer site
+- **`isPublished`** — before it, every Inventory row was on the website the
+  moment it was created. Migration `20260924042659_add_project_is_published`
+  set all 667 existing rows to `true` so nothing changed for customers.
+  Enforced server-side in the three public reads (`listPublicProjects`,
+  `getPublicProject` → null for hidden, `listPublicUnits`), which also covers
+  the AI. Every import/seed script sets `isPublished: true` explicitly.
+  Sold Out/Completed are **not** auto-hidden (user agreed).
+- **`isDevelopment`** replaced the old "more than 1 unit row = project" rule,
+  which filed the 45 real ERA developer towers (1 sample unit each) under
+  Sales. Backfilled `true` where `developer IS NOT NULL` (exactly those 45).
+  When the user said "remove the 8 multi-unit" listings from Projects, they
+  were **moved to Sales/Rent, not deleted** (the user was told; say so again
+  if deletion was meant).
+- **Customer tabs**: Exclusive Property = published development projects
+  (first) + EXCLUSIVE-badged listings; For Sale / For Rent = individual
+  listings only, newest first (107 / 193 / 429 on 2026-09-24). The 45
+  development projects were re-created on 2026-09-24, so they're the newest
+  rows — that's why they're *excluded* from For Sale, not just re-sorted.
+  A CONDO/BOREY "Project" bucket was tried and rejected by the user — don't
+  re-introduce it without asking. Page sizes 21/51/99 (multiples of 3 for
+  the 3-column grid).
+- **ERA re-scrape (2026-09-24)**: "delete the existing Project" would also
+  have destroyed the 592 Pointer Asia listings (different source, no
+  recovery trail), so the user chose to replace only the ERA-sourced rows.
+  `scripts/refresh-era-sale-condos-2026-09-24.ts` + its JSON (kept, reusable)
+  recreated the 45 still-live projects with current name/location/price/
+  photo, carried developer/tenure/floors forward, and dropped the 2 no longer
+  live. Sales/CRM were left untouched by instruction — old demo transactions
+  pointing at deleted unit ids are dangling, an accepted tradeoff.
+- **Add/Edit form unification**: the two drawers had drifted (Add couldn't
+  set an EXCLUSIVE badge). Fields can now be cleared (`projectInput` takes
+  `.nullable()`, form sends `null`). A "Phase 2" (price/bed/bath on Add,
+  auto-creating the first unit) was proposed, not approved.
+
+### Marketing
+- **Campaign attribution rule**: each ACTIVE/COMPLETED contract is credited
+  to exactly one campaign — the contact's latest campaign-linked lead
+  created on/before the contract — so no double counting and no credit for
+  sales made before the customer saw the ad. Computed server-side so the
+  Marketing role sees real revenue without Sales access.
+- **Campaign code is immutable** (changing it would break running ads). A
+  campaign with linked leads can't be deleted — set it to Ended. The 8 demo
+  campaigns were deleted on request (their leads kept, unlinked). Website
+  attribution: `?utm_campaign=` stored 30 days, last click wins.
+- **Channels as data, not an enum** (migration
+  `20260924080000_editable_channels`, hand-written, data-preserving): each
+  channel has a permanent `key` stored on leads/contacts/campaigns, so a
+  rename never touches old records. WEBSITE is `isSystem` (renamable, never
+  hidden/deleted — the site writes it). The old enum's `CAMPAIGN` source got
+  a **hidden** channel so its 6 leads/6 contacts keep a label. A channel in
+  use can only be hidden. The old hand-ticked "connected" flag was dropped;
+  bot connection is read live from `messaging.status`.
+
+### AI assistant
+- **Tier 0 → Tier 1** were separate, explicitly approved decisions: Tier 0
+  (2026-09-21) put the old scripted chat on real data; Tier 1 (2026-09-24)
+  made it a real Claude conversation. Model **Haiku 4.5** for the $5 demo
+  budget; Sonnet 5 (~2× price) is the next lever if comprehension is weak —
+  not changed without the user.
+- **Tools go through `ctx.modules.inventory`/`ctx.modules.crm`** — same
+  module rule as everything else; no new data path.
+- **Cost guardrails**: 40 messages per conversation, 2,000 characters per
+  message, 20 requests/minute per IP (website) or per chat (Telegram), at
+  most 4 tool rounds per reply, 8 search results, 5 photo cards.
+- **Guarantees live in code, not the prompt** (see Incidents): a rejected
+  save makes the server write the reply itself; chat-app replies are
+  stripped of markdown (`toPlainText`); a property id from the model is
+  checked against real published projects before it's stored or shown.
+- **Website chat is stateless server-side** (browser keeps history in
+  `sessionStorage`); a correction updates the same lead via an HMAC-signed
+  `leadToken` (`CHAT_TOKEN_SECRET`). **Chat apps are not** — platforms send
+  only the newest message, so `messaging_conversations`/`messaging_messages`
+  store history (last 20 sent to the model), the lead link and a dedupe key.
+- **Telegram transport**: long polling when `PUBLIC_API_URL` is unset (works
+  on localhost, no tunnel), signed webhook when it's set. Photos are local
+  `/uploads` files Telegram can't fetch from localhost, so they're uploaded
+  from disk once and re-sent by `file_id`. The stored transcript replaces
+  each link with "[Photo card N shown: …]" so "the second one" resolves.
+- **AI Knowledge is injected whole** into the instructions (no retrieval
+  step that could miss the right entry), capped at 40,000 active characters,
+  prompt-cached. Answers are written by ERA staff — none were pre-written,
+  because legal/process facts must be ERA's own.
+- **Location aliases**: listings use romanised Khmer ("Boeng Keng Kang",
+  "Tuol Kouk"), customers type "BKK1"/"Toul Kork" — `LOCATION_ALIASES` in
+  `inventory.service.ts` maps them (common Phnom Penh areas + Sihanoukville).
+
+### Sales, CRM, other
+- **Payment Plans** became full CRUD gated `settings:write` (admin
+  configuration, not day-to-day sales).
+- **A quotation's contact/unit/owner are excluded from its edit input** —
+  "changing the customer or unit isn't editing, it's a different quotation."
+  Same for a reservation's unit/contact/agent; only its deposit can change.
+- **`completeContract` is manual on purpose** — completion tracks handover,
+  not payment-in-full; the "Post-handover 50/50" plan would leave a
+  handed-over contract ACTIVE for years under a payment trigger. User chose
+  to keep it manual (2026-09-21). Don't re-flag it as missing.
+- **Ownership checks** (fetch record → `<module>:read:all` or owner, else
+  `FORBIDDEN`) are the convention for mutations on owned rows — all of CRM
+  and Sales. Inventory, Finance and Marketing don't need them: their rows
+  have no per-agent owner and their write capabilities are held only by
+  roles meant to see everything. A null `ownerId` means restricted, not open.
+- **`apps/client` has no TanStack Query** — plain `useEffect`/`useState` was
+  enough for its few pages.
+- **No stock photos for real people or properties** — a real upload or an
+  honest placeholder, never a stand-in.
+
+## Earlier completed work (2026-09-21 and before), in brief
+
+- Public Listings Plan: client Properties pages + enquiry form on
+  `inventory.public.*` / `crm.public.submitLead`.
+- About-page CMS (`AboutPageContent`/`AboutMilestone`/`AboutTeamMember`/
+  `AboutAward`, `prisma/seed-about.ts`, idempotent).
+- Reservation & Contract lifecycle overhaul; reservation form polish.
+- CRM ownership-check audit (commit `fc0a846`).
+- Contacts/Pipeline default to "Everyone" for `crm:read:all` holders (chat
+  leads auto-assign to agents, so admins saw an empty "My" tab).
+- `ChatPage.tsx` (pre-Tier-1) fixes: quick-reply stale closure, malformed
+  phone/email silently dropping leads, conversation persistence.
+- `prisma/seed.ts` `assertSafeToReset()` guard (refuses to wipe non-demo
+  Inventory without `--force` / `SEED_FORCE=1`).
+- `identity.users.*` `passwordHash` leak fixed (explicit `select`).
 
 ## Incidents worth remembering
 
-- **The Telegram bot's replies came out with literal `**asterisks**`** —
-  caught 2026-09-24 in the fake-Telegram harness on the very first property
-  answer, even though the prompt said "no markdown at all". Same lesson as
-  the false-save incident below: an instruction the model must never break
-  gets enforced in code (`toPlainText()` in `assistant.service.ts`), not
-  just asked for in the prompt.
-- **A hand-written migration failed halfway through writing it** (2026-09-24,
-  editable channels): an INSERT into `marketing_channels` ran before the old
-  `platform NOT NULL` column was dropped. Postgres ran the migration in one
-  transaction, so nothing was half-applied — fix the SQL order,
-  `prisma migrate resolve --rolled-back <name>`, then `migrate deploy`
-  again. Check `\d <table>` before assuming a partial state.
-- **The AI assistant (Tier 1) claimed to have submitted a lead without
-  actually calling the `submit_lead` tool** — caught live 2026-09-24 by
-  checking Postgres after a "confirmed" submission and finding no new
-  Contact/Lead. An LLM's own text can fabricate a confirmation exactly like
-  hardcoded fake text can (this is what Tier 0 fixed for the *old*, scripted
-  version) — a passing `200 OK` and a friendly-sounding reply are not proof
-  an action happened; only checking the actual database is. Fixed with an
-  explicit, forceful system-prompt rule (never claim an action unless the
-  tool was actually called in that same response) and retested 3x
-  successfully — but this is a probabilistic model behavior fixed by
-  instruction, not a hard guarantee; re-verify if `submit_lead`'s prompt or
-  tool wiring ever changes. The same pass also caught the model passing a
-  property's *name* instead of its real id to `submit_lead`'s
-  `preferredProjectId` (a bare, unvalidated column with no DB-level FK) —
-  would have silently corrupted a real Lead record. Fixed by validating the
-  claimed id against a real project server-side before trusting it. See
-  `activeContext.md`'s "Where things stand" for the full build.
-- **A stray, unrelated git repo at the machine's home directory was
-  silently acting as this project's repo** for an unknown stretch of time
-  (this project's own `.git` didn't exist). Discovered via a port conflict
-  (a duplicate clone's leftover dev server squatting on `apps/client`'s
-  port), traced back to the missing `.git`, fixed by initializing a real one
-  here pointed at the correct GitHub remote. No damage occurred (nothing had
-  ever been committed from here), but it's the kind of thing that could have
-  silently sent a commit to the wrong project if unnoticed. See
-  `techContext.md`'s "Environment gotcha" note for the exact check to run if
-  `git status` ever looks wrong again.
-- **`identity.users.list`/`.get` returned `passwordHash` over the wire** for
-  an unknown period before being caught and fixed — a reminder that
-  "obviously it wouldn't do that" is not a substitute for actually checking
-  what a query selects, especially on `db.<model>.findMany`/`findUnique`
-  calls with no explicit projection.
-- **`ChatPage.tsx`'s quick-reply buttons were silently broken for an unknown
-  period** — `handleOptionClick` set `input` state then called `handleSend()`
-  from a stale closure that still saw the old (usually empty) `input`, so
-  its `if (!input.trim()) return;` guard silently swallowed the click. 6 of
-  the 9 lead-qualification steps offer only buttons, so this meant most
-  real chat visitors clicking the suggested options (the flow's primary
-  interaction) would see the conversation appear to freeze, with nothing in
-  the console to suggest why. Caught 2026-09-21 while browser-verifying the
-  customer site's DB connectivity end-to-end — reading the code wouldn't
-  have caught it (the write path itself, `api.crm.public.submitLead`, was
-  and is fine; the bug was entirely in whether the UI ever called it). Fixed
-  by having `handleSend` accept an optional `overrideText` param so
-  `handleOptionClick` passes the clicked value explicitly instead of relying
-  on `input` state timing. A reminder: **a passing typecheck/lint and a
-  code read that "looks right" don't catch stale-closure bugs in React
-  event handlers** — only actually clicking through the UI does. When a
-  handler both mutates state and, soon after (via `setTimeout` or a
-  callback), reads that same state back, check whether it's reading current
-  state or a value closed over at definition time.
-- **`prisma/seed.ts` silently wiped the real, already-scraped 637-project
-  Inventory dataset back to the small demo seed** — discovered and
-  recovered 2026-09-21 (see "Where things stand" for the full story).
-  `apps/api/scripts/` had a real scraping pipeline (`eracambodia.com` +
-  `pointerasia.com`) that already ran once and replaced the demo Inventory
-  with real data; at some point `prisma/seed.ts` (the demo/mock-data seed)
-  ran again on top of it, unconditionally deleting Project/Unit/etc. first,
-  silently erasing the real data — this memory bank's own "637 real
-  projects" note had been present the whole time but a prior session, not
-  recognizing it, rewrote it to match whatever the (demo) DB held instead
-  of investigating the discrepancy. **Lesson: a memory-bank figure that
-  doesn't match the live DB is itself a signal something may have been
-  lost, not just staleness to silently correct** — before overwriting a
-  specific, oddly-precise number like "637" with "whatever's there now,"
-  it's worth asking why they differ. The exact trigger for that `db:seed`
-  run was investigated thoroughly (see `techContext.md`'s "Root-cause
-  investigation method" note) but never conclusively found — a Docker
-  volume wipe was ruled out (the container's `Created` timestamp was still
-  day one), and no matching command turned up in either of this project's
-  two local Claude Code session transcripts or their 12 subagents. The
-  recovery itself worked only because Postgres resets don't touch the
-  filesystem — the actual downloaded photos were still sitting orphaned in
-  `apps/api/uploads/`. **Resolved properly, not just patched**:
-  `prisma/seed.ts` now has an `assertSafeToReset()` guard (added the same
-  day) that refuses to run — no matter what invokes it, or why — if
-  `Project` holds any row outside the demo dataset's own ids, unless
-  `--force`/`SEED_FORCE=1` is explicitly passed. The exact trigger no
-  longer needs to be known for this specific failure mode to be closed.
-- **A hand-off checkpoint got committed with its own "still to do" list
-  left undone** — the 2026-09-21 `ChatPage.tsx` conversation-persistence fix
-  was interrupted mid-implementation for an account switch, and the
-  `activeContext.md` checkpoint written at that moment explicitly listed two
-  remaining steps (wire up the save-effect; fix a stale dependency array).
-  A later commit that same day (`d4b09d9`) included the in-progress diff,
-  but neither remaining step was actually done — `savePersistedChat` was
-  defined and never called anywhere, so restore silently always no-op'd.
-  Caught 2026-09-24 by re-reading the checkpoint against the live file
-  (`grep -n "savePersistedChat("` turned up only the definition) instead of
-  trusting the checkpoint's "already done" list at face value. **Lesson:
-  a hand-off checkpoint describes intent at the moment it was written, not
-  a guarantee about what a later commit actually contains** — verify a
-  checkpoint's "already done" claims against the current code before
-  building on top of them, the same way any other memory-bank claim gets
-  verified.
+- **The real Inventory was silently wiped back to the demo seed** (found and
+  recovered 2026-09-21). `prisma/seed.ts` had run on top of the scraped
+  637-project dataset and deleted it. Recovery worked only because the
+  downloaded photos were still on disk under their old project ids: the
+  orphaned folders' cuid order recovered each dataset's creation order, and
+  `scripts/recover-era-project-images.ts` + `recover-pointer-asia-listings.ts`
+  (kept) re-attached them. Those orphaned folders were then deleted — **if
+  Inventory is ever reset again, there's no trail left; the only path back is
+  re-scraping both sites.** The trigger was never found (Docker volume ruled
+  out; not in any session transcript — see `techContext.md`'s investigation
+  method). Resolved by making it impossible: the `assertSafeToReset()`
+  guard. **Lesson:** a memory-bank figure that doesn't match the live DB is a
+  signal something may have been lost, not staleness to silently correct.
+- **The AI claimed to have saved a lead without calling `submit_lead`**
+  (2026-09-24, caught by checking Postgres). A friendly reply and a 200 are
+  not proof an action happened. Fixed by prompt rule; the related
+  "claimed an update after the server rejected it" case is now a server
+  guarantee. The same pass caught the model passing a property *name* as
+  `preferredProjectId` — now validated server-side.
+- **Telegram replies came out with literal `**asterisks**`** despite a
+  "no markdown" rule — now stripped in code. Rule of thumb: an instruction
+  the model must never break gets enforced in code.
+- **Telegram photos silently vanished** (user report, 2026-09-24): cards were
+  built only for properties a tool returned in the same turn, but links were
+  stripped regardless, so a follow-up sent "here is the link:" and nothing.
+  Fixed by re-looking-up linked ids. **Lesson:** when you strip something
+  from output, check the replacement always exists.
+- **"BKK1" search found 5 listings instead of 93** — area spelling mismatch
+  (see Location aliases). Found only by counting results against the DB.
+- **A hand-written migration failed midway** (editable channels): an INSERT
+  ran before the old NOT NULL column was dropped. Postgres ran it in one
+  transaction, so nothing was half-applied — fix the SQL,
+  `prisma migrate resolve --rolled-back <name>`, `migrate deploy` again.
+  Check `\d <table>` before assuming a partial state.
+- **A stray git repo at the home directory acted as this project's repo**
+  (this project's `.git` was missing). Fixed; see `techContext.md` for the
+  check to run if `git status` looks wrong.
+- **`identity.users.list`/`.get` returned `passwordHash`** for an unknown
+  period — always check what a query selects.
+- **`ChatPage.tsx`'s quick-reply buttons were silently broken** (stale
+  closure read the old `input` state). Typecheck and a code read didn't
+  catch it; clicking through did.
+- **A hand-off checkpoint's "already done" list wasn't done** — a function
+  was defined but never called. Verify a checkpoint against the code before
+  building on it.
+- **A Telegram bot token and an Anthropic key were pasted into chat** by the
+  user. Both are only in the git-ignored `.env`; the Telegram token still
+  needs `/revoke` + re-set before real customers use the bot.

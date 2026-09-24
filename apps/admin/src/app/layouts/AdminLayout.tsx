@@ -16,6 +16,7 @@ import {
   Banknote,
   Percent,
   Megaphone,
+  Sparkles,
   Trophy,
   FolderOpen,
   Home,
@@ -77,6 +78,7 @@ const NAV: { section: string; items: { to: string; icon: typeof Home; label: str
     section: 'Growth',
     items: [
       { to: '/campaigns', icon: Megaphone, label: 'Marketing' },
+      { to: '/ai-knowledge', icon: Sparkles, label: 'AI Knowledge' },
       { to: '/agents', icon: Trophy, label: 'Agents' },
     ],
   },

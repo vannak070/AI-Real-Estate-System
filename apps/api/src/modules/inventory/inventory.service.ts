@@ -56,6 +56,25 @@ function locationSpellings(query: string): string[] {
   return group ?? [query.trim()];
 }
 
+const PUBLIC_UNIT_SELECT = {
+  status: true,
+  listPrice: true,
+  areaSqm: true,
+  unitType: { select: { bedrooms: true } },
+} as const;
+
+/** What a listing offers right now, from its AVAILABLE units: distinct bedroom counts (0 = studio,
+ * empty = not recorded) and the size range in m² (null = not recorded). */
+function availableUnitSummary(units: { status: UnitStatus; areaSqm: number | null; unitType: { bedrooms: number } | null }[]) {
+  const available = units.filter((u) => u.status === 'AVAILABLE');
+  const sizes = available.map((u) => u.areaSqm).filter((a): a is number => a != null);
+  return {
+    availableUnits: available.length,
+    bedrooms: [...new Set(available.map((u) => u.unitType?.bedrooms).filter((b): b is number => b != null))].sort((a, b) => a - b),
+    sizeSqm: sizes.length ? { min: Math.min(...sizes), max: Math.max(...sizes) } : null,
+  };
+}
+
 /** The public site never shows the internal 8-value operational status — just whether a unit
  * can still be bought (AVAILABLE), is spoken for (HELD/RESERVED/BOOKED/BLOCKED), or is gone (SOLD/CONTRACTED/HANDED_OVER). */
 function publicUnitStatus(status: UnitStatus): 'AVAILABLE' | 'RESERVED' | 'SOLD' {
@@ -491,14 +510,11 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
       }
       const projects = await db.project.findMany({
         where: nameMatchIds ? { ...where, id: { in: nameMatchIds } } : where,
-        include: { units: { select: { status: true, listPrice: true, areaSqm: true, unitType: { select: { bedrooms: true } } } } },
+        include: { units: { select: PUBLIC_UNIT_SELECT } },
         orderBy: { createdAt: 'desc' },
         take: filter?.limit,
       });
-      return projects.map(({ units, startingPriceOverride, ...project }) => {
-        const available = units.filter((u) => u.status === 'AVAILABLE');
-        const sizes = available.map((u) => u.areaSqm).filter((a): a is number => a != null);
-        return {
+      return projects.map(({ units, startingPriceOverride, ...project }) => ({
         id: project.id,
         name: project.name,
         location: project.location,
@@ -516,20 +532,15 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
         videoUrl: project.videoUrl,
         startingPrice: startingPriceFor(startingPriceOverride, units),
         totalUnits: units.length,
-        availableUnits: available.length,
-        /** Distinct bedroom counts among available units, ascending (0 = studio). Empty = unknown. */
-        bedrooms: [...new Set(available.map((u) => u.unitType?.bedrooms).filter((b): b is number => b != null))].sort((a, b) => a - b),
-        /** Size range of available units, m²; null = unknown. */
-        sizeSqm: sizes.length ? { min: Math.min(...sizes), max: Math.max(...sizes) } : null,
-        };
-      });
+        ...availableUnitSummary(units),
+      }));
     },
 
     /** A hidden property is indistinguishable from a missing one — a direct link returns null. */
     async getPublicProject(id: string) {
       const project = await db.project.findFirst({
         where: { id, isPublished: true },
-        include: { units: { select: { status: true, listPrice: true } } },
+        include: { units: { select: PUBLIC_UNIT_SELECT } },
       });
       if (!project) return null;
       const { units, startingPriceOverride, ...rest } = project;
@@ -559,7 +570,7 @@ export function createInventoryService({ db, bus, logger }: ModuleContext) {
         sitePlanUrl: rest.sitePlanUrl,
         startingPrice: startingPriceFor(startingPriceOverride, units),
         totalUnits: units.length,
-        availableUnits: units.filter((u) => u.status === 'AVAILABLE').length,
+        ...availableUnitSummary(units),
       };
     },
 

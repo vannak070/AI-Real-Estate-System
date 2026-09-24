@@ -16,6 +16,7 @@ import { PaymentsPage } from '../pages/PaymentsPage';
 import { CommissionsPage } from '../pages/CommissionsPage';
 import { ApprovalsPage } from '../pages/ApprovalsPage';
 import { CampaignsPage } from '../pages/CampaignsPage';
+import { AiKnowledgePage } from '../pages/AiKnowledgePage';
 import { AgentsPage } from '../pages/AgentsPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
 import { ReportsPage } from '../pages/ReportsPage';
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: 'commissions', Component: CommissionsPage },
       { path: 'approvals', Component: ApprovalsPage },
       { path: 'campaigns', Component: CampaignsPage },
+      { path: 'ai-knowledge', Component: AiKnowledgePage },
       { path: 'agents', Component: AgentsPage },
       { path: 'documents', Component: DocumentsPage },
       { path: 'reports', Component: ReportsPage },

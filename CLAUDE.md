@@ -255,8 +255,11 @@ Rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
   `getPublicProject` and `listPublicUnits` in `inventory.service.ts`; the AI assistant reuses
   them. Any new public read of projects/units needs the same filter. Scripts that import real
   listings set `isPublished: true` explicitly.
-- **`modules/assistant/`** has no Prisma tables of its own — it calls OUT to
-  `ctx.modules.inventory`/`ctx.modules.crm` and the Anthropic API. It powers
+- **`modules/assistant/`** calls OUT to `ctx.modules.inventory`/`ctx.modules.crm`
+  and the Anthropic API. Its one table, `assistant_knowledge`
+  (`assistant.prisma`), is ERA's company knowledge — written by staff on the
+  admin's **AI Knowledge** page (`marketing:read`/`marketing:write`), capped at
+  40k characters, and injected (prompt-cached) into every chat's instructions. It powers
   `apps/client`'s `ChatPage.tsx` (tRPC `assistant.public.chat`, browser holds
   the history) and, via `AssistantApi.replyToMessage`, the chat-app bots.
 - **`modules/messaging/`** owns the chat-app side (Telegram today; Messenger/
