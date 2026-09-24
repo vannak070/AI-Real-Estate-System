@@ -176,3 +176,19 @@ update this one when a whole area of work actually completes.
   `Project` holds any row outside the demo dataset's own ids, unless
   `--force`/`SEED_FORCE=1` is explicitly passed. The exact trigger no
   longer needs to be known for this specific failure mode to be closed.
+- **A hand-off checkpoint got committed with its own "still to do" list
+  left undone** — the 2026-09-21 `ChatPage.tsx` conversation-persistence fix
+  was interrupted mid-implementation for an account switch, and the
+  `activeContext.md` checkpoint written at that moment explicitly listed two
+  remaining steps (wire up the save-effect; fix a stale dependency array).
+  A later commit that same day (`d4b09d9`) included the in-progress diff,
+  but neither remaining step was actually done — `savePersistedChat` was
+  defined and never called anywhere, so restore silently always no-op'd.
+  Caught 2026-09-24 by re-reading the checkpoint against the live file
+  (`grep -n "savePersistedChat("` turned up only the definition) instead of
+  trusting the checkpoint's "already done" list at face value. **Lesson:
+  a hand-off checkpoint describes intent at the moment it was written, not
+  a guarantee about what a later commit actually contains** — verify a
+  checkpoint's "already done" claims against the current code before
+  building on top of them, the same way any other memory-bank claim gets
+  verified.

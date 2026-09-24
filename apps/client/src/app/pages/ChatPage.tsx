@@ -182,7 +182,14 @@ export function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [propertyContext?.propertyId]);
+  }, [effectivePropertyId, initial]);
+
+  // Keeps sessionStorage in sync so a route change away from /chat and back (e.g. "View Details"
+  // on a comparison card) can resume this conversation instead of restarting it — see
+  // loadPersistedChat()/the `initial` state above for the restore side of this.
+  useEffect(() => {
+    savePersistedChat({ messages, step, leadData, schedulingData, propertyId: effectivePropertyId, propertyName: effectivePropertyName });
+  }, [messages, step, leadData, schedulingData, effectivePropertyId, effectivePropertyName]);
 
   const conversationFlow = [
     { question: "What's your name?", field: "name" },

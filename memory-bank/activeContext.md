@@ -5,97 +5,7 @@ it (don't just append to it) whenever the current focus shifts.**
 `progress.md` is the longer-lived companion: what's done, in a stable
 narrative form.
 
-## ⚠️ IN PROGRESS — hand-off checkpoint (2026-09-21, uncommitted)
-
-**Task**: user reported that when the chat shows "Compare with Other
-Properties" cards and the visitor clicks "View Details" on one (navigating
-to `/properties/:id`, which unmounts `ChatPage`), then comes back to
-`/chat`, the entire conversation is gone and restarts from the greeting —
-`messages`/`step`/`leadData`/`schedulingData` are plain `useState`, no
-persistence, so any route change away from `/chat` and back loses
-everything. User asked to fix this, then interrupted mid-implementation to
-hand off to a new account/session — **this section exists so that session
-can pick up exactly here without re-deriving the plan.**
-
-**Approach chosen** (not yet fully wired — see below): persist the
-conversation to `sessionStorage` (not `localStorage` — this is "don't lose
-your place this tab session," not a permanent record) under key
-`era-chat-session-v1`, and restore it on mount unless the visitor arrived
-via a *fresh* "Chat about this property" link for a *different* property
-than the one they were last talking about (that case intentionally starts
-a new conversation — clicking into a different property's own chat entry
-point should not silently resume an unrelated old conversation).
-
-**Already done, in `apps/client/src/app/pages/ChatPage.tsx`** (uncommitted
-— run `git diff apps/client/src/app/pages/ChatPage.tsx` to see it):
-1. Added `CHAT_STORAGE_KEY`, `PersistedChat` interface, `loadPersistedChat()`,
-   `savePersistedChat()` helpers (near `buildPropertyGreeting`).
-2. In `ChatPage()`: added `const [initial] = useState(() => ...)` that
-   calls `loadPersistedChat()` once and decides whether to use it (see the
-   "fresh property link wins" comment right above it), plus
-   `effectivePropertyId`/`effectivePropertyName` derived from
-   `initial ?? propertyContext`.
-3. Changed the `messages`/`step`/`leadData`/`schedulingData` `useState`
-   initializers to seed from `initial` when present.
-4. Changed the property-fetch `useEffect` (the one that calls
-   `inventory.public.projects.get`/`units.list`) to key off
-   `effectivePropertyId` instead of `propertyContext?.propertyId`, and
-   guarded every place it used to unconditionally call
-   `setMessages([buildPropertyGreeting(...)])` / `setMessages([GENERIC_GREETING])`
-   with `if (!initial)` — a restored conversation must not be clobbered by
-   the greeting-generation logic that runs after the property re-fetches.
-
-**Still to do, in exact order:**
-1. **The effect's dependency array on line ~185 still reads
-   `[propertyContext?.propertyId]`** — must become `[effectivePropertyId]`
-   to match what the effect body now actually uses (currently harmless in
-   practice since the effect also runs unconditionally on mount, but it's
-   wrong and will trip the `react-hooks/exhaustive-deps` lint rule).
-2. **The actual save-to-`sessionStorage` effect was never added.** This is
-   the load-bearing missing piece — without it `loadPersistedChat()` will
-   always return `null` because nothing ever calls `savePersistedChat()`.
-   Add a `useEffect` that calls `savePersistedChat({ messages, step,
-   leadData, schedulingData, propertyId: effectivePropertyId, propertyName:
-   effectivePropertyName })` with `[messages, step, leadData,
-   schedulingData, effectivePropertyId, effectivePropertyName]` as its
-   dependency array (every one of those four state setters is always
-   followed by a `messages` change too in the existing code, so keying off
-   all four together and re-saving is simple and safe — no need to be
-   clever about it).
-3. Run `pnpm --filter @era/client typecheck` and `lint`.
-4. **Verify live in the browser pane, not just by reading the diff** —
-   this repo's own convention this session has been to prove chat/CRM
-   changes against the real dev server and Postgres, not just typecheck:
-   - Start a general (non-property) chat, send a couple of messages,
-     navigate to any `/properties/:id` page, navigate back to `/chat` via
-     the nav bar link (no property `state`) → conversation should resume,
-     not reset.
-   - From a property's own "Chat with AI" entry point, get a few messages
-     in, click "View Details" on a "Compare with Other Properties" card
-     (a *different* property), then click that nav-bar "Chat with AI
-     Assistant" link again → should resume the *original* property's
-     conversation (comparison-card links carry no `state`, confirmed via
-     `grep -n "View Details" ChatPage.tsx` → plain `<Link to=.../>`, so
-     `propertyContext` is `null` on return and the restore path applies).
-   - From property A's chat, use A's own "Compare with Other Properties"
-     flow to click into property **B**'s dedicated "Chat with AI" link
-     from B's own detail page (not a comparison card) → should start a
-     **fresh** conversation for B, not resume A's history under B's
-     context (this exercises the `freshPropertyId !== restored.propertyId`
-     branch — the one case that must *not* restore).
-   - Confirm no stale `messages`/`leadData` bleed between these cases, and
-     that a full lead submission still works and lands in Postgres
-     (`crm.public.submitLead` → `200 OK` → real Contact/Lead), same
-     verification pattern used for the stale-closure and validation fixes
-     earlier this session. Clean up any test Contact/Lead rows created
-     during verification (same convention as every other live test this
-     session).
-5. Once verified, fold this into a normal "Most recent work" entry below
-   (with the same level of live-verification detail the other entries
-   have) and delete this whole "IN PROGRESS" section — it's a hand-off aid,
-   not a permanent fixture of this file.
-
-## Where things stand (2026-09-21)
+## Where things stand (2026-09-24)
 
 **Every screen in both `apps/admin` and `apps/client` is now backed by the
 real API — including `apps/client`'s `ChatPage.tsx`**, whose Tier 0 fix
@@ -108,7 +18,37 @@ apps/*/src`).
 
 Most recent work, newest first:
 
-1. **`ChatPage.tsx` silently dropped leads with a malformed phone/email —
+1. **`ChatPage.tsx` conversation persistence — completed (2026-09-24)**,
+   finishing a fix left mid-implementation at hand-off on 2026-09-21 (user
+   reported that clicking "View Details" on a "Compare with Other
+   Properties" card — or any nav away from `/chat` and back — unmounted
+   `ChatPage` and lost the whole conversation, since `messages`/`step`/
+   `leadData`/`schedulingData` were plain `useState` with no persistence).
+   The prior session had already added the `sessionStorage`-backed
+   `loadPersistedChat`/`savePersistedChat` helpers and the `initial`/
+   `effectivePropertyId` restore-on-mount logic, but left two things
+   unfinished: the actual save-effect was never wired up (`savePersistedChat`
+   was defined but called nowhere, so nothing was ever saved to restore),
+   and the property-fetch effect's dependency array still read
+   `[propertyContext?.propertyId]` instead of `[effectivePropertyId]`. Fixed
+   both — added the missing `useEffect` that calls `savePersistedChat(...)`
+   on every `messages`/`step`/`leadData`/`schedulingData`/
+   `effectivePropertyId`/`effectivePropertyName` change, corrected the
+   dependency array (and added `initial` to it, since it's a stable
+   `useState` value with no setter ever called — silences
+   `react-hooks/exhaustive-deps` without changing behavior). `pnpm --filter
+   @era/client typecheck`/`lint` both clean. Verified live in the browser
+   pane: (1) a general chat survives navigating to Properties and back; (2)
+   a property-specific chat survives navigating away (via the nav bar link,
+   no `state`) and back, resuming the same property's conversation; (3)
+   clicking a *different* property's own "Chat with AI" entry point
+   correctly starts a **fresh** conversation rather than leaking the first
+   property's history (confirmed via `sessionStorage`'s stored
+   `propertyName` before/after); (4) walked a full property-viewing request
+   through to submission — `crm.public.submitLead` still returned `200 OK`
+   and a real Contact/Lead landed in Postgres, confirmed via `psql`, then
+   deleted. Full `pnpm turbo run typecheck lint build` gate: 17/17.
+2. **`ChatPage.tsx` silently dropped leads with a malformed phone/email —
    fixed (2026-09-21)** — user report: submitted a full chat conversation,
    got a generic "I couldn't submit your details" error, and (correctly,
    this time) found nothing in the back office. Root cause: the free-text
@@ -139,7 +79,7 @@ Most recent work, newest first:
    exact repro) → caught with a retry prompt and **no** `submitLead` request
    fired, valid email → `200 OK` and a real Contact/Lead landed in Postgres
    with the correct phone/email. Test data cleaned up afterward.
-2. **Contacts/Pipeline default view fixed for `crm:read:all` holders**
+3. **Contacts/Pipeline default view fixed for `crm:read:all` holders**
    (2026-09-21) — reported as "chat submits leads but nothing shows up in
    the back office." Investigated live: the lead/contact was landing
    correctly (`crm.public.submitLead` → 200 OK, confirmed in Postgres,
@@ -158,7 +98,7 @@ Most recent work, newest first:
    no manual toggle needed. No backend change — the data was always
    correct, this is purely a "which agent does this account behave like by
    default" UX fix.
-3. **`prisma/seed.ts` now refuses to wipe non-demo data — safety guard added
+4. **`prisma/seed.ts` now refuses to wipe non-demo data — safety guard added
    (2026-09-21)**, closing the loop on item 4 below. New `assertSafeToReset()`
    runs before `reset()`: if `Project` holds any row whose id isn't one of
    `erpSeed.projects`' own ids (i.e. anything this seed script didn't itself
@@ -174,7 +114,7 @@ Most recent work, newest first:
    `db:seed`, deliberately or accidentally, through any channel, can repeat
    it without explicitly opting in. `CLAUDE.md`'s Commands section updated
    to describe the guard instead of just "optional demo data."
-4. **Real 637-project scraped dataset recovered after a DB reset wiped it
+5. **Real 637-project scraped dataset recovered after a DB reset wiped it
    (2026-09-21)** — Inventory is now the real, previously-scraped dataset
    again, not the small demo seed. What happened: `apps/api/scripts/`
    contains a real scraping pipeline (`reseed-inventory-real-data.ts`,
@@ -251,7 +191,7 @@ Most recent work, newest first:
    what's inspectable here. Rather than keep hunting, item 1 above closes
    this by making the mechanism not matter — `prisma/seed.ts` now refuses
    to run against non-demo data at all.
-5. **`ChatPage.tsx` quick-reply buttons were silently broken — fixed
+6. **`ChatPage.tsx` quick-reply buttons were silently broken — fixed
    (2026-09-21)** — found while verifying the customer site's DB
    connectivity end-to-end (see `techContext.md`'s browser-verification
    note for the general method). `handleOptionClick` called `setInput(option)`
@@ -276,7 +216,7 @@ Most recent work, newest first:
    rows. The two option-branches that don't route through `handleSend`
    (property-specific quick actions, and the post-summary follow-up options)
    were never affected — they push messages directly.
-6. **"Auto-complete contract on all-invoices-paid" investigated and rejected**
+7. **"Auto-complete contract on all-invoices-paid" investigated and rejected**
    (2026-09-21) — this was on the open-items list as a missing automation,
    but `sales.service.ts`'s `completeContract` already has a deliberate
    comment explaining why it's manual-only: a contract can be COMPLETED
@@ -289,7 +229,7 @@ Most recent work, newest first:
    Handover-milestone-done, or leave manual) — user chose to leave it
    manual. No code changed; this closes the open item as "already correct
    by design," not "still needs doing."
-7. **CRM ownership-check audit** (2026-09-21, commit `fc0a846`) — closed the
+8. **CRM ownership-check audit** (2026-09-21, commit `fc0a846`) — closed the
    gap flagged below: `crm.router.ts`'s `contacts.update`, `leads.update`,
    `contacts.verifyKyc`, `leads.changeStage`, and `activities.toggleDone` now
    all fetch the record first and throw `FORBIDDEN` unless the caller holds
@@ -307,13 +247,13 @@ Most recent work, newest first:
    and Marketing for the same gap and found none apply — see "Known open
    items" below for why. The ownership-check audit is now complete
    module-by-module; no more modules are queued for it.
-8. **Documentation consistency sweep** — after the Tier 0 fix below shipped,
+9. **Documentation consistency sweep** — after the Tier 0 fix below shipped,
    corrected every file in this session that still claimed `ChatPage.tsx`
    was "the only remaining mock screen, zero backend" (this file,
    `progress.md`, `productContext.md`, `CLAUDE.md`, `claude/config.md`, and
    this assistant's own private memory) to instead say it's connected to
    real data but still not a real AI. Pure doc correction, no code changed.
-9. **`ChatPage.tsx` Tier 0 fix** — the "AI Property Assistant" widget was
+10. **`ChatPage.tsx` Tier 0 fix** — the "AI Property Assistant" widget was
    auditing as fully disconnected: hardcoded `@era/mock-data` properties
    (stale `P001`-style ids that no longer matched real project ids after
    the Public Listings Plan), a false "securely stored in Odoo CRM" claim,
@@ -323,7 +263,7 @@ Most recent work, newest first:
    `apps/client/package.json` entirely (it was the last consumer). Still
    no LLM — free text is matched with simple heuristics, not understood.
    Tier 1 (real LLM integration) was explicitly scoped out and not done.
-10. **`ManageAboutPage` CMS** — was pure decorative `useState`, is now a real
+11. **`ManageAboutPage` CMS** — was pure decorative `useState`, is now a real
    backend (new Prisma models: `AboutPageContent`/`AboutMilestone`/
    `AboutTeamMember`/`AboutAward`) + full admin editor + the client's
    `AboutPage.tsx` Overview/History/Team/Awards tabs reading real data.
@@ -331,23 +271,23 @@ Most recent work, newest first:
    (`prisma/seed-about.ts`, idempotent, safe to re-run). Team photos are
    deliberately blank (initials avatar) rather than carrying over the mock's
    fake stock photos.
-11. **Public Listings Plan** — `apps/client`'s Properties list/detail pages
+12. **Public Listings Plan** — `apps/client`'s Properties list/detail pages
    and a real lead-capture form, wired to new `inventory.public.*` and
    `crm.public.submitLead` endpoints. Full loop verified: a public enquiry
    really lands as a Lead the admin Pipeline shows.
-12. **Reservation form polish** — deposit auto-suggest, configurable hold
+13. **Reservation form polish** — deposit auto-suggest, configurable hold
    duration, required payment plan + schedule preview on Sign Contract, a
    search box on the Reservations list.
-13. **Reservation & Contract lifecycle overhaul** — manual reservation
+14. **Reservation & Contract lifecycle overhaul** — manual reservation
     creation (previously only reachable via accepting a quotation), a real
     Sign Contract form, auto-generated milestones at signing (previously
     never created outside the seed script), Terminate/Complete contract
     actions, ownership checks added to every sales write mutation that
     lacked them.
-14. **`identity.users.list`/`.get` passwordHash leak** — fixed (explicit
+15. **`identity.users.list`/`.get` passwordHash leak** — fixed (explicit
     `select`, not Prisma `omit` — see `techContext.md` for why `omit` didn't
     work here).
-15. **This memory bank + `CLAUDE.md`/`claude/config.md` refresh** — both rule
+16. **This memory bank + `CLAUDE.md`/`claude/config.md` refresh** — both rule
     files had drifted (still describing an old "Phase 8, partially wired"
     state); corrected to match the above.
 
