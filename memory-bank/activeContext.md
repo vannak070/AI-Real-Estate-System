@@ -39,6 +39,20 @@ process may run (port :4000, one Telegram poller).
 
 ## Recent work (newest first — full reasoning in `progress.md`)
 
+00000. **Returning customers aren't asked for their details again + Inbox reply box
+   (2026-09-25, live on the demo)** — user: a Telegram customer with a lead
+   (phone on file) asked to book a viewing and the AI asked for name/phone
+   again: only the last 20 messages go to the model, so the earlier contact
+   share had fallen out. Fix: when a conversation has a lead (Telegram:
+   `leadId` on the conversation; website: the verified `leadToken`), the
+   assistant looks it up (`CrmApi.listLeadSummaries`) and adds
+   `onFileNote()` to the per-visitor system block: details are already
+   saved, never ask again, call submit_lead with them + property id.
+   Verified both paths (booked immediately, NOTE on the existing lead).
+   Also: the Inbox composer was pushed out of view by long threads (missing
+   `min-h-0`, see progress.md Incidents); and `push.sh` now
+   `--force-recreate`s api+web (Compose didn't recreate web after a load)
+   and prunes old images (freed 2.3 GB on the 25 GB demo disk).
 0000. **Website chat polish before the management demo (2026-09-25, live on
    the demo)** — found by testing the demo: raw `**asterisks**` shown (plain
    text render), every reply listed all 8 properties in text *and* in 8

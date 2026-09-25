@@ -27,7 +27,9 @@ if [ "$MODE" = "--build-on-mac" ]; then
   docker buildx build --platform linux/amd64 --target web -t era-web:latest --build-arg "VITE_CLIENT_URL=$CLIENT_URL" --load .
   echo "Sending the images to the server…"
   docker save era-api:latest era-web:latest | gzip | ssh "$SERVER" 'gunzip | docker load'
-  ssh "$SERVER" "cd /opt/era && $COMPOSE up -d --no-build && $COMPOSE ps"
+  # --force-recreate: loaded images keep the same tag, and Compose doesn't always notice the new
+  # content (seen 2026-09-25) — always restart the two app containers (the database is untouched).
+  ssh "$SERVER" "cd /opt/era && $COMPOSE up -d --no-build --force-recreate api web && $COMPOSE ps && docker image prune -f >/dev/null"
 else
   echo "Building and restarting on the server (first time takes several minutes)…"
   ssh "$SERVER" "cd /opt/era && $COMPOSE up -d --build && $COMPOSE ps"
