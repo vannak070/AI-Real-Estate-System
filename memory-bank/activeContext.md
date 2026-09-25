@@ -41,6 +41,27 @@ on :5435).
 
 ## Recent work (full reasoning in `progress.md`)
 
+000. **About page wording (2026-09-25, live on the demo)** — user direction:
+   **no numbers on the About page; describe ERA's experience in general
+   terms; mention the CEO.** paragraph2 (CMS) is now "Under the leadership
+   of Chairman and CEO Kungkea Khorn, ERA Cambodia has built a trusted
+   reputation…" (local DB, demo DB — backup
+   `/var/backups/era/about-content-before-paragraph2.dump` — and
+   `prisma/seed-about.ts`). The stats row (template figures 5 / 1,247+ /
+   94.5% / 10) was replaced in `AboutPage.tsx` by four non-numeric
+   highlights (Trusted Local Experts, Wide Property Portfolio, 24/7 AI
+   Assistant, End-to-End Support); the `stat*` CMS fields are no longer
+   shown anywhere (still editable in Manage About). **Template content
+   cleaned up (local only, not yet on the demo):** History = four undated
+   stages (Today / Going Digital / Growing Together / The Beginning — `year`
+   is free text; admin placeholder now "Year or stage"), the template's
+   unverifiable dates/figures dropped; the four made-up Awards deleted
+   (local backup in the agent scratchpad) and the Awards section hidden
+   everywhere while none exist (`app/useAboutSections.ts` for header /
+   mobile / footer, tab filter + `?tab=awards` → overview on the page);
+   the Unsplash "ERA Cambodia Office" photo replaced by an ERA brand panel.
+   `seed-about.ts` matches (no awards seeded). Demo still needs the push +
+   `about-history-awards.sql` (back up the two tables first).
 00. **About menu made usable (2026-09-25, live on the demo)** —
    every About menu item (and every footer "About ERA" link) pointed at plain
    `/about`, so "Our History"/"Our Team"/… just showed Company Overview; the

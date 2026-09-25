@@ -2,10 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Building2, Users, Award, Target, CheckCircle, Heart, Phone, Mail, MessageSquare } from "lucide-react";
 import { ABOUT_SECTIONS, parseAboutTab, type AboutTab } from "../aboutSections";
+import eraLogo from "figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api, resolveUploadUrl } from "../../lib/api";
 
 type PublicAbout = Awaited<ReturnType<typeof api.settings.public.about.query>>;
+
+const HIGHLIGHTS = [
+  { title: 'Trusted Local Experts', text: 'Deep knowledge of Cambodia\'s property market', Icon: Award },
+  { title: 'Wide Property Portfolio', text: 'Condos, villas, houses, commercial space and land', Icon: Building2 },
+  { title: '24/7 AI Assistant', text: 'Instant answers on our website and Telegram', Icon: MessageSquare },
+  { title: 'End-to-End Support', text: 'From first enquiry to handover', Icon: Users },
+];
 
 const AVATAR_COLORS = ['#001F5B', '#EF2D2C', '#8B0A1C', '#0F766E', '#7C3AED', '#B45309'];
 
@@ -43,11 +51,23 @@ export function AboutPage() {
   // The open section lives in the address (/about?tab=history), so the header menu, footer links,
   // shared links and the browser's Back button all land on the right section.
   const [params, setParams] = useSearchParams();
-  const activeTab = parseAboutTab(params.get('tab'));
+  const requestedTab = parseAboutTab(params.get('tab'));
   const setActiveTab = (tab: AboutTab) => setParams(tab === 'overview' ? {} : { tab }, { replace: true });
   const [about, setAbout] = useState<PublicAbout | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const firstRender = useRef(true);
+
+  const content = about?.content;
+  const milestones = about?.milestones ?? [];
+  const team = about?.team ?? [];
+  const awards = about?.awards ?? [];
+  const leader = team.find((m) => m.isLeader);
+  const rest = team.filter((m) => !m.isLeader);
+
+  // Awards show only once real ones exist (Manage About); an old /about?tab=awards link then
+  // lands on the overview instead of an empty section.
+  const tabs = ABOUT_SECTIONS.filter((s) => s.id !== 'awards' || !about || awards.length > 0);
+  const activeTab: AboutTab = tabs.some((t) => t.id === requestedTab) ? requestedTab : 'overview';
 
   // Opened from the header/footer while already scrolled down: bring the tabs + section into view.
   useEffect(() => {
@@ -65,14 +85,6 @@ export function AboutPage() {
     api.settings.public.about.query().then(setAbout).catch(() => setAbout(null));
   }, []);
 
-  const tabs = ABOUT_SECTIONS;
-
-  const content = about?.content;
-  const milestones = about?.milestones ?? [];
-  const team = about?.team ?? [];
-  const awards = about?.awards ?? [];
-  const leader = team.find((m) => m.isLeader);
-  const rest = team.filter((m) => !m.isLeader);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -139,32 +151,26 @@ export function AboutPage() {
                 </div>
               </div>
               <div className="relative">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=400&fit=crop"
-                  alt="ERA Cambodia Office"
-                  className="rounded-2xl shadow-xl"
-                />
+                {/* Brand panel, not a stock photo passed off as ERA's office. */}
+                <div className="flex aspect-[3/2] flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-[#001F5B] to-[#8B0A1C] p-8 text-center text-white shadow-xl">
+                  <img src={eraLogo} alt="ERA Cambodia" className="h-24 w-auto" />
+                  <p className="mt-6 text-xl font-bold">Your trusted real estate partner in Cambodia</p>
+                  <p className="mt-2 text-sm tracking-wide text-white/75">Buy · Sell · Rent · Invest</p>
+                </div>
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Highlights — no figures on purpose: ERA's experience is described, not counted. */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-8 border-t">
-              <div className="text-center">
-                <div className="text-4xl font-bold mb-2" style={{ color: '#EF2D2C' }}>{content?.statProjects ?? '—'}</div>
-                <div className="text-gray-600">Active Projects</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold mb-2" style={{ color: '#EF2D2C' }}>{content?.statLeads ?? '—'}</div>
-                <div className="text-gray-600">Leads Qualified</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold mb-2" style={{ color: '#EF2D2C' }}>{content?.statAccuracy ?? '—'}</div>
-                <div className="text-gray-600">AI Accuracy</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold mb-2" style={{ color: '#EF2D2C' }}>{content?.statTeamSize ?? '—'}</div>
-                <div className="text-gray-600">Sales Professionals</div>
-              </div>
+              {HIGHLIGHTS.map(({ title, text, Icon }) => (
+                <div key={title} className="text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#EF2D2C] to-[#8B0A1C] shadow-md">
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="font-bold" style={{ color: '#001F5B' }}>{title}</div>
+                  <div className="mt-1 text-sm text-gray-600">{text}</div>
+                </div>
+              ))}
             </div>
 
             {/* Mission & Values */}

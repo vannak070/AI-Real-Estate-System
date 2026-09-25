@@ -26,7 +26,7 @@ async function main() {
       paragraph1:
         "ERA Cambodia is a pioneering real estate company that combines traditional expertise with cutting-edge artificial intelligence technology. We're revolutionizing how Cambodians buy, sell, and rent properties through our innovative AI-powered platform, with our own integrated CRM, sales and inventory system.",
       paragraph2:
-        "With a portfolio of 5 premium projects across Phnom Penh and a dedicated team of 10 sales professionals, we're committed to delivering exceptional service and results to our clients.",
+        "Under the leadership of Chairman and CEO Kungkea Khorn, ERA Cambodia has built a trusted reputation in Cambodia's property market. We help families, investors and businesses buy, sell and rent across Phnom Penh and the country's key provinces, with an experienced team supporting every client from first enquiry to handover.",
       mission:
         'To democratize access to quality real estate through innovative AI technology, making property search and transactions seamless, transparent, and efficient for all Cambodians.',
       values: ['Innovation & Technology Excellence', 'Customer-First Approach', 'Integrity & Transparency'],
@@ -38,75 +38,44 @@ async function main() {
     update: {},
   });
 
+  // History as undated stages — the template's dates and figures (e.g. "6 intelligent agents",
+  // "40% increase in conversion") were never ERA's. Staff can add dated milestones in Manage About.
   if ((await db.aboutMilestone.count()) === 0) {
     await db.aboutMilestone.createMany({
       data: [
         {
-          year: '2026 - Present',
-          title: 'AI Integration Era',
+          year: 'Today',
+          title: 'AI-Powered Service',
           description:
-            'Launched comprehensive AI Real Estate System with 6 intelligent agents, achieving 40% increase in conversion rates and 50-70% reduction in manual workload.',
+            'Our AI property assistant now helps clients around the clock on our website and Telegram, working alongside our experienced team.',
           order: 0,
         },
         {
-          year: '2024',
-          title: 'Digital Transformation',
+          year: 'Going Digital',
+          title: 'Integrated Platform',
           description:
-            'Launched an integrated platform connecting CRM, Sales, and Inventory for seamless operations. Introduced multi-channel lead capture across Facebook, Website, Telegram, and WhatsApp.',
+            'We built our own integrated CRM, sales and inventory system, so every listing and every client is managed in one place.',
           order: 1,
         },
         {
-          year: '2022',
-          title: 'Rapid Expansion',
+          year: 'Growing Together',
+          title: 'Wider Reach',
           description:
-            'Expanded portfolio to 5 premium projects across Phnom Penh. Grew sales team to 10 professionals, handling over 400 monthly leads.',
+            "We grew our team and our portfolio to serve buyers, renters and investors across Phnom Penh and Cambodia's key provinces.",
           order: 2,
         },
         {
-          year: '2020',
-          title: 'Foundation',
-          description:
-            'ERA Cambodia was established with a vision to revolutionize the real estate industry through technology and exceptional customer service.',
+          year: 'The Beginning',
+          title: 'Founded on Trust',
+          description: 'ERA Cambodia set out to bring professional, trustworthy real estate service to Cambodia.',
           order: 3,
         },
       ],
     });
   }
 
-  if ((await db.aboutAward.count()) === 0) {
-    await db.aboutAward.createMany({
-      data: [
-        {
-          year: '2025',
-          title: 'Best Real Estate Innovation',
-          organization: 'Cambodia Property Awards',
-          description: 'Recognized for pioneering AI-powered real estate solutions',
-          order: 0,
-        },
-        {
-          year: '2024',
-          title: 'Top Real Estate Agency',
-          organization: 'Asia Pacific Property Excellence',
-          description: 'Outstanding performance in residential property sales',
-          order: 1,
-        },
-        {
-          year: '2024',
-          title: 'Digital Transformation Leader',
-          organization: 'ASEAN Business Awards',
-          description: 'Excellence in real estate technology integration',
-          order: 2,
-        },
-        {
-          year: '2023',
-          title: 'Customer Service Excellence',
-          organization: 'Cambodia Business Awards',
-          description: 'Highest customer satisfaction ratings in the industry',
-          order: 3,
-        },
-      ],
-    });
-  }
+  // No awards are seeded: the template's awards were made up. The Awards section stays hidden on
+  // the site until staff add real ones in Manage About.
 
   if ((await db.aboutTeamMember.count()) === 0) {
     await db.aboutTeamMember.createMany({

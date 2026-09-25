@@ -195,7 +195,7 @@ function MilestoneRow({ milestone, canWrite }: { milestone: Milestone; canWrite:
               className="px-3 py-1.5 text-sm font-semibold w-40"
               value={form.year}
               onChange={(e) => setForm({ ...form, year: e.target.value })}
-              placeholder="Year"
+              placeholder="Year or stage (e.g. 2024, Today)"
             />
           </div>
           <TextInput

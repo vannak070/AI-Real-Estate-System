@@ -1,7 +1,8 @@
 import { Outlet, Link, useLocation } from "react-router";
 import { MessageSquare, Home, Building2, Menu, X, Phone, Mail, ChevronDown, Info, MapPin, Facebook, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ABOUT_SECTIONS, aboutHref, parseAboutTab } from "../aboutSections";
+import { aboutHref, parseAboutTab } from "../aboutSections";
+import { useAboutSections } from "../useAboutSections";
 import { captureCampaignFromUrl } from "../../lib/attribution";
 import headerLogo from "figma:asset/d35bb1cd7b17aae1ece93ea47adf754effd39a17.png";
 import footerLogo from "figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png";
@@ -17,6 +18,7 @@ export function CustomerLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [aboutDropdownOpen, setAboutDropdownOpen] = useState(false);
   const location = useLocation();
+  const aboutSections = useAboutSections();
   const aboutMenuRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentAboutTab = location.pathname.startsWith('/about') ? parseAboutTab(new URLSearchParams(location.search).get('tab')) : null;
@@ -155,7 +157,7 @@ export function CustomerLayout() {
                   // pt-2 (not mt-2): the padding is part of the hover area, so there's no dead gap.
                   <div className="absolute left-0 top-full z-50 pt-2" role="menu">
                     <div className="w-64 rounded-xl border border-gray-100 bg-white py-2 shadow-xl">
-                      {ABOUT_SECTIONS.map((section) => {
+                      {aboutSections.map((section) => {
                         const Icon = section.icon;
                         const current = currentAboutTab === section.id;
                         return (
@@ -253,7 +255,7 @@ export function CustomerLayout() {
                 <span className="font-medium">About</span>
               </Link>
               <div className="ml-6 border-l border-gray-200 pl-3">
-                {ABOUT_SECTIONS.map((section) => (
+                {aboutSections.map((section) => (
                   <Link
                     key={section.id}
                     to={aboutHref(section.id)}
@@ -336,7 +338,7 @@ export function CustomerLayout() {
             <div className="md:col-span-3">
               <h4 className="font-bold mb-4 text-white">About ERA</h4>
               <ul className="space-y-3 text-sm">
-                {ABOUT_SECTIONS.filter((section) => section.id !== 'contact').map((section) => (
+                {aboutSections.filter((section) => section.id !== 'contact').map((section) => (
                   <li key={section.id}>
                     <Link to={aboutHref(section.id)} className="text-gray-300 hover:text-[#EF2D2C] transition flex items-center space-x-2">
                       <span className="w-1.5 h-1.5 bg-[#EF2D2C] rounded-full"></span>
