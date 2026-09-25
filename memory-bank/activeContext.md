@@ -50,6 +50,46 @@ on :5435).
 
 ## Recent work (full reasoning in `progress.md`)
 
+0000000. **Honesty check of the other customer pages (2026-09-25, local,
+   uncommitted)**. Method: scan the rendered `main` text of each page and
+   list dead controls via `__reactProps$…` (a button with no onClick and no
+   `<a>` or form around it). Fixed:
+   - **Property detail**: the dead Share button now works (`ShareButton`:
+     native share sheet on phones, else copies the link, else says to copy
+     it from the address bar). The Favorite heart was removed (no favourites
+     feature exists). "Prime location in X" → "Located in X". "N units" is
+     pluralised. "We reply within 1 business day" (an unkept promise) → "An
+     ERA agent follows up on every enquiry". "Premium Amenities" →
+     "Amenities".
+   - **Stock-photo fallback**: listings with no photos (30) showed an Unsplash
+     house as if it were theirs, on the Properties list, the detail page and
+     "You May Also Like". Now they show the new
+     `components/PropertyImage.tsx` (ERA gradient + logo + "Photos coming
+     soon").
+   - **Properties header**: "Discover 667 premium projects" → "Browse 667
+     properties for sale and rent across Cambodia".
+   - **About → Team**: the dead "View Open Positions" button (no careers
+     page) → "Get in Touch", which opens the Contact tab.
+   - **About → Contact**: the stock map photo → an address panel with an
+     "Open in Google Maps" link (`OFFICE_ADDRESS` const).
+   - **Footer**: "Leading real estate company" (an unverifiable ranking) →
+     "Buy, sell and rent property across Cambodia with ERA's local team…".
+   - `/chat`: nothing to fix.
+
+   Verified: desktop + 375 px (no sideways scroll); Share showed "Link
+   copied" on a real click and the fallback text on a scripted one;
+   typecheck/lint clean. **Still needs ERA's confirmation, not code** (hardcoded
+   Figma values, in the footer + About → Contact):
+   - Phones +855 23 123 456 and +855 12 345 678 (the second looks like a
+     placeholder).
+   - Emails info@ / sales@eracambodia.com.
+   - Address "Street 240, BKK1" (it now drives the Maps link too).
+   - Business hours Mon–Fri 8–6, Sat 9–5.
+
+   The About page's CMS text (hero "Leading the future…", "pioneering",
+   "revolutionizing") is editable in the admin's Manage About page; it is
+   flagged for ERA, not changed.
+
 000000. **Home page: invented figures removed (2026-09-25, live on the demo
    since 06:17 UTC — verified by grepping the served bundle: final
    `min-h-[22rem]` hero, no stock photo, none of the old claims)** — user asked to make the "Proven Results & Performance"
@@ -218,10 +258,14 @@ on :5435).
 ## Checks still to do
 
 - **Management review feedback** — collect and work through it.
-- **Footer contact details** — the user hasn't yet confirmed that
-  +855 23 123 456 (Call icon, also the header/Contact Info number) and
-  facebook.com/eracambodia are ERA's real phone and Facebook page; both were
-  in the Figma export, not supplied by ERA.
+- **Contact details (footer + About → Contact)** — the user hasn't yet
+  confirmed them; all came from the Figma export, not from ERA:
+  - +855 23 123 456 (the Call icon, also the header/Contact Info number) and
+    +855 12 345 678.
+  - info@ / sales@eracambodia.com.
+  - Street 240, BKK1.
+  - The business hours.
+  - facebook.com/eracambodia.
 - The user has now used the Inbox on the demo (take over, reply). **AI
   Knowledge page clicked through locally 2026-09-25**: suggested-topic
   prefill, create, edit, Active→Hidden (counter drops to 0, and
@@ -256,7 +300,8 @@ on :5435).
 - **Name search** misses spelling variants / run-together words;
   `LOCATION_ALIASES` covers only common Phnom Penh areas + Sihanoukville.
 - **Customer site fetches the full catalog** (fine at 667 listings).
-- **Decorative UI** on the customer site (Share, Favorite, unused `featured`).
+- **Decorative UI** on the customer site: Share was wired and Favorite removed
+  (Recent work 0000000). Only the unused `featured` field remains.
 - **`ImageGallery.tsx` file-picker → crop flow** untested end-to-end.
 - **`DRAFT`/`PENDING_SIGNATURE` contract statuses** unused.
 - **About-page team members** have no real photos.

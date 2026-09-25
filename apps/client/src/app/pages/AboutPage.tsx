@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Building2, Users, Award, Target, CheckCircle, Heart, Phone, Mail, MessageSquare } from "lucide-react";
+import { Building2, Users, Award, Target, CheckCircle, Heart, Phone, Mail, MessageSquare, MapPin, ExternalLink } from "lucide-react";
 import { ABOUT_SECTIONS, parseAboutTab, type AboutTab } from "../aboutSections";
 import eraLogo from "figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api, resolveUploadUrl } from "../../lib/api";
 
 type PublicAbout = Awaited<ReturnType<typeof api.settings.public.about.query>>;
+
+const OFFICE_ADDRESS = 'Street 240, BKK1, Phnom Penh, Cambodia';
 
 const HIGHLIGHTS = [
   { title: 'Trusted Local Experts', text: 'Deep knowledge of Cambodia\'s property market', Icon: Award },
@@ -268,10 +270,15 @@ export function AboutPage() {
               <Users className="w-12 h-12 mx-auto mb-4" style={{ color: '#EF2D2C' }} />
               <h3 className="text-2xl font-bold mb-3" style={{ color: '#001F5B' }}>Join Our Growing Team</h3>
               <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                We're always looking for talented individuals to join ERA Cambodia. If you're passionate about real estate and technology, we'd love to hear from you.
+                If you're passionate about real estate and technology, we'd love to hear from you.
               </p>
-              <button className="px-8 py-3 rounded-xl font-semibold text-white transition-all shadow-lg hover:shadow-xl" style={{ backgroundColor: '#EF2D2C' }}>
-                View Open Positions
+              {/* No careers page exists — this points at the real ways to reach ERA. */}
+              <button
+                onClick={() => setActiveTab('contact')}
+                className="px-8 py-3 rounded-xl font-semibold text-white transition-all shadow-lg hover:shadow-xl"
+                style={{ backgroundColor: '#EF2D2C' }}
+              >
+                Get in Touch
               </button>
             </div>
           </div>
@@ -376,13 +383,25 @@ export function AboutPage() {
                 </div>
               </div>
 
-              {/* Map */}
-              <div className="rounded-2xl overflow-hidden shadow-lg h-96">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&h=600&fit=crop"
-                  alt="Office Location Map"
-                  className="w-full h-full object-cover"
-                />
+              {/* Directions — opens the real map instead of showing a stock map photo. */}
+              <div className="flex min-h-[20rem] flex-col items-center justify-center gap-4 rounded-2xl bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 p-8 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#EF2D2C] to-[#8B0A1C] shadow-lg">
+                  <MapPin className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold" style={{ color: '#001F5B' }}>{OFFICE_ADDRESS}</p>
+                  <p className="mt-1 text-sm text-gray-600">Find us on the map</p>
+                </div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(OFFICE_ADDRESS)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 font-semibold text-white shadow-lg transition-all hover:shadow-xl"
+                  style={{ backgroundColor: '#001F5B' }}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open in Google Maps
+                </a>
               </div>
             </div>
 

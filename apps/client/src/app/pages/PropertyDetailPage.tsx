@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router";
 import {
   MapPin, Bed, Bath, Maximize, Calendar, ArrowLeft, MessageSquare, Star, CheckCircle,
-  Phone, Mail, Share2, Heart, ChevronLeft, ChevronRight, Send,
+  Phone, Mail, Share2, ChevronLeft, ChevronRight, Send,
 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { PropertyImage } from "../components/PropertyImage";
 import { api, resolveUploadUrl } from "../../lib/api";
 import { currentCampaignCode } from "../../lib/attribution";
 import Slider from "react-slick";
@@ -14,8 +15,6 @@ import "slick-carousel/slick/slick-theme.css";
 type PublicProject = NonNullable<Awaited<ReturnType<typeof api.inventory.public.projects.get.query>>>;
 type PublicProjectSummary = Awaited<ReturnType<typeof api.inventory.public.projects.list.query>>[number];
 type PublicUnit = Awaited<ReturnType<typeof api.inventory.public.units.list.query>>[number];
-
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&h=800&fit=crop';
 
 const STATUS_LABEL: Record<PublicProject['status'], string> = {
   PLANNING: 'Coming Soon',
@@ -65,6 +64,49 @@ function PrevArrow({ onClick }: { onClick?: () => void }) {
     >
       <ChevronLeft className="w-6 h-6" />
     </button>
+  );
+}
+
+// Native share sheet where there is one (phones), otherwise copy the link. Clipboard
+// access can be refused (or missing on a plain-http origin), so that case says what to do.
+function ShareButton({ title }: { title: string }) {
+  const [note, setNote] = useState<string | null>(null);
+
+  async function share() {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+      } catch {
+        // Closing the share sheet rejects too — nothing to report.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setNote('Link copied');
+    } catch {
+      setNote("Couldn't copy — copy the link from your address bar");
+    }
+    setTimeout(() => setNote(null), 4000);
+  }
+
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        onClick={share}
+        aria-label="Share this property"
+        title="Share this property"
+        className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition"
+      >
+        <Share2 className="w-5 h-5 text-gray-600" />
+      </button>
+      {note && (
+        <p role="status" className="absolute right-0 top-full mt-2 w-max max-w-[16rem] rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white shadow-lg">
+          {note}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -152,7 +194,6 @@ export function PropertyDetailPage() {
   const [property, setProperty] = useState<PublicProject | null | undefined>(undefined);
   const [units, setUnits] = useState<PublicUnit[]>([]);
   const [related, setRelated] = useState<PublicProjectSummary[]>([]);
-  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     setProperty(undefined);
@@ -177,7 +218,7 @@ export function PropertyDetailPage() {
     return <div className="text-center py-20">Property not found</div>;
   }
 
-  const propertyImages = property.imageUrls.length > 0 ? property.imageUrls.map(resolveUploadUrl) : [FALLBACK_IMAGE];
+  const propertyImages = property.imageUrls.map(resolveUploadUrl);
   const unitTypeNames = Array.from(new Set(units.map((u) => u.unitTypeName).filter((n): n is string => !!n)));
 
   const carouselSettings = {
@@ -208,13 +249,17 @@ export function PropertyDetailPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Image Carousel */}
         <div className="mb-8 relative rounded-2xl overflow-hidden shadow-2xl">
-          <Slider {...carouselSettings}>
-            {propertyImages.map((img, idx) => (
-              <div key={idx} className="relative h-[500px]">
-                <ImageWithFallback src={img} alt={`${property.name} - Image ${idx + 1}`} className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </Slider>
+          {propertyImages.length > 0 ? (
+            <Slider {...carouselSettings}>
+              {propertyImages.map((img, idx) => (
+                <div key={idx} className="relative h-[500px]">
+                  <ImageWithFallback src={img} alt={`${property.name} - Image ${idx + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </Slider>
+          ) : (
+            <PropertyImage alt={property.name} className="h-[500px] w-full" />
+          )}
 
           <div className="absolute top-6 left-6 z-10 flex gap-3">
             {property.badge !== 'NONE' && (
@@ -227,13 +272,6 @@ export function PropertyDetailPage() {
               {STATUS_LABEL[property.status]}
             </div>
           </div>
-
-          <button
-            onClick={() => setIsFavorite(!isFavorite)}
-            className="absolute top-6 right-6 z-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white shadow-2xl flex items-center justify-center transition-all hover:scale-110"
-          >
-            <Heart className={`w-6 h-6 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-          </button>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8 mb-12">
@@ -250,9 +288,7 @@ export function PropertyDetailPage() {
                     <span>{property.location}</span>
                   </div>
                 </div>
-                <button className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
-                  <Share2 className="w-5 h-5 text-gray-600" />
-                </button>
+                <ShareButton title={property.name} />
               </div>
 
               <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b">
@@ -317,7 +353,7 @@ export function PropertyDetailPage() {
               {property.amenities.length > 0 && (
                 <div>
                   <h3 className="text-lg font-bold mb-4" style={{ color: '#001F5B' }}>
-                    Premium Amenities & Facilities
+                    Amenities & Facilities
                   </h3>
                   <div className="grid md:grid-cols-2 gap-3">
                     {property.amenities.map((amenity) => (
@@ -429,11 +465,13 @@ export function PropertyDetailPage() {
               <ul className="space-y-3 text-sm">
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#EF2D2C' }} />
-                  <span>Prime location in {property.location}</span>
+                  <span>Located in {property.location}</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#EF2D2C' }} />
-                  <span>{property.availableUnits} units currently available</span>
+                  <span>
+                    {property.availableUnits} {property.availableUnits === 1 ? 'unit' : 'units'} currently available
+                  </span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <Phone className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#EF2D2C' }} />
@@ -441,7 +479,7 @@ export function PropertyDetailPage() {
                 </li>
                 <li className="flex items-start space-x-2">
                   <Mail className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#EF2D2C' }} />
-                  <span>We reply to every enquiry within 1 business day</span>
+                  <span>An ERA agent follows up on every enquiry</span>
                 </li>
               </ul>
             </div>
@@ -468,8 +506,8 @@ export function PropertyDetailPage() {
                   className="group bg-white rounded-xl shadow-md hover:shadow-2xl transition-all overflow-hidden border-2 border-transparent hover:border-[#EF2D2C]/20"
                 >
                   <div className="relative h-48 overflow-hidden">
-                    <ImageWithFallback
-                      src={rel.imageUrls[0] ? resolveUploadUrl(rel.imageUrls[0]) : FALLBACK_IMAGE}
+                    <PropertyImage
+                      src={rel.imageUrls[0] ? resolveUploadUrl(rel.imageUrls[0]) : undefined}
                       alt={rel.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />

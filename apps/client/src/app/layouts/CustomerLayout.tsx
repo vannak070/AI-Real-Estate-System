@@ -299,7 +299,7 @@ export function CustomerLayout() {
                 />
               </Link>
               <p className="text-gray-300 text-sm leading-relaxed max-w-sm">
-                Leading real estate company in Cambodia, powered by AI technology for a faster, smarter property search.
+                Buy, sell and rent property across Cambodia with ERA's local team and an AI assistant for a faster, smarter property search.
               </p>
             </div>
 

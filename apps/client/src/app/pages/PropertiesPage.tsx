@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { MapPin, Building2, Home, Key, TrendingUp, Filter, Star, ChevronLeft, ChevronRight } from "lucide-react";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { PropertyImage } from "../components/PropertyImage";
 import { api, resolveUploadUrl } from "../../lib/api";
 
 type PublicProject = Awaited<ReturnType<typeof api.inventory.public.projects.list.query>>[number];
@@ -30,8 +30,6 @@ function pageNumbers(current: number, total: number): (number | '…')[] {
   pages.push(total);
   return pages;
 }
-
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop';
 
 const STATUS_LABEL: Record<PublicProject['status'], string> = {
   PLANNING: 'Coming Soon',
@@ -122,7 +120,7 @@ export function PropertiesPage() {
           Explore Our Properties
         </h1>
         <p className="text-xl text-gray-600">
-          Discover {all.length} premium projects across Cambodia
+          Browse {all.length} {all.length === 1 ? 'property' : 'properties'} for sale and rent across Cambodia
         </p>
       </div>
 
@@ -289,8 +287,8 @@ export function PropertiesPage() {
               className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all overflow-hidden group border-2 border-transparent hover:border-[#EF2D2C]/20"
             >
               <div className="relative h-64 overflow-hidden">
-                <ImageWithFallback
-                  src={property.imageUrls[0] ? resolveUploadUrl(property.imageUrls[0]) : FALLBACK_IMAGE}
+                <PropertyImage
+                  src={property.imageUrls[0] ? resolveUploadUrl(property.imageUrls[0]) : undefined}
                   alt={property.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
