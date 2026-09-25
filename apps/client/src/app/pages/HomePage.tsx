@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { MessageSquare, Zap, TrendingUp, Brain, Building2, Bot, CheckCircle, ArrowRight, Star, Shield, Clock, Users } from "lucide-react";
+import { MessageSquare, Zap, Search, Brain, Building2, Bot, CheckCircle, ArrowRight, Shield, Clock, Users } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
 /** Same approach as the About page's highlights: describe what ERA offers, never invented figures. */
@@ -65,22 +65,14 @@ export function HomePage() {
                 </Link>
               </div>
 
-              {/* Trust Indicators */}
-              <div className="flex items-center space-x-8 pt-4">
-                <div className="flex items-center space-x-2">
-                  <div className="flex -space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-[#EF2D2C] border-2 border-white flex items-center justify-center text-xs font-bold">5K+</div>
-                  </div>
-                  <span className="text-sm text-gray-300">Happy Clients</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <span className="ml-2 text-sm font-semibold">4.9/5</span>
-                </div>
+              {/* Trust points — true statements only (the template's "5K+ clients" / "4.9/5" were invented). */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-4 text-sm text-gray-200">
+                {['Real ERA listings', 'AI assistant 24/7', 'Website & Telegram'].map((point) => (
+                  <span key={point} className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-[#EF2D2C]" />
+                    {point}
+                  </span>
+                ))}
               </div>
             </div>
 
@@ -101,7 +93,7 @@ export function HomePage() {
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900">AI Assistant Ready</p>
-                        <p className="text-sm text-gray-600">Average response: &lt;1 min</p>
+                        <p className="text-sm text-gray-600">Online 24/7 — website &amp; Telegram</p>
                       </div>
                     </div>
                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
@@ -151,11 +143,11 @@ export function HomePage() {
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>Average response time &lt;1 minute</span>
+                  <span>Available 24/7</span>
                 </li>
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>Available 24/7/365</span>
+                  <span>Replies in Khmer, English or Chinese</span>
                 </li>
               </ul>
             </div>
@@ -169,7 +161,7 @@ export function HomePage() {
               </div>
               <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Smart Property Matching</h3>
               <p className="text-gray-600 mb-3 text-center text-sm">
-                AI analyzes your preferences, budget, and requirements to recommend properties that perfectly match your needs.
+                AI analyzes your preferences, budget, and requirements to recommend properties that fit your needs.
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
@@ -187,21 +179,21 @@ export function HomePage() {
             <div className="group bg-gradient-to-br from-gray-50 to-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all border-2 border-transparent hover:border-[#EF2D2C]/20">
               <div className="flex justify-center mb-4">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br from-[#EF2D2C] to-[#8B0A1C] shadow-lg">
-                  <TrendingUp className="w-7 h-7 text-white" />
+                  <Search className="w-7 h-7 text-white" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Data-Driven Insights</h3>
+              <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Clear Property Details</h3>
               <p className="text-gray-600 mb-3 text-center text-sm">
-                Make informed decisions with real-time market data, pricing intelligence, and predictive analytics.
+                See real prices, unit sizes and up-to-date availability for each listing before you enquire.
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>Real-time market analysis</span>
+                  <span>Real prices &amp; availability</span>
                 </li>
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>Price trend predictions</span>
+                  <span>Filter by location, type &amp; status</span>
                 </li>
               </ul>
             </div>
@@ -213,7 +205,7 @@ export function HomePage() {
                   <Shield className="w-7 h-7 text-white" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Secure & Verified</h3>
+              <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Secure &amp; Transparent</h3>
               <p className="text-gray-600 mb-3 text-center text-sm">
                 Every listing comes from ERA's own inventory, and your details go straight to our sales team — securely, in our own system.
               </p>
@@ -224,7 +216,7 @@ export function HomePage() {
                 </li>
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>Secure payment processing</span>
+                  <span>Your details go only to ERA&apos;s team</span>
                 </li>
               </ul>
             </div>
@@ -236,18 +228,18 @@ export function HomePage() {
                   <Clock className="w-7 h-7 text-white" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Automated Follow-ups</h3>
+              <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Easy Viewing Requests</h3>
               <p className="text-gray-600 mb-3 text-center text-sm">
-                Never miss an opportunity with intelligent automated follow-ups and appointment scheduling.
+                Ask for a viewing in the chat or on Telegram — the assistant saves your request and an ERA consultant calls to arrange it.
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>Smart reminder system</span>
+                  <span>Request viewings in chat or on Telegram</span>
                 </li>
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>Auto-scheduling viewings</span>
+                  <span>No need to repeat your details</span>
                 </li>
               </ul>
             </div>
@@ -261,7 +253,7 @@ export function HomePage() {
               </div>
               <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Expert Sales Team</h3>
               <p className="text-gray-600 mb-3 text-center text-sm">
-                Our experienced sales consultants are ready to assist you, backed by AI insights.
+                Our sales consultants follow up on every enquiry and can reply to you directly on Telegram.
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
@@ -270,7 +262,7 @@ export function HomePage() {
                 </li>
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>Multi-language support</span>
+                  <span>Personal follow-up on every enquiry</span>
                 </li>
               </ul>
             </div>
@@ -353,7 +345,7 @@ export function HomePage() {
                 <div className="mt-4">
                   <h3 className="text-2xl font-bold mb-4" style={{ color: '#001F5B' }}>Get Matches</h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Our AI analyzes your needs and instantly recommends properties that match your criteria from our verified inventory.
+                    Our AI analyzes your needs and instantly recommends properties that match your criteria from our current listings.
                   </p>
                 </div>
               </div>
@@ -366,9 +358,9 @@ export function HomePage() {
                   3
                 </div>
                 <div className="mt-4">
-                  <h3 className="text-2xl font-bold mb-4" style={{ color: '#001F5B' }}>Schedule Viewing</h3>
+                  <h3 className="text-2xl font-bold mb-4" style={{ color: '#001F5B' }}>Request a Viewing</h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Book a property viewing with our sales team. We'll handle all the details and guide you through the process.
+                    Ask for a viewing and our sales team will contact you to confirm a time, then guide you through the process.
                   </p>
                 </div>
               </div>
@@ -395,8 +387,8 @@ export function HomePage() {
               Ready to Find Your Perfect Property?
             </h2>
             <p className="text-xl text-gray-200 mb-10 leading-relaxed">
-              Chat with our AI assistant now and get personalized property recommendations 
-              in seconds. No commitment required.
+              Chat with our AI assistant now and get personalized property recommendations
+              right away. No commitment required.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -421,19 +413,19 @@ export function HomePage() {
 
             {/* Trust Badge */}
             <div className="mt-10 pt-8 border-t border-white/20">
-              <p className="text-sm text-gray-300 mb-4">Trusted by thousands of property buyers in Cambodia</p>
-              <div className="flex items-center justify-center space-x-6 text-white">
+              <p className="text-sm text-gray-300 mb-4">Backed by ERA Cambodia&apos;s local sales team</p>
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-white">
                 <div className="flex items-center space-x-2">
                   <Shield className="w-5 h-5 text-[#EF2D2C]" />
-                  <span className="text-sm">Verified Listings</span>
+                  <span className="text-sm">Real ERA Listings</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Clock className="w-5 h-5 text-[#EF2D2C]" />
-                  <span className="text-sm">24/7 Support</span>
+                  <span className="text-sm">24/7 AI Assistant</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <span className="text-sm">4.9/5 Rating</span>
+                  <MessageSquare className="w-5 h-5 text-[#EF2D2C]" />
+                  <span className="text-sm">Website &amp; Telegram</span>
                 </div>
               </div>
             </div>

@@ -59,13 +59,30 @@ on :5435).
    Anytime / Matched to Your Needs / Real People on Hand — each a true
    statement about the platform), band retitled "What You Can Count On" (not
    "Why Choose ERA Cambodia" — the features section above already uses that
-   label). Same pass removed the page's other figures: "94.5% matching
-   accuracy", "100% verified listings", "Our 10 experienced sales
-   professionals". Verified desktop + 375 px. **Still on the home page, not
-   touched (user to decide)**: feature bullets that describe things the site
-   doesn't do — "Secure payment processing" (no online payment exists),
-   "Real-time market analysis" / "Price trend predictions", "Smart reminder
-   system" / "Auto-scheduling viewings".
+   label). Then, on the user's instruction ("rewrite them to match what the
+   site does"), **every claim on the home page was checked against the code**
+   and rewritten: hero "5K+ Happy Clients" + "4.9/5" stars → three true
+   points; "Average response <1 min" (×2) → "Online 24/7 — website &
+   Telegram"; Data-Driven Insights (market analysis, price predictions — not
+   built) → "Clear Property Details" (prices, sizes, availability, filters);
+   "Secure payment processing" (no payments exist) → "Your details go only to
+   ERA's team"; Automated Follow-ups (reminders, auto-scheduling — not built)
+   → "Easy Viewing Requests" (AI saves the request, an agent calls — matches
+   the assistant prompt); "Multi-language support" moved to the AI card as
+   "Replies in Khmer, English or Chinese" (the prompt's rule; consultants'
+   languages unknown); "Trusted by thousands" / "4.9/5 Rating" → "Backed by
+   ERA Cambodia's local sales team" + true badges; "verified inventory" →
+   "current listings". **Checked by scanning the rendered page text for
+   digits** (the first pass used a code grep, missed "5K+", "4.9/5",
+   "&lt;1 min", and wrongly told the user the page had no numbers — lesson:
+   verify copy on the rendered page, not with a regex over JSX). Only "24/7"
+   and the "3 simple steps" numbering remain. **Open questions for the
+   user**: (1) the hero image is an Unsplash stock photo with alt text
+   "Luxury Property in Phnom Penh" — the no-stand-in-photos rule says replace
+   with a real ERA photo or an honest graphic; (2) "Real ERA listings" /
+   "from ERA's own inventory" — 592 of the 667 demo listings were scraped from
+   pointerasia.com (a competing brokerage), so the claim is only true once
+   the inventory is ERA's own.
 00000. **Admin click-through of the last untested screens (2026-09-25,
    live on the demo — pushed 06:05 UTC, commit `82c7724`)**. Worked, verified
    against Postgres and the customer site:
