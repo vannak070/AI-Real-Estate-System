@@ -60,7 +60,8 @@ ${RULES}
 - Customers often answer briefly or refer back: "yes", "ok", "5000", "the second one", "2", "this one", "I love this". Read every short reply against your own last message: a bare number after you asked about budget is the budget in USD; "2" or "the second" means photo card 2; "yes" answers the question you just asked. A message starting with "[Replying to photo card …]" or mentioning "(property id …)" is about exactly that property — call get_property with that id straight away and never ask which one they mean.
 - Ask ONE simple question at a time — never "A, or B?" (a customer answering "yes" to that is ambiguous). If they clearly like a property but it's unclear which one, ask them to tap "More details" under its photo or reply with its number.
 - Booking a viewing: if you already saved their details in this conversation, call submit_lead again with the same details plus that property's id and a message like "Viewing request" — it updates the same record — then confirm an agent will call to arrange it. Otherwise ask for their name and phone number first.
-- To be contacted by an agent they can tap the "Share my phone number" button, or just type their name and phone number.`;
+- To be contacted by an agent they can tap the "Share my phone number" button, or just type their name and phone number.
+- If they want to talk to a person in this chat, or need something you can't do (price negotiation, legal/financial questions, complaints, anything the knowledge doesn't cover), call request_agent — then say a team member will reply here. Never say a person was notified unless you called it. Messages starting "[ERA staff member replied:]" were written by a colleague — stay consistent with what they said.`;
 }
 
 /** The per-customer part, sent after the cached instructions. */
@@ -111,6 +112,8 @@ export type MessagingReply =
       transcript: string;
       cards: PropertyCard[];
       leadId: string | null;
+      /** request_agent's reason when the AI asked for a person this turn. */
+      wantsAgent: string | null;
     }
   | { ok: false; reason: 'not_configured' | 'rate_limited' | 'failed' };
 
@@ -177,6 +180,18 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+/** Chat apps only: there's an Inbox where staff can take the conversation over. */
+const REQUEST_AGENT_TOOL: Anthropic.Tool = {
+  name: 'request_agent',
+  description:
+    'Flag this conversation for a real ERA staff member, who can take it over and reply in this same chat. Use it when the customer asks to talk to a person, or needs something you cannot do (negotiating, legal/financial questions, complaints, anything not covered by the knowledge). It does not save contact details — use submit_lead for that.',
+  input_schema: {
+    type: 'object',
+    properties: { reason: { type: 'string', description: 'One short line for the staff member, e.g. "Wants to negotiate the price of Time Square 5".' } },
+    required: ['reason'],
+  },
+};
+
 /** In-process, per-IP sliding-window limiter — this is a single-instance deployment with no
  * Redis in the stack yet, and the endpoint is unauthenticated, so this is the pragmatic ceiling
  * against a runaway loop or a bot racking up real Anthropic API cost. Resets on process restart;
@@ -197,6 +212,9 @@ interface ConversationState {
   /** Properties get_property was called for this turn — shown as a card even if the reply
    * forgot its url (seen live: a detailed answer about one property with no photo). */
   detailedIds: string[];
+  /** Chat apps: request_agent is offered, and its reason lands here. */
+  canRequestAgent: boolean;
+  wantsAgent: string | null;
 }
 
 /** Lenient on purpose — only catch obvious typos before they reach a real CRM record. */
@@ -406,6 +424,14 @@ export function createAssistantService(ctx: ModuleContext) {
         conversation.rejectedBecause = null;
         return { success: true, createdNewRecord: true };
       }
+      case 'request_agent': {
+        if (!conversation.canRequestAgent) return { error: 'Not available here.' };
+        conversation.wantsAgent = String(input.reason ?? 'Customer asked for a person').slice(0, 300);
+        return {
+          success: true,
+          note: 'The ERA team can now see this chat flagged in their Inbox; a staff member will reply here when available. Tell the customer that, without promising a specific time.',
+        };
+      }
       default:
         return { error: `Unknown tool: ${name}` };
     }
@@ -436,7 +462,7 @@ export function createAssistantService(ctx: ModuleContext) {
         max_tokens: MAX_TOKENS,
         system,
         messages,
-        tools: TOOLS,
+        tools: conversation.canRequestAgent ? [...TOOLS, REQUEST_AGENT_TOOL] : TOOLS,
       });
       ctx.logger.info('assistant.usage', {
         source: conversation.source,
@@ -517,6 +543,8 @@ export function createAssistantService(ctx: ModuleContext) {
         source: 'WEBSITE',
         linkProperties: false,
         detailedIds: [],
+        canRequestAgent: false,
+        wantsAgent: null,
       };
       const { reply, properties } = await converse(client, system, input.messages, conversation);
       return { reply, properties, leadToken: conversation.leadId ? signLead(conversation.leadId) : undefined };
@@ -555,12 +583,14 @@ export function createAssistantService(ctx: ModuleContext) {
         source: input.source,
         linkProperties: true,
         detailedIds: [],
+        canRequestAgent: true,
+        wantsAgent: null,
       };
       try {
         const system = await systemBlocks(messagingPrompt(input.platform), customerNote(input.platform, input.customer));
         const { reply, properties } = await converse(client, system, history, conversation);
         const extracted = await extractCards(toPlainText(reply), properties, conversation.detailedIds);
-        return { ok: true, ...extracted, leadId: conversation.leadId };
+        return { ok: true, ...extracted, leadId: conversation.leadId, wantsAgent: conversation.wantsAgent };
       } catch (err) {
         ctx.logger.error('assistant.reply_failed', {
           source: input.source,

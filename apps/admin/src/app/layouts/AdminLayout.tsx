@@ -16,6 +16,7 @@ import {
   Banknote,
   Percent,
   Megaphone,
+  MessageSquare,
   Sparkles,
   Trophy,
   FolderOpen,
@@ -27,6 +28,8 @@ import {
 import logo from 'figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png';
 import { useAuth } from '../../store/auth';
 import { canOpen } from '../../store/permissions';
+import { can } from '@era/contracts';
+import { useInboxSummary } from '../../data/inbox';
 import { NoAccess } from '../guards';
 
 // Falls back to the CURRENT host (not a hardcoded "localhost") so the link
@@ -44,6 +47,7 @@ const NAV: { section: string; items: { to: string; icon: typeof Home; label: str
   {
     section: 'CRM',
     items: [
+      { to: '/inbox', icon: MessageSquare, label: 'Inbox' },
       { to: '/contacts', icon: Contact2, label: 'Contacts' },
       { to: '/leads', icon: Filter, label: 'Pipeline' },
       { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
@@ -104,6 +108,8 @@ export function AdminLayout() {
   })).filter((g) => g.items.length > 0);
 
   const allowed = canOpen(capabilities, location.pathname);
+  // Chats waiting on a person (AI asked for one, or a customer wrote to a staff-handled chat).
+  const inboxBadge = useInboxSummary(can(capabilities, 'crm:read')).data?.attention ?? 0;
   const initials =
     user?.name
       .split(' ')
@@ -152,6 +158,11 @@ export function AdminLayout() {
                     >
                       <Icon className="h-4 w-4 flex-shrink-0" />
                       <span>{item.label}</span>
+                      {item.to === '/inbox' && inboxBadge > 0 && (
+                        <span className="ml-auto rounded-full bg-[#EF2D2C] px-2 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/40">
+                          {inboxBadge}
+                        </span>
+                      )}
                     </NavLink>
                   );
                 })}

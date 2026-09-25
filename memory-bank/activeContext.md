@@ -13,8 +13,40 @@ uses `@era/mock-data` except `apps/api/prisma/seed.ts`. The AI assistant
 published Inventory, saving leads into CRM, and using staff-written
 **AI Knowledge** for questions about ERA itself.
 
+**Dev servers:** the user starts them from the **Claude app's preview
+panel** (client + api, 2026-09-25) — so `preview_list` shows them, and a
+`pnpm api` in a terminal will crash with EADDRINUSE (it happened). Admin
+(:5174) moved there too (a terminal copy the agent had opened blocked the
+panel's start — stopped it). Don't start dev servers in terminal tabs. Docker Desktop
+must be running first (it was off on the morning of 2026-09-25 — the api
+preview then failed every DB call until Postgres came up). Only one API
+process may run (port :4000, one Telegram poller).
+
 ## Recent work (newest first — full reasoning in `progress.md`)
 
+0. **Admin Inbox + human handoff, Telegram first (2026-09-25; backend
+   verified end to end, admin page not yet clicked through signed-in)** —
+   migration `20260925020000_messaging_inbox`: `MessagingMode {AI, AGENT}`,
+   `MessagingRole.AGENT` + `MessagingMessage.agentId`, conversation
+   `handledById/handledSince`, `needsAgent/needsAgentReason`, `unreadCount`.
+   `modules/messaging/inbox.ts` (`MessagingApi.inbox`, lives in the module
+   because it sends through the running bot): list/summary/get/markRead/
+   takeOver/handBack/send. Visibility = CRM rule: `crm:read:all` sees all;
+   others see chats whose lead they own or they're handling (no lead yet →
+   managers only); take over/reply need `crm:write`; taking over someone
+   else's chat needs `:all`. In AGENT mode the bot stores messages and stays
+   silent (an AI reply already in flight is dropped if a takeover lands
+   meanwhile); staff replies go out as "<First name>: …", takeover/hand-back
+   send a one-line notice; staff messages reach the AI's history marked
+   "[ERA staff member replied:]". New AI tool **`request_agent`** (chat apps
+   only) sets `needsAgent` + reason. CRM gained `CrmApi.listLeadSummaries`.
+   Admin: `/inbox` (CRM nav, red badge = chats needing a person, polls 15s),
+   tabs Needs attention / Handled by team / All, thread rendering photo-card
+   notes, swipe-replies and button taps as what the customer saw, Take over /
+   Hand back, composer (Enter sends). Harness: ask for a person → flagged,
+   badge 1; agent without the lead refused; reply before takeover refused;
+   AI silent while handled; reply delivered "Sokha: …"; after hand-back the
+   AI recalled what staff promised.
 1. **AI Knowledge + bedroom/size search** — `assistant_knowledge` table
    (`assistant.prisma`) + `modules/assistant/knowledge.ts`: CRUD, 40,000-char
    cap on active entries enforced on save, `promptSection()` injected into
@@ -75,9 +107,11 @@ published Inventory, saving leads into CRM, and using staff-written
 - **AI can still claim a save it never attempted** — only the prompt stops
   "noted/updated" without a `submit_lead` call (rejected saves are a server
   guarantee). Re-test whenever the prompt changes.
-- **No admin view of bot conversations** — Telegram history is stored
-  (`messaging_messages`) but there's no Inbox yet; website chats aren't
-  stored at all.
+- **Inbox gaps**: website chats aren't stored, so they're not in the Inbox;
+  a chat left in AGENT mode never returns to the AI by itself (no timeout);
+  photos/stickers a customer sends show only as a placeholder; visibility is
+  filtered in code over the latest 200 conversations (fine now, needs a
+  query-level filter at scale); no push/sound notification, only the badge.
 - **Single-instance assumptions**: the chat rate limiter, the Telegram
   photo `file_id` cache and the card→property map are in memory (reset on
   restart, not shared across instances). Polling means only one API process
@@ -102,7 +136,8 @@ published Inventory, saving leads into CRM, and using staff-written
 
 1. Rotate the two exposed secrets; one signed-in pass over the admin
    screens above; staff start writing AI Knowledge.
-2. **Admin Inbox + human handoff** for bot conversations.
+2. Try the Inbox with a real phone chat (ask the bot for a person → Take
+   over → reply → Hand back); decide on an auto-return-to-AI timeout.
 3. **Facebook Messenger, then WhatsApp** on the same `messaging` module
    (one Meta webhook; Messenger needs App Review for `pages_messaging`,
    WhatsApp a Business account + number; both have a 24h reply window; a

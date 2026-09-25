@@ -14,6 +14,15 @@ export interface CrmContactView {
   email: string | null;
 }
 
+export interface CrmLeadSummaryView {
+  id: string;
+  stage: string;
+  ownerId: string | null;
+  contactName: string;
+  phone: string | null;
+  email: string | null;
+}
+
 export interface CrmApi {
   listLeads(): Promise<CrmLeadView[]>;
   getContact(id: string): Promise<CrmContactView | null>;
@@ -36,6 +45,8 @@ export interface CrmApi {
     { id: string; contactId: string; campaignId: string | null; source: string; stage: string; createdAt: Date }[]
   >;
   countLeadsForCampaign(campaignId: string): Promise<number>;
+  /** Missing ids (deleted leads) are simply absent from the result. */
+  listLeadSummaries(leadIds: string[]): Promise<CrmLeadSummaryView[]>;
   /** Leads + contacts whose source is this channel key. */
   countRecordsWithSource(source: string): Promise<number>;
   /** A website visitor correcting details they already submitted — updates that lead's contact in
@@ -73,6 +84,17 @@ export const crmModule: AppModule<CrmApi> = {
       },
       listLeadsForAttribution: () => service.listLeadsForAttribution(),
       countLeadsForCampaign: (campaignId) => service.countLeadsForCampaign(campaignId),
+      async listLeadSummaries(leadIds) {
+        const rows = await service.listLeadSummaries(leadIds);
+        return rows.map((l) => ({
+          id: l.id,
+          stage: l.stage,
+          ownerId: l.ownerId,
+          contactName: l.contact.name,
+          phone: l.contact.phone,
+          email: l.contact.email,
+        }));
+      },
       countRecordsWithSource: (source) => service.countRecordsWithSource(source),
       updateLeadContact(leadId, patch) {
         return service.updateLeadContact(leadId, patch);

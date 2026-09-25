@@ -266,7 +266,10 @@ Rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
   WhatsApp next): its own tables (`messaging.prisma` — server-stored
   conversation history, lead link, dedupe on the platform's message id),
   long polling in dev / signed webhook when `PUBLIC_API_URL` is set, and
-  replies from `ctx.modules.assistant`. Optional: nothing starts without
+  replies from `ctx.modules.assistant`. Also the admin **Inbox**
+  (`inbox.ts`, `/inbox` page): staff take a chat over (AI goes silent),
+  reply through the bot, hand it back; visibility follows CRM ownership.
+  Optional: nothing starts without
   `TELEGRAM_BOT_TOKEN`. Background work uses the `AppModule` `start`/`stop`
   hooks (`platform/module.ts`, run by `app.ts`).
 - **Lead/contact `source` and campaign `channel` are keys into

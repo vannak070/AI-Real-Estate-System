@@ -47,7 +47,9 @@ debugging lives in git history, not here.
   @ERACambodiaAI_bot) share one engine. Search by type/area (with spelling
   aliases)/budget/bedrooms/size/name; saves and corrects leads; on Telegram
   sends numbered photo cards with "More details"/"Book a viewing" buttons and
-  understands swipe-replies. **AI Knowledge** (admin page, `/ai-knowledge`) —
+  understands swipe-replies. **Inbox** (`/inbox`, 2026-09-25): staff see bot
+  chats, take one over (the AI goes quiet), reply as themselves through the
+  bot and hand back; the AI flags chats where a customer wants a person. **AI Knowledge** (admin page, `/ai-knowledge`) —
   company answers written by ERA staff, given to the AI on every chat.
 - **`apps/client`**: Properties list (tabs Exclusive Property / For Sale /
   For Rent, client-side pagination 21/51/99) + detail pages, a real

@@ -245,6 +245,15 @@ export function createCrmService({ db, bus, modules }: ModuleContext) {
       });
     },
 
+    /** For the messaging Inbox: who a chat's lead belongs to, and how to reach them. */
+    listLeadSummaries(ids: string[]) {
+      if (ids.length === 0) return Promise.resolve([]);
+      return db.lead.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, stage: true, ownerId: true, contact: { select: { name: true, phone: true, email: true } } },
+      });
+    },
+
     countLeadsForCampaign(campaignId: string) {
       return db.lead.count({ where: { campaignId } });
     },

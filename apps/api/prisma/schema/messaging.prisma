@@ -4,7 +4,17 @@
 
 enum MessagingRole {
   USER
+  /// The AI assistant.
   ASSISTANT
+  /// An ERA staff member replying from the admin Inbox (MessagingMessage.agentId).
+  AGENT
+}
+
+/// Who answers the customer right now.
+enum MessagingMode {
+  AI
+  /// A staff member took the conversation over in the Inbox — the AI stays silent until handed back.
+  AGENT
 }
 
 model MessagingConversation {
@@ -21,11 +31,21 @@ model MessagingConversation {
   leadId         String?
   /// From a campaign deep link (t.me/<bot>?start=<code>) — attributes the lead to that campaign.
   campaignCode   String?
+  mode           MessagingMode      @default(AI)
+  /// identity_users.id of the staff member who took over (no FK — module rule). null in AI mode.
+  handledById    String?
+  handledSince   DateTime?
+  /// The AI's request_agent tool asked for a person (reason in needsAgentReason). Cleared on takeover.
+  needsAgent       Boolean          @default(false)
+  needsAgentReason String?
+  /// Customer messages not yet opened in the Inbox (reset when a staff member opens the conversation).
+  unreadCount    Int                @default(0)
   lastMessageAt  DateTime           @default(now())
   createdAt      DateTime           @default(now())
   messages       MessagingMessage[]
 
   @@unique([channel, externalChatId])
+  @@index([lastMessageAt])
   @@map("messaging_conversations")
 }
 
@@ -35,6 +55,8 @@ model MessagingMessage {
   conversation   MessagingConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           MessagingRole
   text           String
+  /// identity_users.id for AGENT messages (no FK — module rule).
+  agentId        String?
   /// The platform's message id for inbound messages — unique per conversation, so a redelivered
   /// update (webhook retry) is recognised and skipped instead of answered twice.
   externalId     String?

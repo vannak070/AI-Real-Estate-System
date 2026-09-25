@@ -96,6 +96,14 @@ pnpm admin    # :5174
 pnpm api      # :4000
 ```
 
+**"I can't log in" → check the API first.** The admin login page is served by
+Vite on :5174 and loads fine with the API down; only the sign-in request
+fails. `curl localhost:4000/health` should return `{"status":"ok"}`. A dev
+server started in a terminal dies with that terminal session (seen
+2026-09-24). A server started by an agent's preview tools dies with the agent
+session instead — and must not run alongside the user's own copy (port
+clash on :4000; Telegram rejects a second poller with 409).
+
 **`db:seed` (`prisma/seed.ts`) is a full destructive wipe-and-recreate** — it
 deletes essentially every table and rebuilds from `@era/mock-data/erp`'s
 static fixture. Its `assertSafeToReset()` guard refuses (exit 1) when

@@ -88,7 +88,16 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
   const status: TelegramStatus = { configured: !!config.telegramBotToken, mode: null, botUsername: null, error: null };
   const token = config.telegramBotToken;
   if (!token) {
-    return { status, start() {}, async stop() {}, verifyWebhook: () => false, handleUpdate() {} };
+    return {
+      status,
+      start() {},
+      async stop() {},
+      verifyWebhook: () => false,
+      handleUpdate() {},
+      async sendText(_chatId: string, _text: string): Promise<number> {
+        throw new Error('The Telegram bot is not connected (TELEGRAM_BOT_TOKEN is not set).');
+      },
+    };
   }
 
   const tg = createTelegramClient(config.telegramApiBase, token);
@@ -220,7 +229,7 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
         data: {
           conversationId: convo.id,
           role: 'USER',
-          text: userText ?? text ?? '',
+          text: userText ?? text ?? (convo.mode === 'AGENT' ? '[Sent a photo, sticker or file — not shown in the Inbox]' : ''),
           externalId: tap ? tap.externalId : String(msg.message_id),
         },
       });
@@ -228,6 +237,10 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       if (isDuplicate(err)) return;
       throw err;
     }
+    await db.messagingConversation.update({ where: { id: convo.id }, data: { unreadCount: { increment: 1 } } });
+    // A staff member has taken over in the Inbox: the AI stays silent and the message just waits
+    // there for them (commands and button taps included — they're the customer talking to a person).
+    if (convo.mode === 'AGENT') return;
     const saveReply = (reply: string) =>
       db.messagingMessage.create({ data: { conversationId: convo.id, role: 'ASSISTANT', text: reply } });
 
@@ -281,7 +294,12 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       const history = recent
         .reverse()
         .filter((m) => m.text && !m.text.startsWith('/'))
-        .map((m) => ({ role: m.role === 'USER' ? ('user' as const) : ('assistant' as const), content: m.text }));
+        .map((m) =>
+          m.role === 'USER'
+            ? { role: 'user' as const, content: m.text }
+            : // Staff replies are part of our side of the conversation; mark them so the AI knows.
+              { role: 'assistant' as const, content: m.role === 'AGENT' ? `[ERA staff member replied:] ${m.text}` : m.text },
+        );
 
       result = await modules.assistant.replyToMessage({
         source: CHANNEL,
@@ -301,9 +319,16 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       await send(chatId, FAILURE_REPLY[result.reason]);
       return;
     }
-    if (result.leadId !== convo.leadId) {
-      await db.messagingConversation.update({ where: { id: convo.id }, data: { leadId: result.leadId } });
-    }
+    // Re-read: a staff member may have taken over while the AI was thinking — then its reply is dropped.
+    const latest = await db.messagingConversation.update({
+      where: { id: convo.id },
+      data: {
+        ...(result.leadId !== convo.leadId ? { leadId: result.leadId } : {}),
+        ...(result.wantsAgent ? { needsAgent: true, needsAgentReason: result.wantsAgent } : {}),
+      },
+      select: { mode: true },
+    });
+    if (latest.mode === 'AGENT') return;
     await saveReply(result.transcript);
     // Photo cards first, then the text — its follow-up question ends up last, next to the input.
     await sendCards(chatId, result.cards);
@@ -412,6 +437,10 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       await pollLoop;
       // Let replies already in progress finish (bounded, so shutdown can't hang).
       await Promise.race([Promise.allSettled([...chains.values()]), new Promise((r) => setTimeout(r, 8000))]);
+    },
+    /** A staff member's reply from the Inbox. Resolves to the Telegram message id. */
+    sendText(chatId: string, text: string) {
+      return tg.sendMessage(chatId, text);
     },
     verifyWebhook(header: string | undefined) {
       if (status.mode !== 'webhook' || !header) return false;

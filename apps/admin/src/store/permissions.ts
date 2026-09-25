@@ -13,6 +13,7 @@ export const ROUTE_CAPS: { prefix: string; cap: Capability }[] = [
   { prefix: '/contacts', cap: 'crm:read' },
   { prefix: '/leads', cap: 'crm:read' },
   { prefix: '/tasks', cap: 'crm:read' },
+  { prefix: '/inbox', cap: 'crm:read' },
   { prefix: '/inventory', cap: 'inventory:read' },
   { prefix: '/quotations', cap: 'sales:read' },
   { prefix: '/reservations', cap: 'sales:read' },
