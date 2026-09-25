@@ -4,7 +4,22 @@
 finished work into `progress.md` (short summary + the *why*), keep only the
 last few items here. Verify any claim against the code before relying on it.
 
-## Where things stand (2026-09-24)
+## Where things stand (2026-09-25)
+
+**The demo is live: https://demo.yarvorax.com + https://admin.demo.yarvorax.com**
+(DigitalOcean droplet `Demo-RealEstate`, **157.245.148.58**, SGP1, $6 plan: 1 vCPU / 961 MB
+RAM / 25 GB, Ubuntu 24.04, ufw 22/80/443, 2 GB swap, Docker 29). Code in `/opt/era`, settings in
+`/opt/era/deploy/.env`; deployed with `deploy/push.sh root@157.245.148.58 --build-on-mac` (the
+1 GB box can't build). Caddy got Let's Encrypt certs for both names; `X-Robots-Tag: noindex,
+nofollow`. Data imported from the Mac (667 projects, 47 leads, 13 active users, 682 photo
+folders — identical); AI chat verified over HTTPS; **the Telegram bot now runs on the demo via
+webhook** (`https://demo.yarvorax.com/webhooks/telegram`) and the token is commented out in the
+Mac's `.env`. Nightly backup cron `0 19 * * *` UTC = 02:00 Phnom Penh → `/var/backups/era`
+(first run: 204 KB db, 198 MB photos). RAM ~540/961 MB in use. DNS: GoDaddy A records `demo`,
+`admin.demo` → 157.245.148.58 (the `@`/`www` records still point at the Yarvora-X website
+droplet 159.223.84.89 — never deploy there). **The Mac's local DB is now a separate copy** —
+changes made in the demo's back office don't flow back, and re-running import-data.sh on the
+server would overwrite demo changes.
 
 Every screen in `apps/admin` and `apps/client` runs on the real API; nothing
 uses `@era/mock-data` except `apps/api/prisma/seed.ts`. The AI assistant
@@ -151,8 +166,9 @@ process may run (port :4000, one Telegram poller).
 
 ## Known open items
 
-- **Rotate the exposed secrets**: the Telegram bot token and the Anthropic
-  API key were both pasted into chat. `/revoke` in @BotFather + re-set
+- **Rotate the exposed secrets** before production: the demo's Anthropic key and the Telegram
+  bot token were both pasted into chat (the demo uses them knowingly); the Mac's older Anthropic
+  key still works — delete it in the console once no longer needed. Earlier note: `/revoke` in @BotFather + re-set
   `TELEGRAM_BOT_TOKEN` (a hidden-input command was given to the user); make
   a new Anthropic key in the console and replace `ANTHROPIC_API_KEY`.
 - **AI Knowledge is empty** — ERA staff need to write the answers.
