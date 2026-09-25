@@ -7,7 +7,7 @@ last few items here. Verify any claim against the code before relying on it.
 ## Where things stand (2026-09-25)
 
 **Ready for the management review.** Code on the Mac, GitHub (`origin/main`
-= `d694532`) and the online demo all match.
+= `9af00bb`, 2026-09-25) and the online demo all match; nothing uncommitted.
 
 **The demo: https://demo.yarvorax.com (customer site) +
 https://admin.demo.yarvorax.com (back office)** — DigitalOcean droplet
@@ -41,6 +41,20 @@ on :5435).
 
 ## Recent work (full reasoning in `progress.md`)
 
+00. **About menu made usable (2026-09-25, local — not yet on the demo)** —
+   every About menu item (and every footer "About ERA" link) pointed at plain
+   `/about`, so "Our History"/"Our Team"/… just showed Company Overview; the
+   hover menu also stayed open over the page after a click and snapped shut
+   crossing the `mt-2` gap. Now: `app/aboutSections.ts` is the single list
+   (page tabs, header menu, mobile menu, footer); the open section is in the
+   URL (`/about?tab=history`, `useSearchParams`, tab clicks `replace`), with a
+   scroll-into-view when switched from outside the tabs; header menu =
+   About link + separate chevron button (touch/keyboard, `aria-expanded`),
+   hover-intent close (180 ms), `pt-2` bridge instead of a margin gap, closes
+   on item click / navigation / Esc / outside click, current section
+   highlighted; mobile menu lists the sections. Verified with real DOM events
+   (desktop + 375 px). Noticed: the About Overview text (CMS) still says "a
+   portfolio of 5 premium projects" and "10 sales professionals".
 0. **Footer + Odoo wording (2026-09-25, live on the demo)** — footer bottom
    row: "© 2026 ERA Cambodia · Powered by AI Agent" left, Facebook / Call
    (tel:+85523123456) / Telegram (fixed: was the wrong `@ERAcambodia_bot`,
@@ -69,6 +83,10 @@ on :5435).
 ## Checks still to do
 
 - **Management review feedback** — collect and work through it.
+- **Footer contact details** — the user hasn't yet confirmed that
+  +855 23 123 456 (Call icon, also the header/Contact Info number) and
+  facebook.com/eracambodia are ERA's real phone and Facebook page; both were
+  in the Figma export, not supplied by ERA.
 - The user has now used the Inbox on the demo (take over, reply). Admin
   screens still not clicked through by anyone: AI Knowledge page, campaign
   drawer links, property Publish/Private + bulk select, the unified

@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
-import { Building2, Users, Award, Target, CheckCircle, TrendingUp, Globe, Heart, Phone, Mail, MessageSquare } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router";
+import { Building2, Users, Award, Target, CheckCircle, Heart, Phone, Mail, MessageSquare } from "lucide-react";
+import { ABOUT_SECTIONS, parseAboutTab, type AboutTab } from "../aboutSections";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api, resolveUploadUrl } from "../../lib/api";
 
-type AboutTab = 'overview' | 'history' | 'team' | 'awards' | 'contact';
 type PublicAbout = Awaited<ReturnType<typeof api.settings.public.about.query>>;
 
 const AVATAR_COLORS = ['#001F5B', '#EF2D2C', '#8B0A1C', '#0F766E', '#7C3AED', '#B45309'];
@@ -40,20 +40,32 @@ function Avatar({ name, photoUrl, size, idx = 0 }: { name: string; photoUrl: str
 }
 
 export function AboutPage() {
-  const [activeTab, setActiveTab] = useState<AboutTab>('overview');
+  // The open section lives in the address (/about?tab=history), so the header menu, footer links,
+  // shared links and the browser's Back button all land on the right section.
+  const [params, setParams] = useSearchParams();
+  const activeTab = parseAboutTab(params.get('tab'));
+  const setActiveTab = (tab: AboutTab) => setParams(tab === 'overview' ? {} : { tab }, { replace: true });
   const [about, setAbout] = useState<PublicAbout | null>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
+
+  // Opened from the header/footer while already scrolled down: bring the tabs + section into view.
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const top = tabsRef.current?.getBoundingClientRect().top ?? 0;
+    if (top < 80 || top > window.innerHeight * 0.6) {
+      tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     api.settings.public.about.query().then(setAbout).catch(() => setAbout(null));
   }, []);
 
-  const tabs = [
-    { id: 'overview', label: 'Company Overview', icon: Building2 },
-    { id: 'history', label: 'Our History', icon: TrendingUp },
-    { id: 'team', label: 'Our Team', icon: Users },
-    { id: 'awards', label: 'Awards & Recognition', icon: Award },
-    { id: 'contact', label: 'Contact Us', icon: Globe },
-  ];
+  const tabs = ABOUT_SECTIONS;
 
   const content = about?.content;
   const milestones = about?.milestones ?? [];
@@ -73,14 +85,15 @@ export function AboutPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-2xl shadow-lg p-2 mb-8 border-2 border-gray-100">
+      <div ref={tabsRef} className="bg-white rounded-2xl shadow-lg p-2 mb-8 border-2 border-gray-100 scroll-mt-28">
         <div className="flex flex-wrap gap-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as AboutTab)}
+                onClick={() => setActiveTab(tab.id)}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
                 className={`flex-1 min-w-[140px] flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-[#001F5B] to-[#8B0A1C] text-white shadow-lg'

@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router";
 import { MessageSquare, Home, Building2, Menu, X, Phone, Mail, ChevronDown, Info, MapPin, Facebook, Send } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ABOUT_SECTIONS, aboutHref, parseAboutTab } from "../aboutSections";
 import { captureCampaignFromUrl } from "../../lib/attribution";
 import headerLogo from "figma:asset/d35bb1cd7b17aae1ece93ea47adf754effd39a17.png";
 import footerLogo from "figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png";
@@ -16,6 +17,47 @@ export function CustomerLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [aboutDropdownOpen, setAboutDropdownOpen] = useState(false);
   const location = useLocation();
+  const aboutMenuRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentAboutTab = location.pathname.startsWith('/about') ? parseAboutTab(new URLSearchParams(location.search).get('tab')) : null;
+
+  // Hover-intent: open at once, close after a short pause, so crossing the gap between the button
+  // and the menu (or a slightly shaky mouse) doesn't snap it shut.
+  const openAbout = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setAboutDropdownOpen(true);
+  };
+  const closeAboutSoon = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setAboutDropdownOpen(false), 180);
+  };
+
+  // Any navigation (picking a section, Back, …) closes the menus.
+  useEffect(() => {
+    setAboutDropdownOpen(false);
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.search]);
+
+  // Close on Esc or a click/tap outside the menu (touch screens have no mouse-leave).
+  useEffect(() => {
+    if (!aboutDropdownOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setAboutDropdownOpen(false);
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (!aboutMenuRef.current?.contains(e.target as Node)) setAboutDropdownOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+    };
+  }, [aboutDropdownOpen]);
+
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+  }, []);
 
   // Every page can be an ad's landing page, so capture ?utm_campaign= wherever the visitor lands.
   useEffect(() => {
@@ -86,67 +128,62 @@ export function CustomerLayout() {
               </Link>
 
               {/* About Dropdown */}
-              <div 
-                className="relative"
-                onMouseEnter={() => setAboutDropdownOpen(true)}
-                onMouseLeave={() => setAboutDropdownOpen(false)}
-              >
-                <Link
-                  to="/about"
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                    isAboutActive()
-                      ? 'bg-[#001F5B] text-white' 
-                      : 'text-gray-700 hover:bg-gray-100'
+              <div ref={aboutMenuRef} className="relative" onMouseEnter={openAbout} onMouseLeave={closeAboutSoon}>
+                <div
+                  className={`flex items-center rounded-lg transition-all ${
+                    isAboutActive() ? 'bg-[#001F5B] text-white' : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <Info className="w-4 h-4" />
-                  <span className="font-medium">About</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${aboutDropdownOpen ? 'rotate-180' : ''}`} />
-                </Link>
+                  <Link to="/about" className="flex items-center space-x-2 py-2 pl-4 pr-1">
+                    <Info className="w-4 h-4" />
+                    <span className="font-medium">About</span>
+                  </Link>
+                  {/* Separate button so touch and keyboard users can open the menu too. */}
+                  <button
+                    type="button"
+                    aria-label="Show About sections"
+                    aria-expanded={aboutDropdownOpen}
+                    aria-haspopup="menu"
+                    onClick={() => (aboutDropdownOpen ? setAboutDropdownOpen(false) : openAbout())}
+                    className="py-2 pl-1 pr-3"
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform ${aboutDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
 
-                {/* Dropdown Menu */}
                 {aboutDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border-2 border-gray-100 py-2 z-50">
-                    <Link
-                      to="/about"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="font-semibold">Company Overview</div>
-                      <div className="text-xs text-gray-500">Who we are</div>
-                    </Link>
-                    <Link
-                      to="/about"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="font-semibold">Our History</div>
-                      <div className="text-xs text-gray-500">Journey & milestones</div>
-                    </Link>
-                    <Link
-                      to="/about"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="font-semibold">Leadership Team</div>
-                      <div className="text-xs text-gray-500">Meet our experts</div>
-                    </Link>
-                    <Link
-                      to="/about"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="font-semibold">Awards & Recognition</div>
-                      <div className="text-xs text-gray-500">Our achievements</div>
-                    </Link>
-                    <div className="border-t border-gray-100 my-2"></div>
-                    <Link
-                      to="/about"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="font-semibold text-[#EF2D2C]">Contact Us</div>
-                      <div className="text-xs text-gray-500">Get in touch</div>
-                    </Link>
+                  // pt-2 (not mt-2): the padding is part of the hover area, so there's no dead gap.
+                  <div className="absolute left-0 top-full z-50 pt-2" role="menu">
+                    <div className="w-64 rounded-xl border border-gray-100 bg-white py-2 shadow-xl">
+                      {ABOUT_SECTIONS.map((section) => {
+                        const Icon = section.icon;
+                        const current = currentAboutTab === section.id;
+                        return (
+                          <Link
+                            key={section.id}
+                            to={aboutHref(section.id)}
+                            role="menuitem"
+                            aria-current={current ? 'page' : undefined}
+                            onClick={() => setAboutDropdownOpen(false)}
+                            className={`flex items-start gap-3 px-4 py-2.5 transition-colors ${
+                              current ? 'bg-[#001F5B]/5' : 'hover:bg-gray-50'
+                            } ${section.id === 'contact' ? 'mt-1 border-t border-gray-100 pt-3.5' : ''}`}
+                          >
+                            <Icon className={`mt-0.5 h-4 w-4 flex-shrink-0 ${current ? 'text-[#EF2D2C]' : 'text-gray-400'}`} />
+                            <span>
+                              <span className={`block text-sm font-semibold ${current ? 'text-[#001F5B]' : 'text-gray-800'}`}>
+                                {section.label}
+                              </span>
+                              <span className="block text-xs text-gray-500">{section.hint}</span>
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
-              
+
               {/* CTA Button */}
               <Link 
                 to="/chat" 
@@ -215,6 +252,20 @@ export function CustomerLayout() {
                 <Info className="w-5 h-5" />
                 <span className="font-medium">About</span>
               </Link>
+              <div className="ml-6 border-l border-gray-200 pl-3">
+                {ABOUT_SECTIONS.map((section) => (
+                  <Link
+                    key={section.id}
+                    to={aboutHref(section.id)}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block rounded-lg px-3 py-2 text-sm ${
+                      currentAboutTab === section.id ? 'font-semibold text-[#001F5B]' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {section.label}
+                  </Link>
+                ))}
+              </div>
               <Link
                 to="/chat"
                 onClick={() => setMobileMenuOpen(false)}
@@ -285,30 +336,14 @@ export function CustomerLayout() {
             <div className="md:col-span-3">
               <h4 className="font-bold mb-4 text-white">About ERA</h4>
               <ul className="space-y-3 text-sm">
-                <li>
-                  <Link to="/about" className="text-gray-300 hover:text-[#EF2D2C] transition flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 bg-[#EF2D2C] rounded-full"></span>
-                    <span>Company Overview</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/about" className="text-gray-300 hover:text-[#EF2D2C] transition flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 bg-[#EF2D2C] rounded-full"></span>
-                    <span>Our History</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/about" className="text-gray-300 hover:text-[#EF2D2C] transition flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 bg-[#EF2D2C] rounded-full"></span>
-                    <span>Leadership Team</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/about" className="text-gray-300 hover:text-[#EF2D2C] transition flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 bg-[#EF2D2C] rounded-full"></span>
-                    <span>Awards & Recognition</span>
-                  </Link>
-                </li>
+                {ABOUT_SECTIONS.filter((section) => section.id !== 'contact').map((section) => (
+                  <li key={section.id}>
+                    <Link to={aboutHref(section.id)} className="text-gray-300 hover:text-[#EF2D2C] transition flex items-center space-x-2">
+                      <span className="w-1.5 h-1.5 bg-[#EF2D2C] rounded-full"></span>
+                      <span>{section.label}</span>
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
