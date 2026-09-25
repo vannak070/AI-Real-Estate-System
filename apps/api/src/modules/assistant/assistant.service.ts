@@ -29,7 +29,11 @@ const RULES = `Rules you must always follow:
 - Keep replies short and conversational — this is a chat, not an essay. Use plain text (no markdown tables).
 - Reply in the language the visitor writes in (e.g. Khmer, English or Chinese).`;
 
-const WEBSITE_PROMPT = `${INTRO} You chat with visitors on the public website.\n\n${RULES}`;
+const WEBSITE_PROMPT = `${INTRO} You chat with visitors on the public website.
+
+${RULES}
+- On the website, every property your search_properties/get_property calls return is shown under your message as a photo card with its name, price, bedrooms, size and a "View details" button. So don't list them again one by one with prices: say how many matched, point out one or two that stand out (by name), and ask one follow-up question. Keep it to a few short sentences.
+- Formatting: plain sentences; **bold** sparingly for a property name; a short "- " list only when it really helps. No headings, no tables.`;
 
 /**
  * Chat apps show text exactly as sent, so markdown shows up as literal symbols. Seen live: the
@@ -82,6 +86,19 @@ function customerNote(platform: string, customer: MessagingCustomer) {
   return known.length
     ? `${platform} shows this customer's ${known.join(' and ')} — unverified, so use it only as a friendly greeting, and ask for their real name before saving their details if you're not sure.`
     : "You do not know the customer's name yet.";
+}
+
+/**
+ * The contact details already saved on this conversation's lead. Only the last messages are sent
+ * to the model, so details shared earlier fall out of view — seen live: a returning Telegram
+ * customer who wanted a viewing was asked for the name and phone they'd shared before. The server
+ * looks them up (the lead id is server-held/verified, never taken from the model) and says so.
+ */
+function onFileNote(lead: { contactName: string; phone: string | null; email: string | null }): string {
+  const details = [`name ${lead.contactName}`, lead.phone ? `phone ${lead.phone}` : null, lead.email ? `email ${lead.email}` : null]
+    .filter(Boolean)
+    .join(', ');
+  return `This customer's details are ALREADY saved in ERA's CRM from earlier in this conversation: ${details}. Never ask for them again. When they want a viewing, a callback or more help from the team, call submit_lead straight away with these same details plus the property id and a short message (e.g. "Viewing request for …") — it updates their existing record — then confirm an agent will contact them. If they give a new or corrected detail, include it.`;
 }
 
 interface ChatMessage {
@@ -249,6 +266,15 @@ export function createAssistantService(ctx: ModuleContext) {
    * tools, which never change): repeat turns and tool rounds re-read it at a fraction of the cost.
    * Anything that varies per visitor goes in a second, uncached block after it.
    */
+  /** The saved contact on a lead, or null if it was deleted in the back office. */
+  async function leadOnFile(leadId: string) {
+    try {
+      return (await ctx.modules.crm.listLeadSummaries([leadId]))[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async function systemBlocks(fixed: string, perVisitor?: string): Promise<Anthropic.TextBlockParam[]> {
     return [
       { type: 'text', text: `${fixed}\n\n${await knowledge.promptSection()}`, cache_control: { type: 'ephemeral' } },
@@ -543,15 +569,18 @@ export function createAssistantService(ctx: ModuleContext) {
         throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many messages — please wait a moment and try again.' });
       }
 
-      const system = await systemBlocks(
-        WEBSITE_PROMPT,
+      const knownLeadId = verifyLeadToken(input.leadToken);
+      const onFile = knownLeadId ? await leadOnFile(knownLeadId) : null;
+      const visitorNotes = [
         input.propertyId
           ? `The visitor arrived from the page for a specific property: id "${input.propertyId}"${input.propertyName ? ` ("${input.propertyName}")` : ''}. If this is the start of the conversation, call get_property with that id right away so your first reply is grounded in its real details.`
-          : undefined,
-      );
+          : null,
+        onFile ? onFileNote(onFile) : null,
+      ].filter(Boolean);
+      const system = await systemBlocks(WEBSITE_PROMPT, visitorNotes.length ? visitorNotes.join('\n\n') : undefined);
 
       const conversation: ConversationState = {
-        leadId: verifyLeadToken(input.leadToken),
+        leadId: knownLeadId,
         rejectedBecause: null,
         campaignCode: input.campaignCode,
         source: 'WEBSITE',
@@ -601,7 +630,11 @@ export function createAssistantService(ctx: ModuleContext) {
         wantsAgent: null,
       };
       try {
-        const system = await systemBlocks(messagingPrompt(input.platform), customerNote(input.platform, input.customer));
+        const onFile = input.leadId ? await leadOnFile(input.leadId) : null;
+        const system = await systemBlocks(
+          messagingPrompt(input.platform),
+          onFile ? onFileNote(onFile) : customerNote(input.platform, input.customer),
+        );
         const { reply, properties } = await converse(client, system, history, conversation);
         const extracted = await extractCards(stripHistoryMarkers(toPlainText(reply)), properties, conversation.detailedIds);
         return { ok: true, ...extracted, leadId: conversation.leadId, wantsAgent: conversation.wantsAgent };

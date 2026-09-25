@@ -39,6 +39,24 @@ process may run (port :4000, one Telegram poller).
 
 ## Recent work (newest first — full reasoning in `progress.md`)
 
+0000. **Website chat polish before the management demo (2026-09-25, live on
+   the demo)** — found by testing the demo: raw `**asterisks**` shown (plain
+   text render), every reply listed all 8 properties in text *and* in 8
+   full-size cards (~3,300 px per answer), rent prices without "/month", no
+   beds/size on cards, Send button cut off at 375 px, a stock Unsplash photo
+   for listings without one (breaks the "no stock photos" product rule).
+   `ChatPage.tsx` now: safe mini-formatter (`FormattedText`: **bold**, "- "
+   and "1. " lists, headings stripped — React elements, never HTML);
+   compact horizontally-scrolling cards (photo or "Photo coming soon"
+   placeholder, For rent/sale · type, price with /month, beds, m², View
+   details); starter buttons on an empty chat (4 general / 4 for a
+   property chat); **New chat** button (clears context + leadToken); Enter
+   ignored while an IME is composing (Khmer/Chinese); input refocus;
+   "Checking our listings…" typing note; error notices no longer sent to the
+   model as history; flex layout with `100dvh`. Server: `WEBSITE_PROMPT`
+   tells the model the cards show name/price/beds/size so it summarises
+   (count + 1–2 highlights + one question) instead of listing. Verified
+   locally (desktop + 375 px + property-context chat) and on the demo.
 000. **Production deployment kit (2026-09-25; rehearsed end to end on the
    Mac, not yet on a real server)** — user chose: one cloud VPS in
    Singapore, **IP address first (no domain yet)**, user runs the commands

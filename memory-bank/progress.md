@@ -191,6 +191,15 @@ debugging lives in git history, not here.
 
 ## Incidents worth remembering
 
+- **The Inbox's reply box was invisible** (user on the demo, 2026-09-25: "take over, but cannot
+  chat"). A long thread in a fixed-height flex/grid panel grew to its full height (flex/grid
+  children default to `min-height: auto`) and pushed the composer below the clipped edge — it
+  was never tested with a long conversation because the agent can't sign in to the admin. Fixed
+  with `min-h-0` on the scroll area and its parents + `grid-rows-[minmax(0,1fr)]`; verified by
+  rebuilding the same structure with 40 messages on the signed-out admin page (composer 2,123 px
+  → 673 px, panel bottom 740). **Lesson:** any scrolling list inside a fixed-height flex/grid
+  panel needs `min-h-0`; when a screen can't be opened signed-in, reproduce its layout with a
+  long fake list.
 - **The real Inventory was silently wiped back to the demo seed** (found and
   recovered 2026-09-21). `prisma/seed.ts` had run on top of the scraped
   637-project dataset and deleted it. Recovery worked only because the

@@ -180,7 +180,7 @@ function Composer({ conversationId, enabled }: { conversationId: string; enabled
     }
   };
   return (
-    <div className="border-t border-black/5 bg-white p-3">
+    <div className="flex-shrink-0 border-t border-black/5 bg-white p-3">
       {send.error && <p className="mb-2 text-xs text-[var(--era-red)]">{send.error.message}</p>}
       <div className="flex items-end gap-2">
         <textarea
@@ -231,8 +231,10 @@ function ConversationPane({ id }: { id: string }) {
   const actionError = takeOver.error ?? handBack.error;
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-black/5 bg-white px-5 py-3">
+    // min-h-0 throughout: without it the message list grows to its full height inside this
+    // fixed-height panel and pushes the reply box out of view (seen live on the demo).
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex-shrink-0 border-b border-black/5 bg-white px-5 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0">
             <div className="truncate font-bold text-[var(--era-navy)]">{lead?.contactName || customerName(c)}</div>
@@ -296,7 +298,7 @@ function ConversationPane({ id }: { id: string }) {
         {actionError && <p className="mt-2 text-xs text-[var(--era-red)]">{actionError.message}</p>}
       </div>
 
-      <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto bg-[#F8F9FA] px-5 py-4">
+      <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#F8F9FA] px-5 py-4">
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} agentName={m.agentId === user?.id ? 'You' : userLabel(users, m.agentId)} />
         ))}
@@ -332,8 +334,8 @@ export function InboxPage() {
         active={filter}
         onChange={(t) => setFilter(t as InboxFilter)}
       />
-      <div className="grid h-[calc(100vh-15rem)] min-h-[480px] grid-cols-[340px_1fr] overflow-hidden rounded-xl border border-black/5 bg-white shadow-sm">
-        <div className="overflow-y-auto border-r border-black/5">
+      <div className="grid h-[calc(100vh-15rem)] min-h-[480px] grid-cols-[340px_1fr] grid-rows-[minmax(0,1fr)] overflow-hidden rounded-xl border border-black/5 bg-white shadow-sm">
+        <div className="min-h-0 overflow-y-auto border-r border-black/5">
           {isLoading ? (
             <div className="p-4 text-sm text-gray-400">Loading…</div>
           ) : list.length === 0 ? (
@@ -359,7 +361,7 @@ export function InboxPage() {
             ))
           )}
         </div>
-        <div className="min-w-0">
+        <div className="min-h-0 min-w-0">
           {openId ? (
             <ConversationPane key={openId} id={openId} />
           ) : (
