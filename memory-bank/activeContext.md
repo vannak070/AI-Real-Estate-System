@@ -41,7 +41,7 @@ on :5435).
 
 ## Recent work (full reasoning in `progress.md`)
 
-00. **About menu made usable (2026-09-25, local — not yet on the demo)** —
+00. **About menu made usable (2026-09-25, live on the demo)** —
    every About menu item (and every footer "About ERA" link) pointed at plain
    `/about`, so "Our History"/"Our Team"/… just showed Company Overview; the
    hover menu also stayed open over the page after a click and snapped shut
