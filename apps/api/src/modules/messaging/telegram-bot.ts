@@ -1,7 +1,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { Prisma } from '@prisma/client';
+import { Prisma, type MessagingConversation } from '@prisma/client';
 import type { ModuleContext } from '../../platform/module.js';
 import { resolveUploadPath } from '../../platform/uploads.js';
 import type { PropertyCard } from '../assistant/index.js';
@@ -97,6 +97,7 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       async sendText(_chatId: string, _text: string): Promise<number> {
         throw new Error('The Telegram bot is not connected (TELEGRAM_BOT_TOKEN is not set).');
       },
+      async answerPending(_conversationId: string) {},
     };
   }
 
@@ -196,6 +197,75 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       : `I'd like to book a viewing of "${project.name}" (property id ${project.id}).`;
   }
 
+  /**
+   * The AI answers everything the customer has written so far (the history ends with their
+   * message(s)). Used for each new message, and by the Inbox when a chat is handed back to the AI
+   * automatically with a customer still waiting. `removeKeyboard`: they just shared their number.
+   */
+  async function replyWithAi(
+    convo: MessagingConversation,
+    chatId: string,
+    customer: { displayName?: string; username?: string },
+    removeKeyboard: boolean,
+  ) {
+    const saveReply = (reply: string) =>
+      db.messagingMessage.create({ data: { conversationId: convo.id, role: 'ASSISTANT', text: reply } });
+    // "typing…" lasts ~5s on Telegram; keep it up while the AI works.
+    const typing = () => void tg.sendChatAction(chatId, 'typing').catch(() => {});
+    typing();
+    const typingTimer = setInterval(typing, 4500);
+    let result;
+    try {
+      const recent = await db.messagingMessage.findMany({
+        where: { conversationId: convo.id },
+        orderBy: { createdAt: 'desc' },
+        take: HISTORY_LIMIT,
+      });
+      const history = recent
+        .reverse()
+        .filter((m) => m.text && !m.text.startsWith('/'))
+        .map((m) =>
+          m.role === 'USER'
+            ? { role: 'user' as const, content: m.text }
+            : // Staff replies are part of our side of the conversation; mark them so the AI knows.
+              { role: 'assistant' as const, content: m.role === 'AGENT' ? `[ERA staff member replied:] ${m.text}` : m.text },
+        );
+
+      result = await modules.assistant.replyToMessage({
+        source: CHANNEL,
+        platform: 'Telegram',
+        history,
+        leadId: convo.leadId,
+        campaignCode: convo.campaignCode ?? undefined,
+        customer,
+        rateKey: `tg:${chatId}`,
+      });
+    } finally {
+      clearInterval(typingTimer);
+    }
+
+    if (!result.ok) {
+      // Not stored: a failure notice isn't conversation the AI should see next turn.
+      await send(chatId, FAILURE_REPLY[result.reason]);
+      return;
+    }
+    // Re-read: a staff member may have taken over while the AI was thinking — then its reply is dropped.
+    const latest = await db.messagingConversation.update({
+      where: { id: convo.id },
+      data: {
+        ...(result.leadId !== convo.leadId ? { leadId: result.leadId } : {}),
+        ...(result.wantsAgent ? { needsAgent: true, needsAgentReason: result.wantsAgent } : {}),
+      },
+      select: { mode: true },
+    });
+    if (latest.mode === 'AGENT') return;
+    await saveReply(result.transcript);
+    // Photo cards first, then the text — its follow-up question ends up last, next to the input.
+    await sendCards(chatId, result.cards);
+    // Once they've shared their number, the share button has done its job.
+    if (result.reply) await send(chatId, result.reply, removeKeyboard ? { remove_keyboard: true } : undefined);
+  }
+
   /** `tap`: a button press, handled as if the customer had typed `tap.text`. */
   async function processMessage(msg: TelegramMessage, tap?: { externalId: string; text: string }) {
     const from = msg.from!;
@@ -280,60 +350,7 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       return;
     }
 
-    // "typing…" lasts ~5s on Telegram; keep it up while the AI works.
-    const typing = () => void tg.sendChatAction(chatId, 'typing').catch(() => {});
-    typing();
-    const typingTimer = setInterval(typing, 4500);
-    let result;
-    try {
-      const recent = await db.messagingMessage.findMany({
-        where: { conversationId: convo.id },
-        orderBy: { createdAt: 'desc' },
-        take: HISTORY_LIMIT,
-      });
-      const history = recent
-        .reverse()
-        .filter((m) => m.text && !m.text.startsWith('/'))
-        .map((m) =>
-          m.role === 'USER'
-            ? { role: 'user' as const, content: m.text }
-            : // Staff replies are part of our side of the conversation; mark them so the AI knows.
-              { role: 'assistant' as const, content: m.role === 'AGENT' ? `[ERA staff member replied:] ${m.text}` : m.text },
-        );
-
-      result = await modules.assistant.replyToMessage({
-        source: CHANNEL,
-        platform: 'Telegram',
-        history,
-        leadId: convo.leadId,
-        campaignCode: convo.campaignCode ?? undefined,
-        customer: { displayName, username: from.username },
-        rateKey: `tg:${chatId}`,
-      });
-    } finally {
-      clearInterval(typingTimer);
-    }
-
-    if (!result.ok) {
-      // Not stored: a failure notice isn't conversation the AI should see next turn.
-      await send(chatId, FAILURE_REPLY[result.reason]);
-      return;
-    }
-    // Re-read: a staff member may have taken over while the AI was thinking — then its reply is dropped.
-    const latest = await db.messagingConversation.update({
-      where: { id: convo.id },
-      data: {
-        ...(result.leadId !== convo.leadId ? { leadId: result.leadId } : {}),
-        ...(result.wantsAgent ? { needsAgent: true, needsAgentReason: result.wantsAgent } : {}),
-      },
-      select: { mode: true },
-    });
-    if (latest.mode === 'AGENT') return;
-    await saveReply(result.transcript);
-    // Photo cards first, then the text — its follow-up question ends up last, next to the input.
-    await sendCards(chatId, result.cards);
-    // Once they've shared their number, the share button has done its job.
-    if (result.reply) await send(chatId, result.reply, contact ? { remove_keyboard: true } : undefined);
+    await replyWithAi(convo, chatId, { displayName, username: from.username }, !!contact);
   }
 
   /** A button tap: stop the spinner at once, then treat it as the customer's message. */
@@ -351,8 +368,13 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
     // Private chats with real people only — the bot isn't meant for groups.
     if (!msg || msg.chat.type !== 'private' || !from || from.is_bot) return;
     const chatId = String(msg.chat.id);
+    enqueue(chatId, () => (cq ? processTap(cq) : processMessage(msg)));
+  }
+
+  /** Runs `job` after everything already queued for this chat — one thing at a time per chat. */
+  function enqueue(chatId: string, job: () => Promise<void>) {
     const next = (chains.get(chatId) ?? Promise.resolve())
-      .then(() => (cq ? processTap(cq) : processMessage(msg)))
+      .then(job)
       .catch((err: unknown) => {
         log.error('telegram.message_failed', { error: err instanceof Error ? err.message : String(err) });
         return send(chatId, FAILURE_REPLY.failed).catch(() => {});
@@ -361,6 +383,7 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
         if (chains.get(chatId) === next) chains.delete(chatId);
       });
     chains.set(chatId, next);
+    return next;
   }
 
   const sleep = (ms: number, signal: AbortSignal) =>
@@ -437,6 +460,16 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       await pollLoop;
       // Let replies already in progress finish (bounded, so shutdown can't hang).
       await Promise.race([Promise.allSettled([...chains.values()]), new Promise((r) => setTimeout(r, 8000))]);
+    },
+    /** The AI answers a chat's waiting customer message(s) — after an automatic hand-back. */
+    answerPending(conversationId: string) {
+      return (async () => {
+        const convo = await db.messagingConversation.findUnique({ where: { id: conversationId } });
+        if (!convo || convo.mode !== 'AI') return;
+        await enqueue(convo.externalChatId, () =>
+          replyWithAi(convo, convo.externalChatId, { displayName: convo.displayName ?? undefined, username: convo.username ?? undefined }, false),
+        );
+      })();
     },
     /** A staff member's reply from the Inbox. Resolves to the Telegram message id. */
     sendText(chatId: string, text: string) {

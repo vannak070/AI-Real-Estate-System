@@ -31,6 +31,12 @@ const schema = z.object({
   publicApiUrl: z.string().url().optional(),
   /** The customer website's address — bots link customers to property pages there. */
   publicSiteUrl: z.string().url().default('http://localhost:5173'),
+  /** Inbox: a staff-handled chat whose customer has waited this long with no staff reply goes
+   * back to the AI, which answers them (0 = never). */
+  inboxAutoHandbackMinutes: z.coerce.number().int().min(0).max(24 * 60).default(30),
+  /** Inbox: a staff-handled chat with no activity at all for this long quietly returns to the AI,
+   * so a chat someone forgot to hand back doesn't leave the next message unanswered (0 = never). */
+  inboxIdleReleaseHours: z.coerce.number().int().min(0).max(24 * 30).default(12),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -50,6 +56,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     telegramApiBase: env.TELEGRAM_API_BASE || undefined,
     publicApiUrl: env.PUBLIC_API_URL || undefined,
     publicSiteUrl: env.PUBLIC_SITE_URL || undefined,
+    inboxAutoHandbackMinutes: env.INBOX_AUTO_HANDBACK_MINUTES || undefined,
+    inboxIdleReleaseHours: env.INBOX_IDLE_RELEASE_HOURS || undefined,
   });
   if (!parsed.success) {
     throw new Error(`Invalid environment:\n${parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n')}`);

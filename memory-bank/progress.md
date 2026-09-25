@@ -213,6 +213,12 @@ debugging lives in git history, not here.
 - **Telegram replies came out with literal `**asterisks**`** despite a
   "no markdown" rule — now stripped in code. Rule of thumb: an instruction
   the model must never break gets enforced in code.
+- **The AI copied an internal history label into a customer reply** and
+  **showed photos from an older search that didn't match the new budget**
+  (2026-09-25, both caught by the auto hand-back test before any customer
+  saw them) — fixed in code (`stripHistoryMarkers`; this-turn-only cards
+  after a lookup). Same lesson again: whatever we write into the model's
+  history, it may echo back.
 - **Telegram photos silently vanished** (user report, 2026-09-24): cards were
   built only for properties a tool returned in the same turn, but links were
   stripped regardless, so a follow-up sent "here is the link:" and nothing.

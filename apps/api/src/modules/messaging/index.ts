@@ -22,8 +22,9 @@ export const messagingModule: AppModule<MessagingApi> = {
   name: 'messaging',
   register(ctx: ModuleContext) {
     const telegram = createTelegramBot(ctx);
+    const inbox = createInbox(ctx, telegram);
     return {
-      api: { status: () => ({ telegram: { ...telegram.status } }), inbox: createInbox(ctx, telegram) },
+      api: { status: () => ({ telegram: { ...telegram.status } }), inbox },
       // Platform webhooks are the one deliberate exception to "HTTP is tRPC": Telegram (and later
       // Meta) POST their own payload format to a URL we register with them.
       routes(app) {
@@ -37,8 +38,14 @@ export const messagingModule: AppModule<MessagingApi> = {
           return { ok: true };
         });
       },
-      start: () => telegram.start(),
-      stop: () => telegram.stop(),
+      start: () => {
+        telegram.start();
+        inbox.startSweep();
+      },
+      stop: async () => {
+        inbox.stopSweep();
+        await telegram.stop();
+      },
     };
   },
 };

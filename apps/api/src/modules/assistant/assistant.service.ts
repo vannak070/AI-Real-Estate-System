@@ -47,6 +47,15 @@ export function toPlainText(text: string): string {
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1: $2');
 }
 
+/**
+ * Labels this system writes into chat-app history ("[ERA staff member replied:]", "[Replying to
+ * photo card: …]") that the model sometimes imitates in its own reply — seen live. Removed before
+ * the reply is sent *or* stored, so a copied label never reaches the customer or feeds itself.
+ */
+export function stripHistoryMarkers(text: string): string {
+  return text.replace(/\[(?:ERA staff member replied|Replying to(?: photo card)?)[^\]]*\]\s*/g, '').trim();
+}
+
 /** Chat apps show raw text, and the customer can't see the website's property cards. */
 /** The fixed part of a chat app's instructions — identical for every customer, so it caches. */
 function messagingPrompt(platform: string) {
@@ -266,9 +275,14 @@ export function createAssistantService(ctx: ModuleContext) {
     let ids = [...new Set([...text.matchAll(propertyUrlPattern())].map((m) => m[1]!))];
     // Described one property in detail but forgot its url → still show its photo.
     if (ids.length === 0 && detailedIds.length === 1) ids = detailedIds;
+    // A turn that looked properties up may only show what it found. Seen live: after a new search
+    // "under $900", the model re-linked $1,600 listings from an earlier turn — right text, wrong
+    // photos. A turn with no lookup (e.g. "show me the first one again") may re-show earlier ones.
+    const lookedUp = properties.length > 0;
     const found: PublicProjectView[] = [];
-    for (const id of ids.slice(0, MAX_CARDS)) {
-      const p = byId.get(id) ?? (await ctx.modules.inventory.getPublicProject(id));
+    for (const id of ids) {
+      if (found.length >= MAX_CARDS) break;
+      const p = byId.get(id) ?? (lookedUp ? null : await ctx.modules.inventory.getPublicProject(id));
       if (p) found.push(p);
     }
     const cards: PropertyCard[] = found.map((p) => ({
@@ -589,7 +603,7 @@ export function createAssistantService(ctx: ModuleContext) {
       try {
         const system = await systemBlocks(messagingPrompt(input.platform), customerNote(input.platform, input.customer));
         const { reply, properties } = await converse(client, system, history, conversation);
-        const extracted = await extractCards(toPlainText(reply), properties, conversation.detailedIds);
+        const extracted = await extractCards(stripHistoryMarkers(toPlainText(reply)), properties, conversation.detailedIds);
         return { ok: true, ...extracted, leadId: conversation.leadId, wantsAgent: conversation.wantsAgent };
       } catch (err) {
         ctx.logger.error('assistant.reply_failed', {

@@ -31,10 +31,70 @@ const needsAttention = (c: Pick<MessagingConversation, 'needsAgent' | 'mode' | '
  * (a conversation with no lead yet is managers-only — same "unassigned means restricted" rule).
  * Replies go out through the platform the conversation came from.
  */
-export function createInbox({ db, modules }: ModuleContext, telegram: TelegramBot) {
-  const senders: Record<string, (chatId: string, text: string) => Promise<unknown>> = {
-    TELEGRAM: (chatId, text) => telegram.sendText(chatId, text),
+/** How often handled chats are checked for the automatic hand-back rules. */
+const SWEEP_EVERY_MS = 60_000;
+
+export function createInbox({ db, modules, config, logger }: ModuleContext, telegram: TelegramBot) {
+  const log = logger.child({ svc: 'inbox' });
+  /** Per platform: send a message, and have the AI answer a chat's waiting message(s). */
+  const adapters: Record<string, { send: (chatId: string, text: string) => Promise<unknown>; answerPending: (id: string) => Promise<void> }> = {
+    TELEGRAM: { send: (chatId, text) => telegram.sendText(chatId, text), answerPending: (id) => telegram.answerPending(id) },
   };
+  const senders = Object.fromEntries(Object.entries(adapters).map(([k, a]) => [k, a.send]));
+  const waitMs = config.inboxAutoHandbackMinutes * 60_000;
+  const idleMs = config.inboxIdleReleaseHours * 3_600_000;
+  let sweepTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * The two automatic hand-back rules for staff-handled chats:
+   * - the customer's latest message has waited `inboxAutoHandbackMinutes` with no staff reply →
+   *   back to the AI, which tells them the team is busy and answers; the chat stays flagged;
+   * - no activity at all for `inboxIdleReleaseHours` (someone forgot to hand back) → quietly back
+   *   to the AI, so the next message is answered straight away.
+   * The mode switch is a conditional update, so a staff reply or hand-back that lands meanwhile wins.
+   */
+  async function sweep(now = Date.now()) {
+    if (!waitMs && !idleMs) return;
+    const handled = await db.messagingConversation.findMany({
+      where: { mode: 'AGENT' },
+      include: { messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { role: true, createdAt: true } } },
+    });
+    for (const c of handled) {
+      const last = c.messages[0];
+      const lastAt = (last?.createdAt ?? c.handledSince ?? c.lastMessageAt).getTime();
+      const customerWaiting = last?.role === 'USER';
+      try {
+        if (waitMs && customerWaiting && now - lastAt >= waitMs) {
+          const claimed = await db.messagingConversation.updateMany({
+            where: { id: c.id, mode: 'AGENT', handledById: c.handledById },
+            data: {
+              mode: 'AI',
+              handledById: null,
+              handledSince: null,
+              needsAgent: true,
+              needsAgentReason: `No staff reply within ${config.inboxAutoHandbackMinutes} min — the AI answered instead. Take over again to continue.`,
+            },
+          });
+          if (claimed.count === 0) continue;
+          const adapter = adapters[c.channel];
+          const notice =
+            "Sorry for the wait — our team is busy right now. ERA's AI assistant will help you in the meantime, and a team member can still join this chat.";
+          await adapter?.send(c.externalChatId, notice);
+          await db.messagingMessage.create({ data: { conversationId: c.id, role: 'ASSISTANT', text: notice } });
+          log.info('inbox.auto_handback', { conversationId: c.id, reason: 'customer_waiting' });
+          await adapter?.answerPending(c.id);
+        } else if (idleMs && now - lastAt >= idleMs) {
+          const released = await db.messagingConversation.updateMany({
+            where: { id: c.id, mode: 'AGENT', handledById: c.handledById },
+            data: { mode: 'AI', handledById: null, handledSince: null },
+          });
+          if (released.count) log.info('inbox.auto_handback', { conversationId: c.id, reason: 'idle' });
+        }
+      } catch (err) {
+        log.error('inbox.auto_handback_failed', { conversationId: c.id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  }
 
   const seesAll = (v: InboxViewer) => can(v.capabilities, 'crm:read:all');
   const canSee = (v: InboxViewer, c: MessagingConversation, lead: CrmLeadSummaryView | null | undefined) =>
@@ -79,6 +139,19 @@ export function createInbox({ db, modules }: ModuleContext, telegram: TelegramBo
   }
 
   return {
+    startSweep() {
+      if (sweepTimer || (!waitMs && !idleMs)) return;
+      sweepTimer = setInterval(() => void sweep(), SWEEP_EVERY_MS);
+    },
+    stopSweep() {
+      if (sweepTimer) clearInterval(sweepTimer);
+      sweepTimer = null;
+    },
+    /** Exposed for tests; normally run by the timer. */
+    sweep,
+    /** Shown in the Inbox so staff know when a chat returns to the AI. */
+    rules: { autoHandbackMinutes: config.inboxAutoHandbackMinutes, idleReleaseHours: config.inboxIdleReleaseHours },
+
     async list(viewer: InboxViewer, filter: InboxFilter = 'all') {
       const rows = await visibleRows(viewer);
       return rows
@@ -114,7 +187,12 @@ export function createInbox({ db, modules }: ModuleContext, telegram: TelegramBo
         take: THREAD_LIMIT,
         select: { id: true, role: true, text: true, agentId: true, createdAt: true },
       });
-      return { conversation: convo, lead, messages: messages.reverse() };
+      return {
+        conversation: convo,
+        lead,
+        messages: messages.reverse(),
+        rules: { autoHandbackMinutes: config.inboxAutoHandbackMinutes, idleReleaseHours: config.inboxIdleReleaseHours },
+      };
     },
 
     async markRead(viewer: InboxViewer, id: string) {

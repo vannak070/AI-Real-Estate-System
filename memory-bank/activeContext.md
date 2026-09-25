@@ -24,6 +24,24 @@ process may run (port :4000, one Telegram poller).
 
 ## Recent work (newest first — full reasoning in `progress.md`)
 
+00. **Inbox auto hand-back (2026-09-25; verified with a fake clock, UI hint
+   not yet seen signed-in)** — `inbox.sweep()` runs every 60 s (module
+   `start`/`stop`): a staff-handled chat whose latest message is the
+   customer's and is older than `INBOX_AUTO_HANDBACK_MINUTES` (default 30)
+   goes back to the AI — notice to the customer ("our team is busy…"), chat
+   stays flagged (`needsAgent` + reason), and the AI answers the waiting
+   message(s) via the bot's new `answerPending()` (the AI step was extracted
+   from `processMessage` into `replyWithAi()`; per-chat queue via
+   `enqueue()`); no activity for `INBOX_IDLE_RELEASE_HOURS` (default 12) →
+   quiet return to AI. Both are conditional updates (`updateMany` where still
+   AGENT + same handler) so a concurrent staff reply/hand-back wins; 0
+   disables either. Inbox header shows the rule. **Two real bugs found by the
+   test and fixed in code**: (1) the AI copied the history label "[ERA staff
+   member replied:]" into its reply → `stripHistoryMarkers()` cleans replies
+   before they're sent *and* stored; (2) after a new "under $900" search the
+   AI re-linked $1,600 listings from an earlier turn → a turn that looked
+   properties up may only show cards for what it found (history re-lookup
+   only for turns with no lookup).
 0. **Admin Inbox + human handoff, Telegram first (2026-09-25; backend
    verified end to end, admin page not yet clicked through signed-in)** —
    migration `20260925020000_messaging_inbox`: `MessagingMode {AI, AGENT}`,
@@ -108,7 +126,6 @@ process may run (port :4000, one Telegram poller).
   "noted/updated" without a `submit_lead` call (rejected saves are a server
   guarantee). Re-test whenever the prompt changes.
 - **Inbox gaps**: website chats aren't stored, so they're not in the Inbox;
-  a chat left in AGENT mode never returns to the AI by itself (no timeout);
   photos/stickers a customer sends show only as a placeholder; visibility is
   filtered in code over the latest 200 conversations (fine now, needs a
   query-level filter at scale); no push/sound notification, only the badge.
@@ -137,7 +154,8 @@ process may run (port :4000, one Telegram poller).
 1. Rotate the two exposed secrets; one signed-in pass over the admin
    screens above; staff start writing AI Knowledge.
 2. Try the Inbox with a real phone chat (ask the bot for a person → Take
-   over → reply → Hand back); decide on an auto-return-to-AI timeout.
+   over → reply → Hand back; also leave a taken-over chat unanswered 30 min
+   to see the auto hand-back).
 3. **Facebook Messenger, then WhatsApp** on the same `messaging` module
    (one Meta webhook; Messenger needs App Review for `pages_messaging`,
    WhatsApp a Business account + number; both have a 24h reply window; a

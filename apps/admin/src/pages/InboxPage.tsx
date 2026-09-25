@@ -226,7 +226,7 @@ function ConversationPane({ id }: { id: string }) {
   if (isLoading) return <div className="p-6 text-sm text-gray-400">Loading…</div>;
   if (error || !data) return <div className="p-6 text-sm text-[var(--era-red)]">{error?.message ?? 'Conversation not found.'}</div>;
 
-  const { conversation: c, lead, messages } = data;
+  const { conversation: c, lead, messages, rules } = data;
   const handledByMe = c.handledById === user?.id;
   const actionError = takeOver.error ?? handBack.error;
 
@@ -286,6 +286,12 @@ function ConversationPane({ id }: { id: string }) {
           <div className="mt-2 rounded-lg bg-purple-50 px-3 py-2 text-xs text-purple-800">
             A team member is handling this chat — the AI is paused.
           </div>
+        )}
+        {c.mode === 'AGENT' && rules.autoHandbackMinutes > 0 && (
+          <p className="mt-2 text-[11px] text-gray-400">
+            The AI steps back in if the customer waits {rules.autoHandbackMinutes} min without a reply
+            {rules.idleReleaseHours > 0 ? `, or after ${rules.idleReleaseHours} h with no activity` : ''}.
+          </p>
         )}
         {actionError && <p className="mt-2 text-xs text-[var(--era-red)]">{actionError.message}</p>}
       </div>
