@@ -436,15 +436,24 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       }
       return;
     }
-    // Local dev: long polling needs no public address. It can't run while a webhook is
-    // registered (e.g. left over from a deployed copy), so clear that first.
-    abort = new AbortController();
-    status.mode = 'polling';
+    // Local dev: long polling needs no public address. It can't run while a webhook is set — and a
+    // webhook normally means a deployed server is running this bot, so never take it over
+    // silently: that would cut the server's bot off without any error there. Only an explicit
+    // TELEGRAM_TAKE_OVER_WEBHOOK=true (e.g. the old server is gone) clears it.
     try {
-      await tg.deleteWebhook();
+      const hook = await tg.getWebhookInfo();
+      if (hook.url && !config.telegramTakeOverWebhook) {
+        status.mode = null;
+        status.error = `This bot is connected to another server (${hook.url}), so this copy won't answer it. Remove TELEGRAM_BOT_TOKEN here or use a separate test bot.`;
+        log.warn('telegram.webhook_owned_elsewhere', { url: hook.url });
+        return;
+      }
+      if (hook.url) await tg.deleteWebhook();
     } catch (err) {
       fail(err);
     }
+    abort = new AbortController();
+    status.mode = 'polling';
     log.info('telegram.polling_started', {});
     pollLoop = poll(abort.signal);
   }

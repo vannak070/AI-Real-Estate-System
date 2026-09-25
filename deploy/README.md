@@ -1,147 +1,171 @@
 # Putting ERA online — step by step
 
 One cloud server runs everything (database, API + Telegram bot, customer website, back office)
-with Docker. You start on the server's IP address; adding a domain with HTTPS later is a small
-change (see the end).
+with Docker and automatic HTTPS.
+
+**The demo for management review:**
 
 | Address | What |
 |---|---|
-| `http://<server-ip>` | Customer website |
-| `http://<server-ip>:8080` | Back office |
+| https://demo.yarvorax.com | Customer website |
+| https://admin.demo.yarvorax.com | Back office (normal sign-in) |
 
-Commands marked **Mac** run in your own Terminal in this project folder. Commands marked
-**Server** run after `ssh root@<server-ip>`.
+Both are hidden from Google (`ROBOTS_TAG`). Commands marked **Mac** run in your Terminal in this
+project folder; **Server** commands run after `ssh root@<demo-ip>`.
+
+> ⚠ **Do not use the `Yarvora-X` droplet (159.223.84.89).** It runs the live yarvorax.com website
+> (nginx on ports 80/443) and has only 512 MB of memory. Installing this system there would take
+> your website offline. Create a separate droplet below — your website is not affected.
 
 ---
 
-## 1. Create the server (about 10 minutes)
+## 1. Create a new droplet (about 10 minutes)
 
-1. **Make an SSH key** (your Mac's login key for the server) — skip if you already have one:
+1. **SSH key** (your Mac's login key) — skip if you used one for Yarvora-X and still have it:
    **Mac**
    ```bash
-   ssh-keygen -t ed25519 -C "era-server"
+   ls ~/.ssh/id_ed25519.pub || ssh-keygen -t ed25519 -C "era-demo"
    ```
-   Press Enter at every question. Then show the public half and copy it:
+   (press Enter at every question), then copy the public key:
    ```bash
    cat ~/.ssh/id_ed25519.pub
    ```
-2. At **digitalocean.com** (or Vultr — same idea), create an account, then **Create → Droplet**:
-   - **Region:** Singapore
-   - **Image:** Ubuntu 24.04 LTS
-   - **Size:** Basic → Regular → **4 GB RAM / 2 CPUs** (about $24/month). The 2 GB size (about
-     $12/month) also works — do the "swap" line in step 2.
-   - **Authentication:** SSH Key → **New SSH Key** → paste what you copied.
-   - Optional but recommended: tick **Backups** (the provider keeps weekly copies of the whole server).
-3. Create it and copy its **IP address** (e.g. `203.0.113.10`). Below, replace `<server-ip>` with it.
+2. DigitalOcean → **Create → Droplets**:
+   - **Region:** Singapore (SGP1)
+   - **Image:** Ubuntu 24.04 (LTS) x64
+   - **Size:** Basic → Regular. For the demo, **1 GB / 25 GB ($6/month)** is enough to *run* it
+     (it uses about 350 MB) — but too small to *build* it, so your Mac builds it instead
+     (`--build-on-mac` in step 5). With 2 GB or more the server can build it itself.
+     You can resize up later (Resize → "CPU and RAM only") without reinstalling.
+   - **Authentication:** SSH Key → choose yours (or **New SSH Key** and paste).
+   - **Hostname:** `era-demo`
+   - Optional, recommended: **Backups**.
+3. Copy the new droplet's IP address — below it's `<demo-ip>`.
 
-## 2. Prepare the server (5 minutes)
+## 2. Point the demo addresses at it — GoDaddy (5 minutes, then up to ~1 hour to spread)
+
+GoDaddy → **My Products** → yarvorax.com → **DNS** → **Add New Record**, twice:
+
+| Type | Name | Value | TTL |
+|---|---|---|---|
+| A | `demo` | `<demo-ip>` | 600 seconds (or 1 hour) |
+| A | `admin.demo` | `<demo-ip>` | 600 seconds (or 1 hour) |
+
+Don't change any existing records — `@` and `www` keep pointing at your website. Check they've
+spread (both lines should print the new IP):
+**Mac**
+```bash
+dig +short demo.yarvorax.com; dig +short admin.demo.yarvorax.com
+```
+Keep going with steps 3–5 meanwhile; the HTTPS certificates are fetched automatically once the
+addresses resolve.
+
+## 3. Prepare the server (5 minutes)
 
 **Mac**
 ```bash
-ssh root@<server-ip>
+ssh root@<demo-ip>
 ```
 Type `yes` the first time. You're now on the server. **Server**:
 ```bash
 curl -fsSL https://get.docker.com | sh
 ```
 ```bash
-ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw allow 8080 && ufw --force enable
+ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
 ```
-Only on the 2 GB size — adds 2 GB of swap so the build doesn't run out of memory:
+On 1 GB and 2 GB sizes — adds 2 GB of swap (spare memory on disk) as a safety margin:
 ```bash
 fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ```
 Type `exit` to come back to your Mac.
 
-## 3. Fill in the settings (5 minutes)
+## 4. Settings (2 minutes)
+
+`deploy/.env` is already prepared for the demo — addresses, HTTPS, Google-hiding and two new
+random secrets are filled in. Only paste your two keys:
+**Mac**
+```bash
+open -a TextEdit deploy/.env
+```
+- `ANTHROPIC_API_KEY=` — your Anthropic key (ideally a **new** one; the old one was pasted in chat).
+- `TELEGRAM_BOT_TOKEN=` — the bot token (ideally after `/revoke` in @BotFather, same reason).
+
+Save. This file is never committed and `push.sh` never overwrites it on the server.
+
+## 5. Send the code and start it (10–15 minutes, mostly waiting)
 
 **Mac**
 ```bash
-cp deploy/.env.example deploy/.env && open -a TextEdit deploy/.env
+ssh root@<demo-ip> 'mkdir -p /opt/era/deploy' && scp deploy/.env root@<demo-ip>:/opt/era/deploy/.env
 ```
-- Replace every `203.0.113.10` with your server's IP.
-- `POSTGRES_PASSWORD` and `CHAT_TOKEN_SECRET`: paste a value from this command (run it twice, one
-  value each):
-  ```bash
-  openssl rand -hex 24
-  ```
-- `ANTHROPIC_API_KEY` and `TELEGRAM_BOT_TOKEN`: your keys. Good moment to use **new** ones (the old
-  ones were pasted into chat).
-
-Save. `deploy/.env` is never committed to git and `push.sh` never overwrites it on the server.
-
-## 4. Send the code and start it (10–15 minutes, mostly waiting)
-
-**Mac**
+On the **1 GB** droplet — Docker Desktop must be running on your Mac, which builds everything
+and sends the finished images (about 5 minutes the first time, depending on your upload speed):
 ```bash
-ssh root@<server-ip> 'mkdir -p /opt/era/deploy' && scp deploy/.env root@<server-ip>:/opt/era/deploy/.env
+deploy/push.sh root@<demo-ip> --build-on-mac
 ```
-```bash
-deploy/push.sh root@<server-ip>
-```
-The first build takes several minutes. It ends by listing three containers (`postgres`, `api`,
-`web`) as running.
+On 2 GB or larger you can leave off `--build-on-mac` and the server builds it itself.
+It ends by listing `postgres`, `api` and `web` as running.
 
-## 5. Move your data (5 minutes)
+## 6. Move your data (5 minutes)
 
-Copies your current database (listings, leads, users, settings) and all photos from your Mac.
-Sign-in passwords stay the same.
-
+Copies your current listings, leads, users, settings and all photos from your Mac. Sign-in
+passwords stay the same.
 **Mac**
 ```bash
 deploy/export-local-data.sh
 ```
 ```bash
-scp -r deploy/data root@<server-ip>:/opt/era/deploy/
+scp -r deploy/data root@<demo-ip>:/opt/era/deploy/
 ```
 ```bash
-ssh root@<server-ip> 'cd /opt/era && deploy/import-data.sh'
+ssh root@<demo-ip> 'cd /opt/era && deploy/import-data.sh'
 ```
-Then remove the copy from your Mac (it contains customer data):
 ```bash
 rm -rf deploy/data
 ```
+(the last line removes the copy from your Mac — it contains customer data).
 
-## 6. Hand the Telegram bot to the server
+## 7. Give the Telegram bot to the demo server
 
-Only one machine can run a bot token. Now that the server runs it, **remove the
-`TELEGRAM_BOT_TOKEN=` line from the `.env` at the top of this project on your Mac** (or replace it
-with a separate test bot from @BotFather), then restart your local API. Otherwise the two fight over
-messages and customers get random gaps.
+Only one machine can run a bot token. **Remove the `TELEGRAM_BOT_TOKEN=` line from the `.env` at
+the top of this project on your Mac** (or put a separate test bot's token there), then restart
+your local API. If you forget, your laptop now refuses to take the bot over and says so in the
+back office's Channels tab — but it's cleaner to remove it.
 
-## 7. Check it
+## 8. Check it
 
-- Open `http://<server-ip>` — the customer website with photos.
-- Open `http://<server-ip>:8080` — sign in to the back office.
-- Message the Telegram bot — it should answer, and the chat appears in the back office's Inbox.
+- https://demo.yarvorax.com — customer website with photos (padlock = HTTPS works).
+- https://admin.demo.yarvorax.com — sign in, open **Inbox** and **Marketing → Channels** (the
+  Telegram card should say "AI bot on").
+- Message the bot on Telegram — it answers, and "View on website" buttons appear under photos.
 
-## 8. Nightly backups (2 minutes)
+If a page doesn't load yet, the DNS records from step 2 may still be spreading — check with the
+`dig` command and try again in a few minutes.
+
+## 9. Nightly backups (2 minutes)
 
 **Server**
 ```bash
 (crontab -l 2>/dev/null; echo "0 2 * * * /opt/era/deploy/backup.sh >> /var/log/era-backup.log 2>&1") | crontab -
 ```
-Every night at 02:00 (server time) the database and photos are saved to `/var/backups/era`
-(14 days of database copies, 7 days of photos). Test it once now:
 ```bash
 /opt/era/deploy/backup.sh
 ```
-These copies sit on the same server — the provider's **Backups** option (step 1) protects against
-losing the whole server.
-
-**Restoring a backup:** copy the chosen files to `/opt/era/deploy/data/era.dump` and
+Every night at 02:00 the database and photos are saved to `/var/backups/era` (14 days of
+database copies, 7 days of photos). The droplet's **Backups** option (step 1) protects against
+losing the whole server. **Restore:** copy the chosen files to `/opt/era/deploy/data/era.dump` and
 `/opt/era/deploy/data/uploads.tgz`, then run `deploy/import-data.sh`.
 
 ---
 
-## Updating the system later
+## Updating the demo later
 
-After changes on your Mac:
 ```bash
-deploy/push.sh root@<server-ip>
+deploy/push.sh root@<demo-ip> --build-on-mac
 ```
-Only code is sent; the server's settings, database and photos stay. New database changes
-(migrations) are applied automatically when the API restarts.
+(without `--build-on-mac` on a 2 GB+ server).
+Only code is sent; the server's settings, database and photos stay. Database changes (migrations)
+apply automatically when the API restarts.
 
 ## Looking at what's happening
 
@@ -149,19 +173,15 @@ Only code is sent; the server's settings, database and photos stay. New database
 ```bash
 cd /opt/era && docker compose -f deploy/docker-compose.yml logs -f api
 ```
-(Ctrl+C to stop watching.) `docker compose -f deploy/docker-compose.yml ps` shows what's running.
+(Ctrl+C stops watching.) `docker compose -f deploy/docker-compose.yml ps` shows what's running.
 
-## Adding a domain (HTTPS) later
+## Later: production
 
-1. In your domain's DNS settings add two **A records** pointing to the server's IP: `www` and
-   `admin` (e.g. `www.example.com`, `admin.example.com`).
-2. In `deploy/.env` on your Mac, switch to the domain block (commented in the file):
-   `CLIENT_SITE`, `ADMIN_SITE`, `CLIENT_URL`, `PUBLIC_SITE_URL`, `CORS_ORIGINS` with `https://`
-   addresses, `COOKIE_SECURE=true`, and `PUBLIC_API_URL=https://www.example.com` (the Telegram bot
-   then uses a webhook instead of polling).
-3. Copy it up and redeploy:
-   ```bash
-   scp deploy/.env root@<server-ip>:/opt/era/deploy/.env && deploy/push.sh root@<server-ip>
-   ```
-Caddy fetches and renews the HTTPS certificates by itself. Telegram's "View on website" buttons
-start working once the site has a public address.
+The same kit works for production — a new droplet (or this one), new DNS names (e.g.
+`www.yarvorax.com`/`admin.yarvorax.com` or the client's own domain) in `deploy/.env`, and
+`ROBOTS_TAG=all` so search engines can list it.
+
+## Without a domain (IP address only)
+
+Use `deploy/.env.example` instead: `CLIENT_SITE=:80`, `ADMIN_SITE=:8080`, `http://<ip>` addresses,
+`COOKIE_SECURE=false`, no `PUBLIC_API_URL`, and also `ufw allow 8080`.

@@ -44,9 +44,24 @@ process may run (port :4000, one Telegram poller).
    46 leads, 14 users, 20 migrations, 682 photo files), customer site +
    photos + AI chat through Caddy, foreign-origin CORS refused, db port not
    published, admin deep links served; rehearsal containers/volumes/data
-   deleted. **Next:** user creates the droplet and follows deploy/README.md;
-   then remove `TELEGRAM_BOT_TOKEN` from the laptop's `.env` (one poller per
-   token).
+   deleted. **Demo target (user, 2026-09-25): https://demo.yarvorax.com +
+   https://admin.demo.yarvorax.com**, hidden from search engines
+   (`ROBOTS_TAG` → Caddy `X-Robots-Tag`, default "noindex, nofollow"),
+   DNS at GoDaddy (A records `demo`, `admin.demo`). `deploy/.env` was
+   pre-filled for it (addresses, COOKIE_SECURE=true, PUBLIC_API_URL →
+   webhook, generated POSTGRES_PASSWORD/CHAT_TOKEN_SECRET; user pastes the
+   two keys). ⚠ The user's existing droplet **Yarvora-X 159.223.84.89 runs
+   the live yarvorax.com site (nginx) and has 512 MB** — told not to use it;
+   a new 4 GB Singapore droplet is needed. Safety fix: a polling copy now
+   checks `getWebhookInfo` and refuses to take a bot whose webhook points
+   elsewhere (it used to `deleteWebhook`, silently cutting off the server's
+   bot); `TELEGRAM_TAKE_OVER_WEBHOOK=true` overrides. User chose the **$6 / 1 GB droplet** → `deploy/push.sh <server>
+   --build-on-mac` builds linux/amd64 images on the Mac (buildx, ~2 min)
+   and ships them (`docker save | gzip | ssh docker load`; compose now names
+   them `era-api:latest`/`era-web:latest`, server runs `up -d --no-build`).
+   Measured: amd64 api image started under emulation, served the catalog,
+   ~207 MB RAM (whole stack ≈ 350 MB). 2 GB swap recommended on 1–2 GB.
+   **Next:** user creates the droplet and follows deploy/README.md.
 00. **Inbox auto hand-back (2026-09-25; verified with a fake clock, UI hint
    not yet seen signed-in)** — `inbox.sweep()` runs every 60 s (module
    `start`/`stop`): a staff-handled chat whose latest message is the

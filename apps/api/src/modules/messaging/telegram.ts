@@ -137,6 +137,8 @@ export function createTelegramClient(apiBase: string, token: string) {
       call<TelegramUpdate[]>('getUpdates', { offset, timeout: timeoutSec, allowed_updates: ALLOWED_UPDATES }, signal),
     setWebhook: (url: string, secretToken: string) =>
       call<true>('setWebhook', { url, secret_token: secretToken, allowed_updates: ALLOWED_UPDATES }),
+    /** Where Telegram currently delivers this bot's messages ("" = nowhere / polling). */
+    getWebhookInfo: () => call<{ url: string; pending_update_count: number }>('getWebhookInfo'),
     /** Polling and a webhook can't both be active. Pending updates are kept, not dropped. */
     deleteWebhook: () => call<true>('deleteWebhook', { drop_pending_updates: false }),
     sendChatAction: (chatId: number | string, action: 'typing' | 'upload_photo') => call<true>('sendChatAction', { chat_id: chatId, action }),

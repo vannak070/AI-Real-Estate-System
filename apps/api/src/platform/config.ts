@@ -41,6 +41,12 @@ const schema = z.object({
    * webhook at <url>/webhooks/telegram. Unset (local dev) → it long-polls Telegram instead, which
    * needs no public address at all. */
   publicApiUrl: z.string().url().optional(),
+  /** Let this copy take the Telegram bot back from a server that set a webhook (only when that
+   * server is gone). Off by default: a laptop must never silently steal the live bot. */
+  telegramTakeOverWebhook: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
   /** The customer website's address — bots link customers to property pages there. */
   publicSiteUrl: z.string().url().default('http://localhost:5173'),
   /** Inbox: a staff-handled chat whose customer has waited this long with no staff reply goes
@@ -68,6 +74,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     chatTokenSecret: env.CHAT_TOKEN_SECRET,
     telegramBotToken: env.TELEGRAM_BOT_TOKEN || undefined,
     telegramApiBase: env.TELEGRAM_API_BASE || undefined,
+    telegramTakeOverWebhook: env.TELEGRAM_TAKE_OVER_WEBHOOK,
     publicApiUrl: env.PUBLIC_API_URL || undefined,
     publicSiteUrl: env.PUBLIC_SITE_URL || undefined,
     inboxAutoHandbackMinutes: env.INBOX_AUTO_HANDBACK_MINUTES || undefined,

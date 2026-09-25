@@ -22,6 +22,8 @@ services:
       retries: 20
 
   api:
+    # Named so an image built on the Mac (deploy/push.sh --build-on-mac) runs without a rebuild here.
+    image: era-api:latest
     build:
       context: ..
       target: api
@@ -41,6 +43,7 @@ services:
         condition: service_healthy
 
   web:
+    image: era-web:latest
     build:
       context: ..
       target: web
@@ -50,6 +53,7 @@ services:
     environment:
       CLIENT_SITE: ${CLIENT_SITE:-:80}
       ADMIN_SITE: ${ADMIN_SITE:-:8080}
+      ROBOTS_TAG: ${ROBOTS_TAG:-noindex, nofollow}
     ports:
       - '80:80'
       - '443:443'
