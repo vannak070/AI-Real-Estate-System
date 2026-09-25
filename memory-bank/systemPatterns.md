@@ -48,8 +48,9 @@ building on top of it.
   the backend with no auth — used for read-only public projections
   (`inventory.public.projects/units`, `settings.public.about`) and the write
   paths a stranger can trigger: `crm.public.submitLead` and
-  `assistant.public.chat` (whose `submit_lead` tool creates/updates leads;
-  rate-limited per IP). Public reads of Inventory **must filter
+  `messaging.web.send`/`.history` — the website chat (whose `submit_lead`
+  tool creates/updates leads; rate-limited per IP; a conversation is reached
+  only by its random token). Public reads of Inventory **must filter
   `isPublished: true`** — new listings are hidden by default. A public
   procedure's result must be a **hand-written safe projection**, same
   discipline as a cross-module `index.ts` — explicitly list what's exposed,

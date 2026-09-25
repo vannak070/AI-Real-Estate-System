@@ -180,8 +180,9 @@ adds `react-slick`.
   around the tRPC client's promises — `apps/client` has no TanStack Query
   dependency, kept that way deliberately rather than adding one for a
   handful of pages). **`ChatPage.tsx` is a real Claude-backed AI assistant**
-  (Tier 1, 2026-09-24) — it calls `assistant.public.chat`
-  (`apps/api/src/modules/assistant/`), which uses the Anthropic API with
+  (Tier 1, 2026-09-24) — it calls `messaging.web.send`/`.history`
+  (`modules/messaging/website-chat.ts`, which stores the conversation so it
+  shows in the admin Inbox) → `modules/assistant/`, which uses the Anthropic API with
   tool use (`search_properties`/`get_property`/`submit_lead`, each backed
   by real `ctx.modules.inventory`/`ctx.modules.crm` calls) so it can only
   ever discuss real listings and only ever create a real Lead — never a
@@ -265,10 +266,12 @@ Rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
   (`assistant.prisma`), is ERA's company knowledge — written by staff on the
   admin's **AI Knowledge** page (`marketing:read`/`marketing:write`), capped at
   40k characters, and injected (prompt-cached) into every chat's instructions. It powers
-  `apps/client`'s `ChatPage.tsx` (tRPC `assistant.public.chat`, browser holds
-  the history) and, via `AssistantApi.replyToMessage`, the chat-app bots.
-- **`modules/messaging/`** owns the chat-app side (Telegram today; Messenger/
-  WhatsApp next): its own tables (`messaging.prisma` — server-stored
+  `apps/client`'s `ChatPage.tsx` (via `AssistantApi.replyOnWebsite`, called by
+  `modules/messaging/website-chat.ts`) and, via `AssistantApi.replyToMessage`,
+  the chat-app bots.
+- **`modules/messaging/`** owns every customer conversation — the website chat
+  (`website-chat.ts`, public tRPC `messaging.web.*`; the browser keeps only a
+  random token) and the chat apps (Telegram today; Messenger/WhatsApp next): its own tables (`messaging.prisma` — server-stored
   conversation history, lead link, dedupe on the platform's message id),
   long polling in dev / signed webhook when `PUBLIC_API_URL` is set, and
   replies from `ctx.modules.assistant`. Also the admin **Inbox**

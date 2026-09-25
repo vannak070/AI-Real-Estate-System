@@ -47,8 +47,8 @@ debugging lives in git history, not here.
   @ERACambodiaAI_bot) share one engine. Search by type/area (with spelling
   aliases)/budget/bedrooms/size/name; saves and corrects leads; on Telegram
   sends numbered photo cards with "More details"/"Book a viewing" buttons and
-  understands swipe-replies. **Inbox** (`/inbox`, 2026-09-25): staff see bot
-  chats, take one over (the AI goes quiet), reply as themselves through the
+  understands swipe-replies. **Inbox** (`/inbox`, 2026-09-25): staff see
+  Telegram **and website** chats, take one over (the AI goes quiet), reply as themselves through the
   bot and hand back; the AI flags chats where a customer wants a person, and
   a handled chat returns to the AI automatically if the customer waits 30 min
   (or after 12 h idle). **Staff alerts** (2026-09-25, commit e316e0c; live on the demo): each
@@ -152,11 +152,19 @@ debugging lives in git history, not here.
   save makes the server write the reply itself; chat-app replies are
   stripped of markdown (`toPlainText`); a property id from the model is
   checked against real published projects before it's stored or shown.
-- **Website chat is stateless server-side** (browser keeps history in
-  `sessionStorage`); a correction updates the same lead via an HMAC-signed
-  `leadToken` (`CHAT_TOKEN_SECRET`). **Chat apps are not** — platforms send
-  only the newest message, so `messaging_conversations`/`messaging_messages`
-  store history (last 20 sent to the model), the lead link and a dedupe key.
+- **Every conversation is stored server-side** in `messaging_conversations`/
+  `messaging_messages` (last 20 sent to the model), with the lead link.
+  Chat apps always were (platforms send only the newest message). The website
+  chat moved there on 2026-09-25 (`website-chat.ts`, `messaging.web.*`) so
+  staff can see and answer it; before that the browser held the history and
+  an HMAC `leadToken` (removed, with `CHAT_TOKEN_SECRET`). The visitor's
+  browser holds only a random 32-char token — the conversation's
+  `externalChatId`, the sole key — in `localStorage`, so a returning visitor
+  sees the thread and any staff reply. Staff replies reach the website by
+  polling (4 s while the team has the chat, 15 s otherwise; a 30 s check on
+  other pages drives the chat button's "new reply" dot). Website property
+  cards are stored in `messaging_messages.attachments` and replayed to the
+  model as "[Property cards shown: … (id …)]" so "the second one" resolves.
 - **Telegram transport**: long polling when `PUBLIC_API_URL` is unset (works
   on localhost, no tunnel), signed webhook when it's set. Photos are local
   `/uploads` files Telegram can't fetch from localhost, so they're uploaded
@@ -171,8 +179,8 @@ debugging lives in git history, not here.
   `inventory.service.ts` maps them (common Phnom Penh areas + Sihanoukville).
 
 - **Returning customers**: only the last 20 messages reach the model, so the
-  server looks up the conversation's lead (Telegram `leadId`, website verified
-  `leadToken`) and tells the AI the details are on file (`onFileNote`) —
+  server looks up the conversation's lead (the conversation's stored `leadId`, website
+  and Telegram alike) and tells the AI the details are on file (`onFileNote`) —
   never ask again, book with them.
 - **Website chat shows cards under the text**, so the prompt makes the model
   summarise (count + 1–2 highlights + one question) instead of listing every
@@ -187,8 +195,15 @@ debugging lives in git history, not here.
 - **Auto hand-back**: customer waiting 30 min with no staff reply → AI
   answers and the chat stays flagged; 12 h with no activity → quiet return.
   Conditional updates so a staff reply at the same moment wins.
-- **`request_agent`** (chat apps only) lets the AI flag "wants a person" —
-  it may only say someone was notified after calling it.
+- **`request_agent`** (website and Telegram) lets the AI flag "wants a
+  person". A reply promising "a team member will reply here" without the
+  tool call flags the chat anyway (`PROMISED_A_PERSON` in
+  `assistant.service.ts`) — seen once in testing.
+- **Website chats are managers-only until they have a lead**, same rule as
+  Telegram; a website staff reply is only seen on the visitor's own
+  device/browser, so the Inbox tells staff to call instead when it matters.
+- **Inbox nav badge / header bell**: red = chats waiting on a person, grey =
+  unread chats the AI already answered (the old bell was a template dot).
 - **Staff alerts go to each person's own Telegram, not a team group.** A
   group would leak every customer's name/number to everyone in it. Per-person
   links let alerts follow the Inbox visibility rule exactly.
@@ -266,6 +281,14 @@ debugging lives in git history, not here.
 - `identity.users.*` `passwordHash` leak fixed (explicit `select`).
 
 ## Incidents worth remembering
+
+- **The website chat answered "trouble connecting" on the demo's first live
+  test** (2026-09-25, right after deploying website chats). Haiku often
+  returns `stop_reason: "tool_use"` with only a text block (2 of 4 tries
+  locally); `converse()` then sent an empty tool-results turn → API 400. It
+  affected Telegram too. Fixed: no tool_use block = final reply (logged as
+  `assistant.tool_use_without_tool`). **Lesson:** test a deploy with a real
+  message on the live site, and don't trust `stop_reason` alone.
 
 - **"No numbers left on the home page" was wrong** (2026-09-25): a regex over
   the JSX missed "5K+", "4.9/5" and "&lt;1 min". **Check customer-facing copy

@@ -507,7 +507,12 @@ export function createAssistantService(ctx: ModuleContext) {
         output: response.usage.output_tokens,
       });
 
-      if (response.stop_reason !== 'tool_use') {
+      // "tool_use" with no tool_use block happens too (seen live on the demo): answering it with
+      // an empty tool-results turn is a 400 from the API, so it's treated as the final reply.
+      if (response.stop_reason !== 'tool_use' || !response.content.some((b) => b.type === 'tool_use')) {
+        if (response.stop_reason === 'tool_use') {
+          ctx.logger.warn('assistant.tool_use_without_tool', { source: conversation.source, blocks: response.content.map((b) => b.type) });
+        }
         const reply = response.content
           .filter((b): b is Anthropic.TextBlock => b.type === 'text')
           .map((b) => b.text)

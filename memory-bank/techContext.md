@@ -38,8 +38,6 @@ stack locally: copy `deploy/docker-compose.yml` with the host ports changed (e.g
 
 Required: `DATABASE_URL`. Optional — the API starts without any of them:
 - `ANTHROPIC_API_KEY` — the AI chat and bot (errors clearly if missing).
-- `CHAT_TOKEN_SECRET` — signs the website chat's lead reference; without it
-  a random per-process secret is used (corrections break across restarts).
 - `TELEGRAM_BOT_TOKEN` — starts the Telegram bot; without it nothing starts.
 - `PUBLIC_API_URL` — set → Telegram webhook at `<url>/webhooks/telegram`;
   unset → long polling (local dev). Only one process may poll a bot.

@@ -4,17 +4,33 @@
 finished work into `progress.md` (short summary + the *why*), keep only the
 last few items here. Verify any claim against the code before relying on it.
 
-## Where things stand (2026-09-25, checked against git and the server)
+## Where things stand (2026-09-25 afternoon, checked against git and the server)
 
-**Git:** Mac = GitHub (`origin/main` = `f355809`), nothing uncommitted. The
-user commits and pushes on `main` themselves; the agent's shell has **no
-GitHub credentials** — never type credentials.
+**The user considers the build feature-complete** ("All function are
+completed") — focus is now the management/investor review, not new features.
 
-**The demo runs the current code, staff alerts included** (deployed
-2026-09-25 06:52 UTC; migration `20260925090000_messaging_staff_alerts`
-applied, bot webhook re-set). Still to test there: a staff member clicks
-"Turn on Telegram alerts" in the Inbox → Open Telegram → linked (0 links so
-far).
+**Git:** `origin/main` = `7fae14b` (website chat in the Inbox). **Uncommitted:**
+`assistant.service.ts` (the tool_use-without-tool fix, already live on the
+demo) + these memory-bank files. The user commits and pushes on `main`
+themselves; the agent's shell has **no GitHub credentials** — never type
+credentials.
+
+**The demo runs the current code** (last push 2026-09-25 ~08:10 UTC,
+including that fix). Staff Telegram alerts are linked and tested for real
+(1 link, test alert received). Website chats appear in the Inbox (0 real ones
+yet — all test chats were deleted).
+
+**Presentation for management/investors:** Slides artifact
+https://claude.ai/artifact/Xj9XEdpLj1jzwTgA8NAxKM ("ERA AI Real Estate
+System — Management & Investor Walkthrough", 22 slides, downloads as PDF /
+PPTX; private until the user shares it). Website screenshots came from
+headless Chrome (`--timeout=40000` for Properties — shorter caught
+"Loading…"); back office is diagrams + one Inbox screenshot the user sent.
+**Pipeline and Quotations screenshots still wanted** — the agent can't
+capture signed-in screens (browser-pane screenshots aren't saved as files,
+`screencapture` has no permission), so the user pastes them into chat. The
+user edits the deck too (they removed the "Where we are today" slide): read
+it before changing; page numbers in footers are hard-coded per slide.
 
 **The demo: https://demo.yarvorax.com + https://admin.demo.yarvorax.com** —
 DigitalOcean droplet `Demo-RealEstate`, **157.245.148.58**, SGP1, $6 plan
@@ -42,8 +58,9 @@ first (Postgres `era-postgres` :5435). No bot locally, by design.
 
 ## Recent work (details and reasons in `progress.md`)
 
-0. **Website chat in the Inbox** (2026-09-25, local only — NOT committed or
-   deployed yet; migration `20260925100000_messaging_website_chat` adds
+0. **Website chat in the Inbox** (live on the demo 2026-09-25 ~08:10 UTC,
+   committed as `7fae14b` except the tool_use fix below; backup before it:
+   `/var/backups/era/pre-webchat-20260925-0756.dump`; migration `20260925100000_messaging_website_chat` adds
    `messaging_messages.attachments`). The website chat is now stored like
    Telegram: `modules/messaging/website-chat.ts`, public tRPC
    `messaging.web.{send,history}`; the browser keeps only a random token
@@ -54,14 +71,18 @@ first (Postgres `era-postgres` :5435). No bot locally, by design.
    A property page's chat link now continues the same conversation. Old
    `assistant.public.chat` + `leadToken`/`CHAT_TOKEN_SECRET` removed. New code
    guarantee: a reply promising "a team member will reply here" without
-   `request_agent` flags the chat anyway (seen once in testing). Harness 10/10
+   `request_agent` flags the chat anyway (seen once in testing). And
+   `converse()` treats `stop_reason: tool_use` with no tool_use block as the
+   final reply — Haiku does this often (2 of 4 tries); answering it sent an
+   empty user turn → API 400 → "trouble connecting" (seen live on the demo;
+   logged as `assistant.tool_use_without_tool`). Harness 10/10
    + browser click-through. Also: Inbox nav badge / header bell now count
    unread chats (grey) as well as waiting ones (red) — that part is live.
 1. **Staff alerts on Telegram** (live on the demo) —
    `modules/messaging/staff-alerts.ts`; staff link their own Telegram from the
    Inbox; alerts for "customer wants a person", a customer writing in a chat
    they handle, the 30-min auto hand-back, and a new lead assigned to them.
-   Harness 20/20. Only the real "Open Telegram → linked" step is untested.
+   Harness 20/20; linked and test alert received on the demo 2026-09-25.
 2. **Honesty pass on the customer site** (live): home page figures and
    claims rewritten to what the site does; stock photos replaced by ERA brand
    panels / "Photos coming soon"; Share works, Favorite removed; wording
@@ -78,7 +99,7 @@ first (Postgres `era-postgres` :5435). No bot locally, by design.
 
 ## Checks still to do
 
-- **Link a staff Telegram on the demo** and send a test alert (see above).
+- **Pipeline + Quotations screenshots** for the deck (user pastes them).
 - **Management review feedback** — collect and work through it.
 - **ERA must confirm the contact details** (all from the Figma export): phones
   +855 23 123 456 and +855 12 345 678 (the second looks like a placeholder),
@@ -113,7 +134,7 @@ first (Postgres `era-postgres` :5435). No bot locally, by design.
 
 ## If asked "what's next" with no other steer
 
-1. Link a staff Telegram on the demo (Inbox → Turn on Telegram alerts).
+1. Commit the tool_use fix + memory bank (user). Finish the deck.
 2. Management feedback; ERA confirms contact details; staff write AI
    Knowledge; fill listing data gaps; rotate secrets.
 3. **Facebook Messenger, then WhatsApp** on the `messaging` module (start
