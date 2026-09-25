@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { PageHeader, StatCard, DataTable, StatusBadge, Badge, Tabs, Drawer, Select, TextInput, Button, type Column } from '@era/ui';
 import {
@@ -63,24 +63,45 @@ const toInput = (f: FormState, channel: string): CampaignFormInput => ({
 });
 
 function CopyLink({ link, title, children }: { link: string; title: string; children: ReactNode }) {
-  const [copied, setCopied] = useState(false);
+  const [state, setState] = useState<'idle' | 'copied' | 'manual'>('idle');
+  const codeRef = useRef<HTMLElement>(null);
+
+  const copy = async () => {
+    try {
+      // navigator.clipboard is missing entirely on plain-http LAN addresses, and can be refused.
+      await navigator.clipboard.writeText(link);
+      setState('copied');
+      setTimeout(() => setState('idle'), 1500);
+    } catch {
+      // Fall back to selecting the link so ⌘C / Ctrl+C copies it, rather than failing silently.
+      const el = codeRef.current;
+      if (el) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+      setState('manual');
+    }
+  };
+
   return (
     <div className="rounded-lg border border-[var(--era-navy)]/15 bg-[var(--era-navy)]/5 p-3">
       <div className="text-xs font-semibold uppercase tracking-wide text-[var(--era-navy)]">{title}</div>
       <div className="mt-1 flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate text-sm text-gray-800">{link}</code>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={async () => {
-            await navigator.clipboard.writeText(link);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          }}
-        >
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        <code ref={codeRef} className="min-w-0 flex-1 truncate text-sm text-gray-800">
+          {link}
+        </code>
+        <Button size="sm" variant="outline" onClick={copy} aria-label={`Copy ${title.toLowerCase()}`}>
+          {state === 'copied' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         </Button>
       </div>
+      {state === 'manual' && (
+        <p className="mt-2 text-xs font-medium text-[var(--era-red)]">
+          Couldn&apos;t copy automatically — the link is selected, press ⌘C (Mac) or Ctrl+C to copy it.
+        </p>
+      )}
       <p className="mt-2 text-xs text-gray-500">{children}</p>
     </div>
   );
@@ -391,7 +412,7 @@ export function CampaignsPage() {
     <div>
       <PageHeader
         title="Marketing"
-        subtitle={`${campaignRows.length} campaigns · ${activeChannels.length} active channels`}
+        subtitle={`${campaignRows.length} ${campaignRows.length === 1 ? 'campaign' : 'campaigns'} · ${activeChannels.length} active ${activeChannels.length === 1 ? 'channel' : 'channels'}`}
         actions={
           canWrite &&
           (tab === 'channels' ? (

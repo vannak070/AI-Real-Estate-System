@@ -28,7 +28,16 @@ them.
 **Updating the demo:** on the Mac with Docker Desktop running,
 `deploy/push.sh root@157.245.148.58 --build-on-mac` (code only — the demo's
 data, photos and settings are untouched). SSH from this Mac works with the
-user's key; a push takes ~2–3 min.
+user's key; a push takes ~2–3 min. **The Mac has only 8 GB total RAM**,
+Docker Desktop is allocated 4 GB of it (`docker info` to check) — deliberately
+left there, not raised, per the user (2026-09-25): the emulated `linux/amd64`
+build (Apple Silicon → Intel) can sit silent for several minutes on a single
+layer under that little memory and looks hung even when it isn't; `push.sh`
+now passes `--progress=plain` to both `docker buildx build` calls so it
+streams continuously instead. If a push ever looks stuck, that's the known
+cause — let it keep running rather than assuming failure; a fresh
+`docker ps`/`curl https://demo.yarvorax.com/health` on/against the droplet
+confirms whether the previous attempt actually landed before retrying.
 
 **Git:** the user commits on `main` themselves most of the time. The agent's
 shell has **no GitHub credentials** — `git push` must be run by the user
@@ -41,6 +50,63 @@ on :5435).
 
 ## Recent work (full reasoning in `progress.md`)
 
+00000. **Admin click-through of the last untested screens (2026-09-25,
+   local only — not yet on the demo; needs a `push.sh`)**. Worked, verified
+   against Postgres and the customer site:
+   - **Campaign ad link end to end**: new campaign → its
+     `/?utm_campaign=<code>` link → visitor enquiry on a property → the
+     Lead carries that `campaignId`, Marketing shows Leads 1 / cost-per-lead
+     $30; date validation; delete refused while a lead is linked, allowed
+     after. (Telegram link hidden locally — no bot on the Mac, by design.)
+   - **Bulk Publish / Make private**: exactly the selected rows change; a
+     private listing is "Property not found" by direct link and absent from
+     `inventory.public.projects.list`; publishing restores it.
+   - **Add/Edit property form**: every field saves; new property defaults to
+     Private and is invisible to customers; Edit pre-fills everything;
+     blanked fields save as `null`, untouched ones are kept.
+   Fixed (admin, typecheck clean, verified live):
+   - `AdminLayout.tsx` main column lacked `min-w-0` → below ~1190 px window
+     width every page with a wide table scrolled sideways and **drawers were
+     cut off on the right** (Campaign drawer lost Status/Spend/End date).
+     Same lesson as the Inbox `min-h-0` incident, horizontal this time.
+   - `CampaignsPage.tsx` copy button: `clipboard.writeText` failure (refused,
+     or absent on plain-http LAN addresses) was an unhandled rejection with
+     no feedback → now selects the link + shows "press ⌘C / Ctrl+C"; button
+     got an `aria-label`.
+   - Wording: "1 campaigns" → singular; Sales/Rent subtitles said
+     "projects" → "properties" (Projects page still says "projects").
+   Not fixed / for the user:
+   - **No way to delete a property** (no API procedure, no UI) — a mistaken
+     one can only be made Private. Possibly deliberate; ask before adding.
+   - Two unexplained HTTP 500s appeared in the admin tab's console during the
+     Marketing-page steps; couldn't reproduce with the same steps (all 200).
+     The local API belongs to another session (watch mode), so its logs
+     weren't readable — likely a restart mid-request, unconfirmed. Watch for
+     it on the demo.
+   - `sales.reservations.list` polls every 4 s wherever it's mounted
+     (including property pages) — by design for the reservation saga.
+0000. **"Failed" deploy was actually a slow build, not a failure
+   (2026-09-25)** — user reported `deploy/push.sh --build-on-mac` failing;
+   investigated live (SSH to the droplet, checked `deploy/docker-compose.yml`
+   — not the unrelated root `docker-compose.yml`, which is dev-Postgres-only
+   and has no `api`/`web` service, a dead end I hit first): `era-api-1`/
+   `era-web-1`/`era-postgres-1` were all already up, freshly built minutes
+   earlier, migrations applied, no errors in `docker compose logs api`, both
+   sites returning 200, disk at 28%. **The deploy had actually succeeded —
+   nothing was actually broken.** Root cause of the *appearance* of failure:
+   `docker buildx build --platform linux/amd64` cross-builds for Intel via
+   emulation on this Apple-Silicon Mac, and Docker Desktop's VM only has
+   4 GB RAM (the Mac has 8 GB total) — a single layer (`pnpm install`/build)
+   can run silent for minutes with the default collapsing terminal UI,
+   reading as hung. Fixed by adding `--progress=plain` to both `buildx
+   build` calls in `push.sh` (streams continuously instead). Asked the user
+   about raising Docker's memory allocation given the 8 GB ceiling — they
+   chose to leave it at 4 GB (correctly: this machine can't spare more
+   without risking system-wide swapping during a build). **Lesson:** when a
+   deploy "fails" with no pasted error, check the actual server state first
+   (containers, logs, live health check) before assuming the failure is
+   real — `set -euo pipefail` in `push.sh` means a truly failed run would
+   leave stale/missing images, which this run didn't.
 000. **About page wording (2026-09-25, live on the demo)** — user direction:
    **no numbers on the About page; describe ERA's experience in general
    terms; mention the CEO.** paragraph2 (CMS) is now "Under the leadership
@@ -60,8 +126,10 @@ on :5435).
    everywhere while none exist (`app/useAboutSections.ts` for header /
    mobile / footer, tab filter + `?tab=awards` → overview on the page);
    the Unsplash "ERA Cambodia Office" photo replaced by an ERA brand panel.
-   `seed-about.ts` matches (no awards seeded). Demo still needs the push +
-   `about-history-awards.sql` (back up the two tables first).
+   `seed-about.ts` matches (no awards seeded). **Verified on the demo
+   2026-09-25**: `settings_about_milestones` holds the same four undated
+   stages as local and `settings_about_awards` is empty on both — nothing
+   left to apply there.
 00. **About menu made usable (2026-09-25, live on the demo)** —
    every About menu item (and every footer "About ERA" link) pointed at plain
    `/about`, so "Our History"/"Our Team"/… just showed Company Overview; the
@@ -108,10 +176,16 @@ on :5435).
   +855 23 123 456 (Call icon, also the header/Contact Info number) and
   facebook.com/eracambodia are ERA's real phone and Facebook page; both were
   in the Figma export, not supplied by ERA.
-- The user has now used the Inbox on the demo (take over, reply). Admin
-  screens still not clicked through by anyone: AI Knowledge page, campaign
-  drawer links, property Publish/Private + bulk select, the unified
-  Add/Edit property form.
+- The user has now used the Inbox on the demo (take over, reply). **AI
+  Knowledge page clicked through locally 2026-09-25**: suggested-topic
+  prefill, create, edit, Active→Hidden (counter drops to 0, and
+  `promptSection()` confirmed the AI no longer receives it), two-click
+  delete — all correct, no console errors; the 40k cap was proven
+  server-side (5th 8,000-char entry rejected with the "knowledge is full"
+  message; a hidden one still saves). Test rows removed. **Campaign links,
+  bulk Publish/Private and the Add/Edit property form were clicked through
+  too (2026-09-25, local)** — see Recent work 00000. Every admin screen on the
+  earlier "never clicked" list has now been exercised at least once.
 
 ## Known open items
 

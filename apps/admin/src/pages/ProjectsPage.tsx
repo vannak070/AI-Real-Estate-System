@@ -294,7 +294,9 @@ function InventoryListPage({ preset }: { preset: InventoryPreset }) {
     <div>
       <PageHeader
         title={preset.title}
-        subtitle={`${rows.length} projects · ${totals.units} units`}
+        subtitle={`${rows.length} ${
+          preset.development ? (rows.length === 1 ? 'project' : 'projects') : rows.length === 1 ? 'property' : 'properties'
+        } · ${totals.units} ${totals.units === 1 ? 'unit' : 'units'}`}
         actions={
           canWrite && (
             <div className="flex gap-2">

@@ -23,8 +23,11 @@ if [ "$MODE" = "--build-on-mac" ]; then
   CLIENT_URL=$(grep '^CLIENT_URL=' deploy/.env | cut -d= -f2-)
   # DigitalOcean droplets are Intel/AMD (linux/amd64); a Mac with Apple silicon builds that too, just slower.
   echo "Building on this Mac for linux/amd64 (first time takes a while)…"
-  docker buildx build --platform linux/amd64 --target api -t era-api:latest --load .
-  docker buildx build --platform linux/amd64 --target web -t era-web:latest --build-arg "VITE_CLIENT_URL=$CLIENT_URL" --load .
+  # --progress=plain: streams every layer's output continuously instead of Docker's default
+  # collapsing terminal UI, which can sit with no visible change for minutes during the slow
+  # emulated linux/amd64 build on Apple Silicon and looks hung even when it isn't.
+  docker buildx build --platform linux/amd64 --progress=plain --target api -t era-api:latest --load .
+  docker buildx build --platform linux/amd64 --progress=plain --target web -t era-web:latest --build-arg "VITE_CLIENT_URL=$CLIENT_URL" --load .
   echo "Sending the images to the server…"
   docker save era-api:latest era-web:latest | gzip | ssh "$SERVER" 'gunzip | docker load'
   # --force-recreate: loaded images keep the same tag, and Compose doesn't always notice the new

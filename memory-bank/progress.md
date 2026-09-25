@@ -196,6 +196,17 @@ debugging lives in git history, not here.
   a webhook points elsewhere (they used to delete it silently).
 - **Never deploy to the Yarvora-X droplet (159.223.84.89)** — it runs the
   live yarvorax.com website (nginx, 512 MB).
+- **`--build-on-mac`'s emulated `linux/amd64` build can look hung for
+  minutes and isn't** — the Mac has only 8 GB RAM and Docker Desktop is
+  allocated 4 GB of it (deliberately not raised, 2026-09-25 — too little
+  headroom on an 8 GB machine to spare more without risking system-wide
+  swapping). `push.sh` now passes `--progress=plain` to both `buildx build`
+  calls so a slow layer still streams output instead of sitting silent.
+  When a push looks like it failed, check the droplet's actual state
+  first (`docker compose -f deploy/docker-compose.yml ps`, `docker compose
+  logs api --tail=60`, `curl .../health`) before assuming the run failed —
+  `set -euo pipefail` means a real failure leaves stale/missing images,
+  which is distinguishable from "still building."
 
 ### Sales, CRM, other
 - **Payment Plans** became full CRUD gated `settings:write` (admin

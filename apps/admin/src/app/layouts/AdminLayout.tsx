@@ -182,7 +182,10 @@ export function AdminLayout() {
         </div>
       </aside>
 
-      <div className="ml-64 flex flex-1 flex-col">
+      {/* min-w-0: without it this flex item grows to its widest child (e.g. an 11-column table),
+          so on a narrower window the whole page scrolled sideways and drawers were cut off,
+          instead of the table's own overflow-x-auto box scrolling. */}
+      <div className="ml-64 flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 bg-white shadow-sm" style={{ borderBottom: '3px solid #EF2D2C' }}>
           <div className="flex items-center justify-between px-8 py-3">
             <div>
