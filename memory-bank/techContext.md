@@ -159,6 +159,17 @@ re-adds columns. If a migration fails, Postgres rolled it back: fix it,
   `getUpdates`/`sendMessage`/`sendPhoto`/`answerCallbackQuery`, then
   `buildApp()` and feed updates — the real engine, real Claude, real DB, no
   real Telegram. Uses real Anthropic credit (cents).
+  - To test without Claude, register the modules in the harness yourself
+    (the `buildApp` loop) and replace `apis.assistant.replyToMessage` with a
+    stub that returns a fixed result (e.g. `wantsAgent`). Replacing
+    `apis.identity.listAgents` the same way controls who auto-assignment
+    picks. Used for staff alerts, 2026-09-25.
+  - **Time-based rules** (auto hand-back): shift timestamps with
+    `SET "createdAt" = "createdAt" - interval '31 minutes'`. Don't set them
+    all to one value: that scrambles "latest message" and the rule silently
+    doesn't fire.
+  - The local dev API (another session's server) runs the same sweeps on
+    the same DB. Keep the test windows short.
 
 ## Environment gotcha: git repo root
 

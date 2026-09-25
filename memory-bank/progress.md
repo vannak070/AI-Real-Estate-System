@@ -51,7 +51,10 @@ debugging lives in git history, not here.
   chats, take one over (the AI goes quiet), reply as themselves through the
   bot and hand back; the AI flags chats where a customer wants a person, and
   a handled chat returns to the AI automatically if the customer waits 30 min
-  (or after 12 h idle). **AI Knowledge** (admin page, `/ai-knowledge`) —
+  (or after 12 h idle). **Staff alerts** (2026-09-25, built locally): each
+  staff member links their own Telegram from the Inbox. They're then messaged
+  when a chat they can see needs a person, when a customer writes in a chat
+  they handle, or when a new lead is assigned to them. **AI Knowledge** (admin page, `/ai-knowledge`) —
   company answers written by ERA staff, given to the AI on every chat.
   Returning customers with a saved lead are never asked for their details
   again. Website chat: formatted replies, compact photo cards (price/month,
@@ -64,6 +67,11 @@ debugging lives in git history, not here.
   For Rent, client-side pagination 21/51/99) + detail pages, a real
   lead-capture enquiry form, a real About page (Contact tab static by
   design), the AI chat, campaign attribution from ad links.
+  - **No invented claims** (honesty check, 2026-09-25): no fake stats,
+    ratings or stock photos passed off as ERA's. A listing with no photo shows
+    an ERA "Photos coming soon" panel. Every control does something (Share
+    works; the decorative Favorite was removed). The contact details are still
+    Figma values awaiting ERA's confirmation.
 
 ## What's explicitly not real, and why
 
@@ -181,6 +189,19 @@ debugging lives in git history, not here.
   Conditional updates so a staff reply at the same moment wins.
 - **`request_agent`** (chat apps only) lets the AI flag "wants a person" —
   it may only say someone was notified after calling it.
+- **Staff alerts go to each person's own Telegram, not a team group.** A
+  group would leak every customer's name/number to everyone in it. Per-person
+  links let alerts follow the Inbox visibility rule exactly.
+  - Linking uses a one-time, 15-min `start=staff_<code>` deep link, so nobody
+    can subscribe to someone else's alerts.
+  - The bot handles staff commands before creating a customer conversation.
+  - Alerts fire on transitions only (needsAgent false→true; the first unread
+    message in a handled chat), so a chatty customer doesn't spam staff.
+  - Alerts never block or fail the customer's reply: they're fire-and-forget
+    and errors are logged.
+  - New-lead alerts ride the existing `crm.lead_created` event, deduped by a
+    `lead:<id>` row (handlers must be idempotent). That also covers website
+    leads, which have no Inbox conversation.
 
 ### Deployment
 - **One VPS, everything same-origin**: Caddy serves both SPAs and forwards
