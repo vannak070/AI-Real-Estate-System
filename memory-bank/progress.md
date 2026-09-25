@@ -49,8 +49,17 @@ debugging lives in git history, not here.
   sends numbered photo cards with "More details"/"Book a viewing" buttons and
   understands swipe-replies. **Inbox** (`/inbox`, 2026-09-25): staff see bot
   chats, take one over (the AI goes quiet), reply as themselves through the
-  bot and hand back; the AI flags chats where a customer wants a person. **AI Knowledge** (admin page, `/ai-knowledge`) —
+  bot and hand back; the AI flags chats where a customer wants a person, and
+  a handled chat returns to the AI automatically if the customer waits 30 min
+  (or after 12 h idle). **AI Knowledge** (admin page, `/ai-knowledge`) —
   company answers written by ERA staff, given to the AI on every chat.
+  Returning customers with a saved lead are never asked for their details
+  again. Website chat: formatted replies, compact photo cards (price/month,
+  beds, m²), starter buttons, New chat, Khmer/Chinese-safe Enter.
+- **Online demo** (2026-09-25): https://demo.yarvorax.com +
+  https://admin.demo.yarvorax.com on one DigitalOcean droplet, deployed with
+  `Dockerfile` + `deploy/` (Caddy + HTTPS, nightly backups, hidden from Google),
+  Telegram bot on its webhook. Guide: `deploy/README.md`.
 - **`apps/client`**: Properties list (tabs Exclusive Property / For Sale /
   For Rent, client-side pagination 21/51/99) + detail pages, a real
   lead-capture enquiry form, a real About page (Contact tab static by
@@ -152,6 +161,41 @@ debugging lives in git history, not here.
 - **Location aliases**: listings use romanised Khmer ("Boeng Keng Kang",
   "Tuol Kouk"), customers type "BKK1"/"Toul Kork" — `LOCATION_ALIASES` in
   `inventory.service.ts` maps them (common Phnom Penh areas + Sihanoukville).
+
+- **Returning customers**: only the last 20 messages reach the model, so the
+  server looks up the conversation's lead (Telegram `leadId`, website verified
+  `leadToken`) and tells the AI the details are on file (`onFileNote`) —
+  never ask again, book with them.
+- **Website chat shows cards under the text**, so the prompt makes the model
+  summarise (count + 1–2 highlights + one question) instead of listing every
+  property twice.
+
+### Inbox & human handoff
+- **Visibility follows CRM ownership**: `crm:read:all` sees every chat;
+  others only chats whose lead they own or that they're handling; a chat with
+  no lead yet is managers-only ("unassigned means restricted").
+- **While staff handle a chat the AI is silent** (an AI reply already in
+  flight is dropped); staff replies go out through the bot as "<First name>: …".
+- **Auto hand-back**: customer waiting 30 min with no staff reply → AI
+  answers and the chat stays flagged; 12 h with no activity → quiet return.
+  Conditional updates so a staff reply at the same moment wins.
+- **`request_agent`** (chat apps only) lets the AI flag "wants a person" —
+  it may only say someone was notified after calling it.
+
+### Deployment
+- **One VPS, everything same-origin**: Caddy serves both SPAs and forwards
+  `/trpc /uploads /health /webhooks` to the API on each site's own address —
+  no CORS, no separate API domain, one build works for IP or domain.
+- **Behind the proxy** the API must set `TRUST_PROXY` (else one shared chat
+  rate limit for every visitor) and `COOKIE_SECURE` only with HTTPS.
+- **$6 / 1 GB droplet** runs the stack (~350–540 MB) but can't build it →
+  `push.sh --build-on-mac` (buildx linux/amd64 on the Mac, `docker save | ssh
+  docker load`), with `--force-recreate` (Compose missed a reloaded image) and
+  image pruning (disk is 25 GB).
+- **A laptop never takes the bot from a server**: polling copies refuse when
+  a webhook points elsewhere (they used to delete it silently).
+- **Never deploy to the Yarvora-X droplet (159.223.84.89)** — it runs the
+  live yarvorax.com website (nginx, 512 MB).
 
 ### Sales, CRM, other
 - **Payment Plans** became full CRUD gated `settings:write` (admin

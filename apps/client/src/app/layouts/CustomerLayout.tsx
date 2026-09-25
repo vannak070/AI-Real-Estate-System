@@ -1,9 +1,16 @@
 import { Outlet, Link, useLocation } from "react-router";
-import { MessageSquare, Home, Building2, Menu, X, Phone, Mail, ChevronDown, Info, MapPin, Facebook, Linkedin, Send } from "lucide-react";
+import { MessageSquare, Home, Building2, Menu, X, Phone, Mail, ChevronDown, Info, MapPin, Facebook, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { captureCampaignFromUrl } from "../../lib/attribution";
 import headerLogo from "figma:asset/d35bb1cd7b17aae1ece93ea47adf754effd39a17.png";
 import footerLogo from "figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png";
+
+/** Bottom-right footer icons. Telegram opens the live AI bot. */
+const FOOTER_SOCIAL = [
+  { href: 'https://facebook.com/eracambodia', label: 'Facebook', Icon: Facebook, external: true },
+  { href: 'tel:+85523123456', label: 'Call us: +855 23 123 456', Icon: Phone, external: false },
+  { href: 'https://t.me/ERACambodiaAI_bot', label: 'Chat with our AI assistant on Telegram', Icon: Send, external: true },
+];
 
 export function CustomerLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -238,74 +245,9 @@ export function CustomerLayout() {
                   className="h-24 w-auto transition-transform group-hover:scale-105" 
                 />
               </Link>
-              <p className="text-gray-300 text-sm leading-relaxed mb-6 max-w-sm">
-                Leading real estate company in Cambodia, powered by AI technology and integrated with Odoo ERP for seamless property management.
+              <p className="text-gray-300 text-sm leading-relaxed max-w-sm">
+                Leading real estate company in Cambodia, powered by AI technology for a faster, smarter property search.
               </p>
-              
-              {/* Social Media */}
-              <div>
-                <h4 className="text-lg font-bold mb-3 text-white">Connect With Us</h4>
-                <div className="flex flex-wrap gap-3">
-                  <a
-                    href="https://m.me/ERAcambodia"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative"
-                    aria-label="Facebook Messenger"
-                    title="Chat with us on Messenger"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#EF2D2C] flex items-center justify-center transition-all duration-300 group-hover:bg-[#EF2D2C] group-hover:shadow-lg group-hover:shadow-[#EF2D2C]/50 group-hover:-translate-y-1">
-                      <MessageSquare className="w-5 h-5 transition-all" />
-                    </div>
-                  </a>
-                  <a
-                    href="https://facebook.com/eracambodia"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative"
-                    aria-label="Facebook"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#EF2D2C] flex items-center justify-center transition-all duration-300 group-hover:bg-[#EF2D2C] group-hover:shadow-lg group-hover:shadow-[#EF2D2C]/50 group-hover:-translate-y-1">
-                      <Facebook className="w-5 h-5 transition-all" />
-                    </div>
-                  </a>
-                  <a
-                    href="https://linkedin.com/company/eracambodia"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative"
-                    aria-label="LinkedIn"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#EF2D2C] flex items-center justify-center transition-all duration-300 group-hover:bg-[#EF2D2C] group-hover:shadow-lg group-hover:shadow-[#EF2D2C]/50 group-hover:-translate-y-1">
-                      <Linkedin className="w-5 h-5 transition-all" />
-                    </div>
-                  </a>
-                  <a
-                    href="https://t.me/ERAcambodia_bot"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative"
-                    aria-label="Telegram"
-                    title="Chat with our Telegram Bot"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#EF2D2C] flex items-center justify-center transition-all duration-300 group-hover:bg-[#EF2D2C] group-hover:shadow-lg group-hover:shadow-[#EF2D2C]/50 group-hover:-translate-y-1">
-                      <Send className="w-5 h-5 transition-all" />
-                    </div>
-                  </a>
-                  <a
-                    href="https://wa.me/85512345678"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative"
-                    aria-label="WhatsApp"
-                    title="Chat with us on WhatsApp"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#EF2D2C] flex items-center justify-center transition-all duration-300 group-hover:bg-[#EF2D2C] group-hover:shadow-lg group-hover:shadow-[#EF2D2C]/50 group-hover:-translate-y-1">
-                      <Phone className="w-5 h-5 transition-all" />
-                    </div>
-                  </a>
-                </div>
-              </div>
             </div>
 
             {/* Quick Links */}
@@ -397,17 +339,21 @@ export function CustomerLayout() {
           </div>
 
           {/* Bottom Bar */}
-          <div className="border-t border-gray-700/50 pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <p className="text-gray-400 text-sm text-center md:text-left">
-                © 2026 ERA Cambodia. All rights reserved.
-              </p>
-              <div className="flex items-center space-x-4 text-xs text-gray-400">
-                <span className="flex items-center space-x-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  <span>Powered by AI Agents + Odoo ERP</span>
-                </span>
-              </div>
+          <div className="flex flex-col-reverse items-center gap-4 border-t border-gray-700/50 pt-8 sm:flex-row sm:justify-between">
+            <p className="text-sm text-gray-400">© 2026 ERA Cambodia · Powered by AI Agent</p>
+            <div className="flex gap-3">
+              {FOOTER_SOCIAL.map(({ href, label, Icon, external }) => (
+                <a
+                  key={label}
+                  href={href}
+                  {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  aria-label={label}
+                  title={label}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#EF2D2C] hover:bg-[#EF2D2C] hover:shadow-lg hover:shadow-[#EF2D2C]/40"
+                >
+                  <Icon className="h-5 w-5" />
+                </a>
+              ))}
             </div>
           </div>
         </div>

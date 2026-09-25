@@ -24,7 +24,7 @@ async function main() {
       subtitle:
         'Leading the future of real estate in Cambodia with innovative AI technology and exceptional service',
       paragraph1:
-        "ERA Cambodia is a pioneering real estate company that combines traditional expertise with cutting-edge artificial intelligence technology. We're revolutionizing how Cambodians buy, sell, and rent properties through our innovative AI-powered platform integrated with Odoo ERP.",
+        "ERA Cambodia is a pioneering real estate company that combines traditional expertise with cutting-edge artificial intelligence technology. We're revolutionizing how Cambodians buy, sell, and rent properties through our innovative AI-powered platform, with our own integrated CRM, sales and inventory system.",
       paragraph2:
         "With a portfolio of 5 premium projects across Phnom Penh and a dedicated team of 10 sales professionals, we're committed to delivering exceptional service and results to our clients.",
       mission:
@@ -52,7 +52,7 @@ async function main() {
           year: '2024',
           title: 'Digital Transformation',
           description:
-            'Implemented Odoo ERP integration, connecting CRM, Sales, and Inventory modules for seamless operations. Introduced multi-channel lead capture across Facebook, Website, Telegram, and WhatsApp.',
+            'Launched an integrated platform connecting CRM, Sales, and Inventory for seamless operations. Introduced multi-channel lead capture across Facebook, Website, Telegram, and WhatsApp.',
           order: 1,
         },
         {
@@ -94,7 +94,7 @@ async function main() {
           year: '2024',
           title: 'Digital Transformation Leader',
           organization: 'ASEAN Business Awards',
-          description: 'Excellence in implementing Odoo ERP integration',
+          description: 'Excellence in real estate technology integration',
           order: 2,
         },
         {

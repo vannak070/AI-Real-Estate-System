@@ -32,8 +32,8 @@ export function HomePage() {
                 </h1>
                 <p className="text-xl text-gray-200 leading-relaxed">
                   Experience the future of property search with AI-powered recommendations, 
-                  instant responses, and expert guidance - all integrated with Odoo ERP for 
-                  seamless transactions.
+                  instant responses, and expert guidance - for a seamless buying and 
+                  renting experience.
                 </p>
               </div>
 
@@ -123,7 +123,7 @@ export function HomePage() {
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Transform how you find and buy property with cutting-edge AI technology 
-              integrated seamlessly with Odoo ERP
+              and real, up-to-date listings
             </p>
           </div>
           
@@ -207,7 +207,7 @@ export function HomePage() {
               </div>
               <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Secure & Verified</h3>
               <p className="text-gray-600 mb-3 text-center text-sm">
-                All properties are verified and transactions are secured through our Odoo ERP integration.
+                Every listing comes from ERA's own inventory, and your details go straight to our sales team — securely, in our own system.
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
