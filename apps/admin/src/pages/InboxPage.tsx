@@ -33,8 +33,8 @@ function ago(iso: string) {
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
-function customerName(c: { displayName: string | null; username: string | null }) {
-  return c.displayName || (c.username ? `@${c.username}` : 'Telegram customer');
+function customerName(c: { channel: string; displayName: string | null; username: string | null }) {
+  return c.displayName || (c.username ? `@${c.username}` : c.channel === 'WEBSITE' ? 'Website visitor' : `${titleCase(c.channel)} customer`);
 }
 
 const initialsOf = (name: string) =>
@@ -288,6 +288,12 @@ function ConversationPane({ id }: { id: string }) {
             <b>The customer wants a person:</b> {c.needsAgentReason ?? 'asked for a team member'}
           </div>
         )}
+        {c.channel === 'WEBSITE' && c.mode === 'AGENT' && (
+          <p className="mt-2 text-[11px] text-gray-500">
+            Website chat: the visitor sees your reply straight away while their chat is open, or when they next come back
+            to it on the same device. To reach them sooner, call them{lead?.phone ? ` (${lead.phone})` : ' once they share a phone number'}.
+          </p>
+        )}
         {c.mode === 'AGENT' && !handledByMe && (
           <div className="mt-2 rounded-lg bg-purple-50 px-3 py-2 text-xs text-purple-800">
             A team member is handling this chat — the AI is paused.
@@ -413,7 +419,7 @@ export function InboxPage() {
     <div>
       <PageHeader
         title="Inbox"
-        subtitle="Customer chats with the Telegram AI bot. Take over any chat to reply as yourself; hand it back when you're done."
+        subtitle="Customer chats with the AI — on the website and Telegram. Take over any chat to reply as yourself; hand it back when you're done."
         actions={<TelegramAlerts />}
       />
       <Tabs
@@ -436,7 +442,7 @@ export function InboxPage() {
                 hint={
                   filter === 'attention'
                     ? 'Chats appear here when a customer asks for a person, or writes to a chat your team is handling.'
-                    : 'Conversations with the Telegram bot will appear here.'
+                    : 'Chats from the website and the Telegram bot will appear here.'
                 }
               />
             </div>

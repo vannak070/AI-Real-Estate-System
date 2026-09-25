@@ -108,8 +108,11 @@ export function AdminLayout() {
   })).filter((g) => g.items.length > 0);
 
   const allowed = canOpen(capabilities, location.pathname);
-  // Chats waiting on a person (AI asked for one, or a customer wrote to a staff-handled chat).
-  const inboxBadge = useInboxSummary(can(capabilities, 'crm:read')).data?.attention ?? 0;
+  // Red: chats waiting on a person (AI asked for one, or a customer wrote to a staff-handled chat).
+  // Grey: chats with unread messages the AI already answered.
+  const inboxSummary = useInboxSummary(can(capabilities, 'crm:read')).data;
+  const inboxAttention = inboxSummary?.attention ?? 0;
+  const inboxUnread = inboxSummary?.unread ?? 0;
   const initials =
     user?.name
       .split(' ')
@@ -158,11 +161,21 @@ export function AdminLayout() {
                     >
                       <Icon className="h-4 w-4 flex-shrink-0" />
                       <span>{item.label}</span>
-                      {item.to === '/inbox' && inboxBadge > 0 && (
-                        <span className="ml-auto rounded-full bg-[#EF2D2C] px-2 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/40">
-                          {inboxBadge}
+                      {item.to === '/inbox' && inboxAttention > 0 ? (
+                        <span
+                          className="ml-auto rounded-full bg-[#EF2D2C] px-2 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/40"
+                          title={`${inboxAttention} chat${inboxAttention === 1 ? '' : 's'} waiting for a person`}
+                        >
+                          {inboxAttention}
                         </span>
-                      )}
+                      ) : item.to === '/inbox' && inboxUnread > 0 ? (
+                        <span
+                          className="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-bold text-white"
+                          title={`${inboxUnread} chat${inboxUnread === 1 ? '' : 's'} with unread messages`}
+                        >
+                          {inboxUnread}
+                        </span>
+                      ) : null}
                     </NavLink>
                   );
                 })}
@@ -197,10 +210,30 @@ export function AdminLayout() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <button className="relative rounded-lg p-2" style={{ backgroundColor: '#F8F9FA' }}>
-                <Bell className="h-5 w-5" style={{ color: '#001F5B' }} />
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ backgroundColor: '#EF2D2C' }} />
-              </button>
+              {can(capabilities, 'crm:read') && (
+                <Link
+                  to="/inbox"
+                  className="relative rounded-lg p-2"
+                  style={{ backgroundColor: '#F8F9FA' }}
+                  title={
+                    inboxAttention > 0
+                      ? `${inboxAttention} chat${inboxAttention === 1 ? '' : 's'} waiting for a person`
+                      : inboxUnread > 0
+                        ? `${inboxUnread} chat${inboxUnread === 1 ? '' : 's'} with unread messages`
+                        : 'No new chats'
+                  }
+                >
+                  <Bell className="h-5 w-5" style={{ color: '#001F5B' }} />
+                  {inboxAttention + inboxUnread > 0 && (
+                    <span
+                      className="absolute -right-1 -top-1 min-w-[18px] rounded-full px-1 text-center text-[10px] font-bold leading-[18px] text-white"
+                      style={{ backgroundColor: inboxAttention > 0 ? '#EF2D2C' : '#001F5B' }}
+                    >
+                      {inboxAttention > 0 ? inboxAttention : inboxUnread}
+                    </span>
+                  )}
+                </Link>
+              )}
               <div className="flex items-center gap-3 rounded-lg px-3 py-1.5" style={{ backgroundColor: '#F8F9FA' }}>
                 <div
                   className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"

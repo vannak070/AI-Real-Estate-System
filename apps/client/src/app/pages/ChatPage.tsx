@@ -5,20 +5,38 @@ import { Link, useLocation } from "react-router";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api, resolveUploadUrl } from "../../lib/api";
 import { currentCampaignCode } from "../../lib/attribution";
+import { loadStoredChat, saveStoredChat } from "../../lib/chat-storage";
 import logo from "figma:asset/d35bb1cd7b17aae1ece93ea47adf754effd39a17.png";
+
+type ServerMessage = Awaited<ReturnType<typeof api.messaging.web.send.mutate>>['messages'][number];
 
 /** The property cards a bot reply can carry — exactly what the assistant's search_properties/
  * get_property tools returned server-side (see assistant.service.ts), never fabricated here. */
-type AssistantProperty = Awaited<ReturnType<typeof api.assistant.public.chat.mutate>>['properties'][number];
+type AssistantProperty = ServerMessage['properties'][number];
 
 interface Message {
   id: string;
-  sender: 'user' | 'bot';
+  /** 'agent': an ERA staff member replying from the admin Inbox. */
+  sender: 'user' | 'bot' | 'agent';
   message: string;
-  timestamp: string;
+  agentName?: string | null;
   properties?: AssistantProperty[];
+  /** Shown here only — never stored, and not part of the conversation (the greeting, errors). */
+  local?: boolean;
   isError?: boolean;
 }
+
+const fromServer = (m: ServerMessage): Message => ({
+  id: m.id,
+  sender: m.sender,
+  message: m.text,
+  agentName: m.agentName,
+  properties: m.properties.length > 0 ? m.properties : undefined,
+});
+
+/** How often an open chat checks for staff replies: often while the team has it, rarely otherwise. */
+const POLL_WITH_TEAM_MS = 4_000;
+const POLL_IDLE_MS = 15_000;
 
 const TYPE_LABEL: Record<AssistantProperty['propertyType'], string> = {
   CONDO: 'Condo', HOUSE: 'House', VILLA: 'Villa', TOWNHOUSE: 'Townhouse',
@@ -99,7 +117,7 @@ function FormattedText({ text }: { text: string }) {
 /* ── Property cards ── */
 
 function PropertyCard({ prop }: { prop: AssistantProperty }) {
-  // `?? …`: cards saved in sessionStorage by an older version of this page lack these fields.
+  // `?? …`: cards stored by an older version of the chat lack these fields.
   const beds = bedsLabel(prop.bedrooms ?? []);
   const size = sizeLabel(prop.sizeSqm ?? null);
   return (
@@ -155,72 +173,35 @@ function PropertyCard({ prop }: { prop: AssistantProperty }) {
 
 function greetingFor(propertyName?: string): Message {
   return {
-    id: '1',
+    id: 'greeting',
     sender: 'bot',
+    local: true,
     message: propertyName
       ? `Hello! 👋 I'm the ERA Cambodia AI Property Assistant. I see you're interested in **${propertyName}** — ask me anything about it: pricing, availability, or how to book a viewing.`
       : "Hello! 👋 I'm the ERA Cambodia AI Property Assistant. Tell me what you're looking for — to buy or rent, the area, your budget — and I'll find real listings for you, or connect you with our team.",
-    timestamp: new Date().toISOString(),
   };
-}
-
-/** Persists the conversation across a route change (e.g. clicking "View details" on a property
- * card navigates to /properties/:id, unmounting this page) so coming back to /chat resumes
- * instead of restarting from the greeting. sessionStorage, not localStorage: this is "don't
- * lose my place this browsing session," not a permanent record. */
-const CHAT_STORAGE_KEY = 'era-chat-session-v1';
-
-interface PersistedChat {
-  messages: Message[];
-  propertyId?: string;
-  propertyName?: string;
-  /** Signed reference to the lead this conversation created, so a later correction of phone/email
-   * updates that same CRM record instead of being lost (or duplicated). Opaque — never parsed here. */
-  leadToken?: string;
-}
-
-function loadPersistedChat(): PersistedChat | null {
-  try {
-    const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedChat;
-    return Array.isArray(parsed.messages) && parsed.messages.length > 0 ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function savePersistedChat(state: PersistedChat) {
-  try {
-    sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // Private browsing / quota / disabled storage — chat still works, it just won't survive navigation.
-  }
 }
 
 export function ChatPage() {
   const location = useLocation();
   const propertyContext = location.state as { propertyId?: string; propertyName?: string } | null;
 
-  // A fresh "Chat about THIS property" link (from a property's own page) always starts a new
-  // conversation for that property — but a plain return to /chat with no such link (browser
-  // back, the nav bar's "Chat with AI Assistant", or clicking "View details" on a property card
-  // and coming back) resumes the visitor's prior conversation instead of throwing away
-  // everything they already told the assistant.
-  const [initial] = useState(() => {
-    const restored = loadPersistedChat();
-    const freshPropertyId = propertyContext?.propertyId;
-    return restored && (!freshPropertyId || freshPropertyId === restored.propertyId) ? restored : null;
-  });
+  // The visitor's conversation always resumes (with any reply the team left meanwhile) — even
+  // from a property's "Chat about this property" link, which just moves the chat onto that
+  // property, so a visitor the team is already talking to never loses the thread.
+  const [initial] = useState(() => loadStoredChat());
   const [context, setContext] = useState<{ propertyId?: string; propertyName?: string }>({
-    propertyId: initial?.propertyId ?? propertyContext?.propertyId,
-    propertyName: initial?.propertyName ?? propertyContext?.propertyName,
+    propertyId: propertyContext?.propertyId ?? initial?.propertyId,
+    propertyName: propertyContext?.propertyId ? propertyContext.propertyName : initial?.propertyName,
   });
+  const switchedProperty = !!initial && !!propertyContext?.propertyId && propertyContext.propertyId !== initial.propertyId;
 
-  const [messages, setMessages] = useState<Message[]>(initial?.messages ?? [greetingFor(context.propertyName)]);
+  const [token, setToken] = useState<string | undefined>(initial?.token);
+  const [messages, setMessages] = useState<Message[]>(() => [greetingFor(initial ? undefined : context.propertyName)]);
+  const [restoring, setRestoring] = useState(!!initial);
+  const [withTeam, setWithTeam] = useState(false);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [leadToken, setLeadToken] = useState<string | undefined>(initial?.leadToken);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -236,53 +217,109 @@ export function ChatPage() {
     return () => clearTimeout(timeoutId);
   }, [messages, isSending]);
 
-  // Keeps sessionStorage in sync so a route change away from /chat and back can resume this
-  // conversation — see loadPersistedChat()/the `initial` state above for the restore side.
+  /** Adds server messages not shown yet (a poll can overlap a send). */
+  const merge = (incoming: ServerMessage[]) =>
+    setMessages((prev) => {
+      const seen = new Set(prev.map((m) => m.id));
+      const fresh = incoming.filter((m) => !seen.has(m.id)).map(fromServer);
+      return fresh.length ? [...prev, ...fresh] : prev;
+    });
+
+  const lastServerId = [...messages].reverse().find((m) => !m.local)?.id;
+
+  // Remember the key, and the newest message seen (the layout's "new reply" dot compares to it).
   useEffect(() => {
-    savePersistedChat({ messages, propertyId: context.propertyId, propertyName: context.propertyName, leadToken });
-  }, [messages, context, leadToken]);
+    saveStoredChat(token ? { token, propertyId: context.propertyId, propertyName: context.propertyName, lastSeenId: lastServerId } : null);
+  }, [token, context, lastServerId]);
+
+  // A returning visitor: load the conversation from the server.
+  useEffect(() => {
+    if (!initial) return;
+    let cancelled = false;
+    api.messaging.web.history
+      .query({ token: initial.token })
+      .then((result) => {
+        if (cancelled) return;
+        if (!result.found) {
+          setToken(undefined);
+          return;
+        }
+        merge(result.messages);
+        setWithTeam(result.withTeam);
+        if (switchedProperty && context.propertyName) {
+          setMessages((prev) => [
+            ...prev,
+            { id: 'property-switch', sender: 'bot', local: true, message: `You're now looking at **${context.propertyName}** — ask me anything about it.` },
+          ]);
+        }
+      })
+      .catch(() => {
+        // Offline / server down — the visitor can still type; their next message resumes it.
+      })
+      .finally(() => !cancelled && setRestoring(false));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, for the conversation restored on mount
+  }, []);
+
+  // Staff replies from the admin Inbox arrive by polling — often while the team has the chat.
+  const lastIdRef = useRef(lastServerId);
+  lastIdRef.current = lastServerId;
+  useEffect(() => {
+    if (!token || restoring) return;
+    const timer = setInterval(() => {
+      if (document.hidden) return;
+      api.messaging.web.history
+        .query({ token, afterId: lastIdRef.current })
+        .then((result) => {
+          if (!result.found) return;
+          merge(result.messages);
+          setWithTeam(result.withTeam);
+        })
+        .catch(() => {});
+    }, withTeam ? POLL_WITH_TEAM_MS : POLL_IDLE_MS);
+    return () => clearInterval(timer);
+  }, [token, restoring, withTeam]);
 
   /** The one real write path this page ever triggers is inside the assistant's own submit_lead
    * tool (assistant.service.ts, server-side) — this function only ever sends the visitor's
-   * message and appends whatever real, tool-grounded reply comes back. */
-  async function sendToAssistant(text: string) {
-    const userMessage: Message = { id: Date.now().toString(), sender: 'user', message: text, timestamp: new Date().toISOString() };
-    // Error notices are ours, not the conversation — don't send them to the model.
-    const history = [...messages.filter((m) => !m.isError), userMessage];
-    setMessages((prev) => [...prev, userMessage]);
+   * message and shows whatever real, tool-grounded reply (or staff reply) comes back. */
+  async function send(text: string) {
+    const pending: Message = { id: `pending-${Date.now()}`, sender: 'user', message: text, local: true };
+    setMessages((prev) => [...prev, pending]);
     setInput("");
     setIsSending(true);
 
     try {
-      const result = await api.assistant.public.chat.mutate({
-        messages: history.map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('assistant' as const), content: m.message })),
+      const result = await api.messaging.web.send.mutate({
+        token,
+        text,
         propertyId: context.propertyId,
         propertyName: context.propertyName,
-        leadToken,
         campaignCode: currentCampaignCode(),
       });
-      if (result.leadToken) setLeadToken(result.leadToken);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          sender: 'bot',
-          message: result.reply,
-          timestamp: new Date().toISOString(),
-          properties: result.properties.length > 0 ? result.properties : undefined,
-        },
-      ]);
+      setToken(result.token);
+      setWithTeam(result.withTeam);
+      setMessages((prev) => {
+        const seen = new Set(prev.map((m) => m.id));
+        const next = prev.filter((m) => m.id !== pending.id);
+        next.push(...result.messages.filter((m) => !seen.has(m.id)).map(fromServer));
+        if (result.notice) next.push({ id: `notice-${Date.now()}`, sender: 'bot', message: result.notice, local: true, isError: true });
+        return next;
+      });
     } catch (err) {
-      const tooMany = err instanceof Error && err.message.toLowerCase().includes('too many');
+      // The server's own wording for a message it refused (too fast, too long); anything else is a connection problem.
+      const refused = err instanceof Error && /too fast|a bit fast|too long|type a message/i.test(err.message);
       setMessages((prev) => [
         ...prev,
         {
-          id: (Date.now() + 1).toString(),
+          id: `error-${Date.now()}`,
           sender: 'bot',
-          message: tooMany
-            ? "You're sending messages a bit fast — please wait a moment and try again."
+          message: refused
+            ? (err as Error).message
             : "Sorry, I'm having trouble connecting right now. Please try again, or call us directly at +855 23 123 456.",
-          timestamp: new Date().toISOString(),
+          local: true,
           isError: true,
         },
       ]);
@@ -295,7 +332,7 @@ export function ChatPage() {
 
   const handleSend = (text: string = input) => {
     if (!text.trim() || isSending) return;
-    sendToAssistant(text.trim());
+    send(text.trim());
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -303,15 +340,17 @@ export function ChatPage() {
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend();
   };
 
+  // The old conversation stays in the team's Inbox; this browser just stops following it.
   const startNewChat = () => {
     setContext({});
-    setLeadToken(undefined);
+    setToken(undefined);
+    setWithTeam(false);
     setMessages([greetingFor()]);
     setInput("");
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
-  const showStarters = messages.length === 1 && !isSending;
+  const showStarters = messages.length === 1 && !isSending && !restoring;
   const starters = context.propertyName ? PROPERTY_STARTERS : STARTERS;
 
   return (
@@ -327,7 +366,9 @@ export function ChatPage() {
               <h2 className="truncate text-lg font-bold sm:text-xl">AI Property Assistant</h2>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
-                <span className="text-sm text-gray-100">Online · English, ខ្មែរ, 中文</span>
+                <span className="text-sm text-gray-100">
+                  {withTeam ? 'Chatting with the ERA team' : 'Online · English, ខ្មែរ, 中文'}
+                </span>
               </div>
             </div>
             {messages.length > 1 && (
@@ -356,15 +397,37 @@ export function ChatPage() {
                 className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`flex min-w-0 max-w-full items-start gap-2 sm:max-w-2xl ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <div className="flex-shrink-0 rounded-full p-2" style={{ backgroundColor: msg.sender === 'user' ? '#EF2D2C' : '#f3f4f6' }}>
-                    {msg.sender === 'user' ? <User className="h-4 w-4 text-white" /> : <Bot className="h-4 w-4 text-gray-700" />}
-                  </div>
-                  <div className="min-w-0">
+                  {msg.sender === 'agent' ? (
                     <div
-                      className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${msg.sender === 'user' ? 'text-white' : msg.isError ? 'bg-red-50 text-red-800' : 'bg-gray-100 text-gray-900'}`}
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                      style={{ backgroundColor: '#001F5B' }}
+                    >
+                      {(msg.agentName ?? 'E').charAt(0).toUpperCase()}
+                    </div>
+                  ) : (
+                    <div className="flex-shrink-0 rounded-full p-2" style={{ backgroundColor: msg.sender === 'user' ? '#EF2D2C' : '#f3f4f6' }}>
+                      {msg.sender === 'user' ? <User className="h-4 w-4 text-white" /> : <Bot className="h-4 w-4 text-gray-700" />}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    {msg.sender === 'agent' && (
+                      <div className="mb-1 text-xs font-semibold" style={{ color: '#001F5B' }}>
+                        {msg.agentName ?? 'ERA team'} · ERA Cambodia team
+                      </div>
+                    )}
+                    <div
+                      className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
+                        msg.sender === 'user'
+                          ? 'text-white'
+                          : msg.sender === 'agent'
+                            ? 'border border-[#001F5B]/15 bg-[#001F5B]/5 text-gray-900'
+                            : msg.isError
+                              ? 'bg-red-50 text-red-800'
+                              : 'bg-gray-100 text-gray-900'
+                      }`}
                       style={msg.sender === 'user' ? { backgroundColor: '#EF2D2C' } : {}}
                     >
-                      {msg.sender === 'user' ? <p className="whitespace-pre-line break-words">{msg.message}</p> : <FormattedText text={msg.message} />}
+                      {msg.sender === 'bot' ? <FormattedText text={msg.message} /> : <p className="whitespace-pre-line break-words">{msg.message}</p>}
                     </div>
                     {msg.properties && msg.properties.length > 0 && (
                       <div className="-mx-1 mt-3 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
@@ -405,7 +468,7 @@ export function ChatPage() {
                       <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '150ms' }} />
                       <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '300ms' }} />
                     </span>
-                    <span className="text-xs text-gray-500">Checking our listings…</span>
+                    <span className="text-xs text-gray-500">{withTeam ? 'Sending…' : 'Checking our listings…'}</span>
                   </div>
                 </div>
               </motion.div>

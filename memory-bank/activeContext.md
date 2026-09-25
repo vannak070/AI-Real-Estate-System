@@ -42,6 +42,21 @@ first (Postgres `era-postgres` :5435). No bot locally, by design.
 
 ## Recent work (details and reasons in `progress.md`)
 
+0. **Website chat in the Inbox** (2026-09-25, local only — NOT committed or
+   deployed yet; migration `20260925100000_messaging_website_chat` adds
+   `messaging_messages.attachments`). The website chat is now stored like
+   Telegram: `modules/messaging/website-chat.ts`, public tRPC
+   `messaging.web.{send,history}`; the browser keeps only a random token
+   (`localStorage` `era-chat-v2`, `apps/client/src/lib/chat-storage.ts`).
+   Staff see website chats in the Inbox, get the same alerts, take over and
+   reply; the visitor's chat polls (4 s with the team, 15 s otherwise) and the
+   site's chat button shows a dot for an unseen reply (`useChatReplyDot`).
+   A property page's chat link now continues the same conversation. Old
+   `assistant.public.chat` + `leadToken`/`CHAT_TOKEN_SECRET` removed. New code
+   guarantee: a reply promising "a team member will reply here" without
+   `request_agent` flags the chat anyway (seen once in testing). Harness 10/10
+   + browser click-through. Also: Inbox nav badge / header bell now count
+   unread chats (grey) as well as waiting ones (red) — that part is live.
 1. **Staff alerts on Telegram** (live on the demo) —
    `modules/messaging/staff-alerts.ts`; staff link their own Telegram from the
    Inbox; alerts for "customer wants a person", a customer writing in a chat
@@ -85,8 +100,8 @@ first (Postgres `era-postgres` :5435). No bot locally, by design.
   667; 217 without bedroom data; no description field.
 - **No way to delete a property** (only make it Private) — ask before adding.
 - **AI can still claim a save it never attempted** (prompt rule only).
-- **Inbox gaps**: website chats aren't stored; customer photos show as a
-  placeholder; visibility filtered in code over the latest 200 conversations.
+- **Inbox gaps**: customer photos show as a placeholder; a website visitor
+  only sees a staff reply on the same device/browser; visibility filtered in code over the latest 200 conversations.
 - **Single-instance assumptions**: rate limiter, Telegram caches in memory.
 - **No automated tests** — every check so far was a throw-away harness.
 - Name search misses spelling variants; `LOCATION_ALIASES` covers only

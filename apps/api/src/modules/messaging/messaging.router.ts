@@ -1,13 +1,36 @@
 import { z } from 'zod';
-import { router, withCapability } from '../../trpc/trpc.js';
+import { router, publicProcedure, withCapability } from '../../trpc/trpc.js';
 import type { ModuleContext } from '../../platform/module.js';
 
 const byId = z.object({ id: z.string() });
+/** The website chat's conversation key, held by the visitor's browser (website-chat.ts). */
+const chatToken = z.string().regex(/^[A-Za-z0-9_-]{20,64}$/);
 
 export function messagingRouter({ modules }: ModuleContext) {
   const inbox = () => modules.messaging.inbox;
   const alerts = () => modules.messaging.alerts;
+  const website = () => modules.messaging.website;
   return router({
+    /** The customer website's chat — public, like inventory.public.*; the token is the only key
+     * to a conversation, and website-chat.ts rate-limits and length-checks. */
+    web: router({
+      send: publicProcedure
+        .input(
+          z.object({
+            token: chatToken.optional(),
+            text: z.string().min(1).max(4000),
+            propertyId: z.string().max(64).optional(),
+            propertyName: z.string().max(200).optional(),
+            /** From the visitor's ad link (`?utm_campaign=`), captured by apps/client. */
+            campaignCode: z.string().max(80).optional(),
+          }),
+        )
+        .mutation(({ input, ctx }) => website().send(input, { ip: ctx.req.ip })),
+      history: publicProcedure
+        .input(z.object({ token: chatToken, afterId: z.string().max(64).optional() }))
+        .query(({ input }) => website().history(input)),
+    }),
+
     /** Bot connection state for the Marketing → Channels tab. */
     status: withCapability('marketing:read').query(() => modules.messaging.status()),
 

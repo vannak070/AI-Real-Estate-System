@@ -3,6 +3,7 @@ import { MessageSquare, Home, Building2, Menu, X, Phone, Mail, ChevronDown, Info
 import { useEffect, useRef, useState } from "react";
 import { aboutHref, parseAboutTab } from "../aboutSections";
 import { useAboutSections } from "../useAboutSections";
+import { useChatReplyDot } from "../useChatReplyDot";
 import { captureCampaignFromUrl } from "../../lib/attribution";
 import headerLogo from "figma:asset/d35bb1cd7b17aae1ece93ea47adf754effd39a17.png";
 import footerLogo from "figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png";
@@ -14,11 +15,23 @@ const FOOTER_SOCIAL = [
   { href: 'https://t.me/ERACambodiaAI_bot', label: 'Chat with our AI assistant on Telegram', Icon: Send, external: true },
 ];
 
+/** On the chat button: the visitor's chat has a reply they haven't seen yet. */
+function ReplyDot() {
+  return (
+    <span className="relative ml-1 flex h-2.5 w-2.5" title="New reply in your chat">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+      <span className="sr-only">New reply in your chat</span>
+    </span>
+  );
+}
+
 export function CustomerLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [aboutDropdownOpen, setAboutDropdownOpen] = useState(false);
   const location = useLocation();
   const aboutSections = useAboutSections();
+  const chatHasReply = useChatReplyDot(location.pathname);
   const aboutMenuRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentAboutTab = location.pathname.startsWith('/about') ? parseAboutTab(new URLSearchParams(location.search).get('tab')) : null;
@@ -197,6 +210,7 @@ export function CustomerLayout() {
               >
                 <MessageSquare className="w-5 h-5" />
                 <span>Chat with AI Assistant</span>
+                {chatHasReply && <ReplyDot />}
               </Link>
             </div>
 
@@ -276,6 +290,7 @@ export function CustomerLayout() {
               >
                 <MessageSquare className="w-5 h-5" />
                 <span>Chat with AI Assistant</span>
+                {chatHasReply && <ReplyDot />}
               </Link>
             </div>
           </div>

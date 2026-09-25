@@ -28,11 +28,6 @@ const schema = z.object({
    * AI assistant (Tier 1) yet. `assistant.router.ts`'s `chat` procedure is what actually
    * requires this, and throws a clear error there if it's missing. */
   anthropicApiKey: z.string().min(1).optional(),
-  /** Signs the chat's "lead created in this conversation" reference so a website visitor can
-   * correct their own details without being able to touch anyone else's lead. Optional: without
-   * it a random per-process secret is used, so references stop working after an API restart
-   * (a correction then creates a new lead instead of updating). */
-  chatTokenSecret: z.string().min(16).optional(),
   /** From @BotFather. Optional — without it the Telegram bot simply doesn't start. */
   telegramBotToken: z.string().min(20).optional(),
   /** Telegram Bot API base — only overridden by tests (a local fake of the API). */
@@ -71,7 +66,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     trustProxy: env.TRUST_PROXY,
     cookieSecure: env.COOKIE_SECURE,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
-    chatTokenSecret: env.CHAT_TOKEN_SECRET,
     telegramBotToken: env.TELEGRAM_BOT_TOKEN || undefined,
     telegramApiBase: env.TELEGRAM_API_BASE || undefined,
     telegramTakeOverWebhook: env.TELEGRAM_TAKE_OVER_WEBHOOK,

@@ -16,7 +16,7 @@ export function useInbox(filter: InboxFilter) {
 
 export type InboxRow = NonNullable<ReturnType<typeof useInbox>['data']>[number];
 
-/** Conversations waiting on a person — the nav badge. */
+/** Chats waiting on a person, and chats with unread messages — the nav badge and header bell. */
 export function useInboxSummary(enabled: boolean) {
   return useQuery({
     queryKey: [...ROOT, 'summary'],

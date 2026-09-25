@@ -2,15 +2,17 @@ import type { AppModule, ModuleContext } from '../../platform/module.js';
 import { createTelegramBot, type TelegramStatus } from './telegram-bot.js';
 import { createInbox, type Inbox } from './inbox.js';
 import { createStaffAlerts, type StaffAlerts } from './staff-alerts.js';
+import { createWebsiteChat, type WebsiteChat } from './website-chat.js';
 import type { TelegramUpdate } from './telegram.js';
 
 export type { TelegramStatus };
 
 /**
- * Chat apps (Telegram today; Messenger/WhatsApp next) answered by the AI assistant. This module
- * owns the platform side — receiving messages, storing conversations (messaging.prisma), sending
- * replies — and asks `ctx.modules.assistant` for each AI reply; leads land in CRM through the
- * assistant's submit_lead tool with the chat app as their source.
+ * Customer conversations answered by the AI assistant: chat apps (Telegram today;
+ * Messenger/WhatsApp next) and the website chat. This module owns the platform side — receiving
+ * messages, storing conversations (messaging.prisma), sending replies — and asks
+ * `ctx.modules.assistant` for each AI reply; leads land in CRM through the assistant's
+ * submit_lead tool with the chat app (or WEBSITE) as their source.
  */
 export interface MessagingApi {
   status(): { telegram: TelegramStatus };
@@ -19,6 +21,8 @@ export interface MessagingApi {
   inbox: Inbox;
   /** Staff alerts on Telegram — linking from the Inbox, used by messaging.router.ts. */
   alerts: StaffAlerts;
+  /** The website chat's public side — used by messaging.router.ts (messaging.web.*). */
+  website: WebsiteChat;
 }
 
 export const messagingModule: AppModule<MessagingApi> = {
@@ -30,9 +34,10 @@ export const messagingModule: AppModule<MessagingApi> = {
       botUsername: () => telegram.status.botUsername,
     });
     const telegram = createTelegramBot(ctx, alerts);
-    const inbox = createInbox(ctx, telegram, alerts);
+    const website = createWebsiteChat(ctx, alerts);
+    const inbox = createInbox(ctx, telegram, website, alerts);
     return {
-      api: { status: () => ({ telegram: { ...telegram.status } }), inbox, alerts },
+      api: { status: () => ({ telegram: { ...telegram.status } }), inbox, alerts, website },
       // Platform webhooks are the one deliberate exception to "HTTP is tRPC": Telegram (and later
       // Meta) POST their own payload format to a URL we register with them.
       routes(app) {

@@ -5,6 +5,7 @@ import type { ModuleContext } from '../../platform/module.js';
 import type { CrmLeadSummaryView } from '../crm/index.js';
 import type { TelegramBot } from './telegram-bot.js';
 import type { StaffAlerts } from './staff-alerts.js';
+import { WEBSITE_CHANNEL, type WebsiteChat } from './website-chat.js';
 
 /** The signed-in staff member using the Inbox. */
 export interface InboxViewer {
@@ -30,16 +31,23 @@ const needsAttention = (c: Pick<MessagingConversation, 'needsAgent' | 'mode' | '
  * The admin Inbox over chat-app conversations. Visibility follows CRM's rule: `crm:read:all`
  * sees every conversation; anyone else sees the ones whose lead they own or that they're handling
  * (a conversation with no lead yet is managers-only — same "unassigned means restricted" rule).
- * Replies go out through the platform the conversation came from.
+ * Replies go out through the platform the conversation came from (the website chat polls for them).
  */
 /** How often handled chats are checked for the automatic hand-back rules. */
 const SWEEP_EVERY_MS = 60_000;
 
-export function createInbox({ db, modules, config, logger }: ModuleContext, telegram: TelegramBot, alerts: StaffAlerts) {
+export function createInbox(
+  { db, modules, config, logger }: ModuleContext,
+  telegram: TelegramBot,
+  website: WebsiteChat,
+  alerts: StaffAlerts,
+) {
   const log = logger.child({ svc: 'inbox' });
   /** Per platform: send a message, and have the AI answer a chat's waiting message(s). */
   const adapters: Record<string, { send: (chatId: string, text: string) => Promise<unknown>; answerPending: (id: string) => Promise<void> }> = {
     TELEGRAM: { send: (chatId, text) => telegram.sendText(chatId, text), answerPending: (id) => telegram.answerPending(id) },
+    // Nothing to push: the stored message is what the visitor's chat page picks up when it polls.
+    [WEBSITE_CHANNEL]: { send: async () => {}, answerPending: (id) => website.answerPending(id) },
   };
   const senders = Object.fromEntries(Object.entries(adapters).map(([k, a]) => [k, a.send]));
   const waitMs = config.inboxAutoHandbackMinutes * 60_000;
@@ -183,7 +191,11 @@ export function createInbox({ db, modules, config, logger }: ModuleContext, tele
     /** For the nav badge: conversations waiting on a person. */
     async summary(viewer: InboxViewer) {
       const rows = await visibleRows(viewer);
-      return { attention: rows.filter(({ row }) => needsAttention(row)).length };
+      return {
+        attention: rows.filter(({ row }) => needsAttention(row)).length,
+        /** Chats with customer messages no one has opened yet (AI-answered ones included). */
+        unread: rows.filter(({ row }) => row.unreadCount > 0).length,
+      };
     },
 
     async get(viewer: InboxViewer, id: string) {
@@ -254,7 +266,7 @@ export function createInbox({ db, modules, config, logger }: ModuleContext, tele
       if (convo.mode !== 'AGENT') {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Take over the conversation before replying — the AI is answering it.' });
       }
-      // The bot speaks for everyone, so say who's writing.
+      // A bot speaks for everyone, so say who's writing (the website shows the name itself).
       await sendOut(convo, `${firstName(viewer.name)}: ${text}`);
       const message = await db.messagingMessage.create({
         data: { conversationId: id, role: 'AGENT', text, agentId: viewer.id },

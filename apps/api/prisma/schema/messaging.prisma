@@ -1,6 +1,6 @@
-// Chat-app conversations (Telegram today; Messenger/WhatsApp later) handled by the AI assistant.
-// Unlike the website chat — where the browser holds the history — these platforms only ever send
-// the newest message, so the server keeps each conversation here.
+// Customer conversations handled by the AI assistant: the chat apps (Telegram today;
+// Messenger/WhatsApp later) and the website chat. The server keeps every conversation here, so
+// staff see them all in the admin Inbox and can take any of them over.
 
 enum MessagingRole {
   USER
@@ -21,7 +21,8 @@ model MessagingConversation {
   id             String             @id @default(cuid())
   /// A marketing channel key (marketing_channels.key), e.g. "TELEGRAM" — also the lead's source.
   channel        String
-  /// The platform's own chat id (Telegram chat.id).
+  /// The platform's own chat id (Telegram chat.id). Website: a random secret the visitor's browser
+  /// holds — it's the only key to that conversation, so never shown or logged.
   externalChatId String
   /// As the platform reports it — unverified, not necessarily the customer's real name.
   displayName    String?
@@ -57,6 +58,9 @@ model MessagingMessage {
   text           String
   /// identity_users.id for AGENT messages (no FK — module rule).
   agentId        String?
+  /// Website AI replies: the property cards shown under the message (inventory's public view,
+  /// a snapshot), so a returning visitor sees them again.
+  attachments    Json?
   /// The platform's message id for inbound messages — unique per conversation, so a redelivered
   /// update (webhook retry) is recognised and skipped instead of answered twice.
   externalId     String?

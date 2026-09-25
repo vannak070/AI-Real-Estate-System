@@ -1,6 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { TRPCError } from '@trpc/server';
 import type { PropertyCategory, PropertyType } from '@prisma/client';
 import type { ModuleContext } from '../../platform/module.js';
 import type { PublicProjectView } from '../inventory/index.js';
@@ -9,7 +7,6 @@ import { createKnowledgeStore } from './knowledge.js';
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 1024;
 const MAX_MESSAGES = 40;
-const MAX_MESSAGE_LENGTH = 2000;
 const MAX_TOOL_ROUNDS = 4;
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -33,7 +30,9 @@ const WEBSITE_PROMPT = `${INTRO} You chat with visitors on the public website.
 
 ${RULES}
 - On the website, every property your search_properties/get_property calls return is shown under your message as a photo card with its name, price, bedrooms, size and a "View details" button. So don't list them again one by one with prices: say how many matched, point out one or two that stand out (by name), and ask one follow-up question. Keep it to a few short sentences.
-- Formatting: plain sentences; **bold** sparingly for a property name; a short "- " list only when it really helps. No headings, no tables.`;
+- Formatting: plain sentences; **bold** sparingly for a property name; a short "- " list only when it really helps. No headings, no tables.
+- Your earlier replies end with "[Property cards shown: …]" listing the cards the visitor saw, with their ids — use those ids for get_property/submit_lead when they refer back ("the second one", "this one"), but never write that bracket text yourself.
+- If they want to talk to a person, or need something you can't do (price negotiation, legal/financial questions, complaints, anything the knowledge doesn't cover), call request_agent — then say a team member will reply here in this chat, and that if they leave, the reply will be waiting when they come back to the chat (and an agent can call them if they share their name and phone). Never say a person was notified unless you called it. Messages starting "[ERA staff member replied:]" were written by a colleague — stay consistent with what they said.`;
 
 /**
  * Chat apps show text exactly as sent, so markdown shows up as literal symbols. Seen live: the
@@ -143,6 +142,11 @@ export type MessagingReply =
     }
   | { ok: false; reason: 'not_configured' | 'rate_limited' | 'failed' };
 
+/** The website chat's reply — the property cards are shown as rich cards under the text. */
+export type WebsiteReply =
+  | { ok: true; reply: string; properties: PublicProjectView[]; leadId: string | null; wantsAgent: string | null }
+  | { ok: false; reason: 'not_configured' | 'rate_limited' | 'failed' };
+
 const TOOLS: Anthropic.Tool[] = [
   {
     name: 'search_properties',
@@ -206,7 +210,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-/** Chat apps only: there's an Inbox where staff can take the conversation over. */
+/** Every conversation is in the admin Inbox, where staff can take it over. */
 const REQUEST_AGENT_TOOL: Anthropic.Tool = {
   name: 'request_agent',
   description:
@@ -217,6 +221,9 @@ const REQUEST_AGENT_TOOL: Anthropic.Tool = {
     required: ['reason'],
   },
 };
+
+/** "…will reply (to you) here in this chat" — the wording the prompts reserve for after request_agent. */
+const PROMISED_A_PERSON = /\b(team member|staff member|colleague|agent|someone)\b[^.!?\n]{0,60}\breply\b[^.!?\n]{0,20}\bhere\b/i;
 
 /** In-process, per-IP sliding-window limiter — this is a single-instance deployment with no
  * Redis in the stack yet, and the endpoint is unauthenticated, so this is the pragmatic ceiling
@@ -238,7 +245,7 @@ interface ConversationState {
   /** Properties get_property was called for this turn — shown as a card even if the reply
    * forgot its url (seen live: a detailed answer about one property with no photo). */
   detailedIds: string[];
-  /** Chat apps: request_agent is offered, and its reason lands here. */
+  /** request_agent is offered, and its reason lands here. */
   canRequestAgent: boolean;
   wantsAgent: string | null;
 }
@@ -346,27 +353,6 @@ export function createAssistantService(ctx: ModuleContext) {
     });
     return { reply, cards, transcript };
   }
-
-  /* The server keeps no conversation state, so the browser holds a reference to the lead this
-   * conversation created and sends it back each turn. It's HMAC-signed so a visitor can only ever
-   * update the lead their own chat created — never guess or tamper their way into someone else's. */
-  const tokenSecret = ctx.config.chatTokenSecret ?? randomBytes(32).toString('hex');
-  if (!ctx.config.chatTokenSecret) {
-    ctx.logger.warn('assistant.chat_token_secret_missing', {
-      effect: 'chat lead references reset on restart — a correction after a restart creates a new lead',
-    });
-  }
-  const signLead = (leadId: string) =>
-    `${leadId}.${createHmac('sha256', tokenSecret).update(leadId).digest('base64url')}`;
-  const verifyLeadToken = (token: string | undefined): string | null => {
-    if (!token) return null;
-    const dot = token.lastIndexOf('.');
-    if (dot <= 0) return null;
-    const leadId = token.slice(0, dot);
-    const given = Buffer.from(token.slice(dot + 1));
-    const expected = Buffer.from(signLead(leadId).slice(dot + 1));
-    return given.length === expected.length && timingSafeEqual(given, expected) ? leadId : null;
-  };
 
   async function runTool(
     name: string,
@@ -489,12 +475,21 @@ export function createAssistantService(ctx: ModuleContext) {
     // Hard guarantee, not a prompt rule: seen live, the model told a visitor "I've updated your
     // email" right after the server rejected it. If this turn's last save attempt was rejected,
     // the server writes the reply itself so the visitor is never told a bad value was saved.
-    const finish = (reply: string) => ({
-      reply: conversation.rejectedBecause
-        ? `Sorry — I couldn't save that. ${conversation.rejectedBecause} Your previous details are still on file, so nothing has changed. Could you type it again?`
-        : reply,
-      properties: Array.from(collectedProperties.values()),
-    });
+    const finish = (reply: string) => {
+      // Same kind of guarantee for a person: seen live, the model told a website visitor "a staff
+      // member will reply here in this chat" without calling request_agent, so nobody was told.
+      // The prompts reserve that wording for after request_agent, so it flags the chat itself.
+      if (conversation.canRequestAgent && !conversation.wantsAgent && PROMISED_A_PERSON.test(reply)) {
+        conversation.wantsAgent = 'Asked for a person (the AI said a team member would reply)';
+        ctx.logger.warn('assistant.agent_promise_without_tool', { source: conversation.source });
+      }
+      return {
+        reply: conversation.rejectedBecause
+          ? `Sorry — I couldn't save that. ${conversation.rejectedBecause} Your previous details are still on file, so nothing has changed. Could you type it again?`
+          : reply,
+        properties: Array.from(collectedProperties.values()),
+      };
+    };
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const response = await anthropic.messages.create({
@@ -546,51 +541,58 @@ export function createAssistantService(ctx: ModuleContext) {
     /** ERA's company knowledge — edited on the admin's AI Knowledge page. */
     knowledge,
 
-    /** The website chat (apps/client ChatPage.tsx) — the browser holds the history. */
-    async chat(
-      input: { messages: ChatMessage[]; propertyId?: string; propertyName?: string; leadToken?: string; campaignCode?: string },
-      meta: { ip: string },
-    ) {
-      if (!client) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'AI assistant is not configured (ANTHROPIC_API_KEY missing).' });
-      }
-      if (input.messages.length === 0) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No messages provided.' });
-      }
-      if (input.messages.length > MAX_MESSAGES) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This conversation has gotten too long — please start a new one.' });
-      }
-      for (const m of input.messages) {
-        if (m.content.length > MAX_MESSAGE_LENGTH) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Message is too long.' });
-        }
-      }
-      if (!allowRequest(`ip:${meta.ip}`)) {
-        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many messages — please wait a moment and try again.' });
-      }
-
-      const knownLeadId = verifyLeadToken(input.leadToken);
-      const onFile = knownLeadId ? await leadOnFile(knownLeadId) : null;
-      const visitorNotes = [
-        input.propertyId
-          ? `The visitor arrived from the page for a specific property: id "${input.propertyId}"${input.propertyName ? ` ("${input.propertyName}")` : ''}. If this is the start of the conversation, call get_property with that id right away so your first reply is grounded in its real details.`
-          : null,
-        onFile ? onFileNote(onFile) : null,
-      ].filter(Boolean);
-      const system = await systemBlocks(WEBSITE_PROMPT, visitorNotes.length ? visitorNotes.join('\n\n') : undefined);
+    /**
+     * A website chat message (apps/client ChatPage.tsx). The messaging module stores the
+     * conversation and its lead id server-side, like the chat apps'. Never throws — failures come
+     * back as a reason the caller turns into a polite reply.
+     */
+    async replyOnWebsite(input: {
+      /** Oldest first; must end with the visitor's new message. */
+      history: ChatMessage[];
+      leadId: string | null;
+      campaignCode?: string;
+      /** The property page the visitor opened the chat from, if any. */
+      propertyId?: string;
+      propertyName?: string;
+      rateKey: string;
+    }): Promise<WebsiteReply> {
+      if (!client) return { ok: false, reason: 'not_configured' };
+      if (!allowRequest(input.rateKey)) return { ok: false, reason: 'rate_limited' };
+      const history = input.history.slice(-MAX_MESSAGES);
+      while (history.length && history[0]?.role !== 'user') history.shift();
+      if (!history.length) return { ok: false, reason: 'failed' };
 
       const conversation: ConversationState = {
-        leadId: knownLeadId,
+        leadId: input.leadId,
         rejectedBecause: null,
         campaignCode: input.campaignCode,
         source: 'WEBSITE',
         linkProperties: false,
         detailedIds: [],
-        canRequestAgent: false,
+        canRequestAgent: true,
         wantsAgent: null,
       };
-      const { reply, properties } = await converse(client, system, input.messages, conversation);
-      return { reply, properties, leadToken: conversation.leadId ? signLead(conversation.leadId) : undefined };
+      try {
+        const onFile = input.leadId ? await leadOnFile(input.leadId) : null;
+        const visitorNotes = [
+          input.propertyId
+            ? `The visitor opened the chat from the page for a specific property: id "${input.propertyId}"${input.propertyName ? ` ("${input.propertyName}")` : ''} — questions like "this one" or "the price" are about it. If you haven't looked it up in this conversation yet, call get_property with that id right away so your reply is grounded in its real details.`
+            : null,
+          onFile ? onFileNote(onFile) : null,
+        ].filter(Boolean);
+        const system = await systemBlocks(WEBSITE_PROMPT, visitorNotes.length ? visitorNotes.join('\n\n') : undefined);
+        const { reply, properties } = await converse(client, system, history, conversation);
+        return {
+          ok: true,
+          reply: reply.replace(/\[Property cards shown:[^\]]*\]\s*/g, '').trim() || "Sorry, I didn't quite catch that — could you rephrase?",
+          properties,
+          leadId: conversation.leadId,
+          wantsAgent: conversation.wantsAgent,
+        };
+      } catch (err) {
+        ctx.logger.error('assistant.reply_failed', { source: 'WEBSITE', error: err instanceof Error ? err.message : String(err) });
+        return { ok: false, reason: 'failed' };
+      }
     },
 
     /**
