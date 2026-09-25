@@ -51,7 +51,7 @@ debugging lives in git history, not here.
   chats, take one over (the AI goes quiet), reply as themselves through the
   bot and hand back; the AI flags chats where a customer wants a person, and
   a handled chat returns to the AI automatically if the customer waits 30 min
-  (or after 12 h idle). **Staff alerts** (2026-09-25, built locally): each
+  (or after 12 h idle). **Staff alerts** (2026-09-25, commit e316e0c; live on the demo): each
   staff member links their own Telegram from the Inbox. They're then messaged
   when a chat they can see needs a person, when a customer writes in a chat
   they handle, or when a new lead is assigned to them. **AI Knowledge** (admin page, `/ai-knowledge`) —
@@ -267,6 +267,24 @@ debugging lives in git history, not here.
 
 ## Incidents worth remembering
 
+- **"No numbers left on the home page" was wrong** (2026-09-25): a regex over
+  the JSX missed "5K+", "4.9/5" and "&lt;1 min". **Check customer-facing copy
+  on the rendered page** (scan `main`'s text), never with a grep of the source.
+- **A deploy shipped a half-edited page** (2026-09-25): `push.sh
+  --build-on-mac` builds from the Mac's working tree *when each buildx step
+  starts* (api first, web later), not from a snapshot. Don't edit code while a
+  push runs, or push again afterwards.
+- **A "failed" deploy was only slow** (2026-09-25): the emulated amd64 build
+  on the 8 GB Mac (Docker has 4 GB, deliberately) can be silent for minutes.
+  `push.sh` now streams (`--progress=plain`). Check the server (containers,
+  logs, `/health`) before assuming a deploy failed.
+- **Admin drawers were cut off below ~1190 px** — the layout's main column
+  lacked `min-w-0` (the horizontal twin of the Inbox `min-h-0` bug). Any
+  flex child holding wide content needs `min-w-0`.
+- **Staff alert missed the lead owner** when the AI saved a lead and asked for
+  a person in the same turn — found by the harness; alerts now use that
+  turn's `leadId`. Harness tip: backdate test messages with
+  `createdAt - interval`, not one shared timestamp (it scrambles "latest").
 - **The Inbox's reply box was invisible** (user on the demo, 2026-09-25: "take over, but cannot
   chat"). A long thread in a fixed-height flex/grid panel grew to its full height (flex/grid
   children default to `min-height: auto`) and pushed the composer below the clipped edge — it

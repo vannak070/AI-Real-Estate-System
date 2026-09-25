@@ -4,359 +4,103 @@
 finished work into `progress.md` (short summary + the *why*), keep only the
 last few items here. Verify any claim against the code before relying on it.
 
-## Where things stand (2026-09-25)
+## Where things stand (2026-09-25, checked against git and the server)
 
-**Ready for the management review.** GitHub (`origin/main` = `2796ea3`,
-2026-09-25, the customer-site honesty check) and the online demo match.
-**Uncommitted on the Mac, not deployed: staff alerts** (Recent work
-00000000). When they go to the demo, the migration applies itself on startup
-(the Dockerfile runs `prisma migrate deploy`). Then check the "Open Telegram →
-waiting → linked" step there with the real bot.
+**Git:** Mac = GitHub (`origin/main` = `f355809`), nothing uncommitted. The
+user commits and pushes on `main` themselves; the agent's shell has **no
+GitHub credentials** — never type credentials.
 
-**The demo: https://demo.yarvorax.com (customer site) +
-https://admin.demo.yarvorax.com (back office)** — DigitalOcean droplet
-`Demo-RealEstate`, **157.245.148.58**, SGP1, $6 plan (1 vCPU / 961 MB / 25 GB),
-Ubuntu 24.04, ufw 22/80/443, 2 GB swap, Docker. Code in `/opt/era`, settings in
-`/opt/era/deploy/.env` (the Mac's `deploy/.env` is the source copy, git-ignored).
-Let's Encrypt HTTPS via Caddy; hidden from Google (`X-Robots-Tag`). The
-**Telegram bot @ERACambodiaAI_bot runs on the demo** (webhook
-`https://demo.yarvorax.com/webhooks/telegram`); its token is commented out in
-the Mac's `.env`, so the local API runs without a bot. Nightly backup at 02:00
-Phnom Penh (`0 19 * * *` UTC) → `/var/backups/era`. DNS at GoDaddy: A records
-`demo`, `admin.demo` → 157.245.148.58; `@`/`www` point at the **Yarvora-X
-droplet 159.223.84.89 = the live yarvorax.com website — never deploy there.**
-**The demo's database is its own copy** (imported from the Mac once): changes in
-the demo's back office stay there; re-running `import-data.sh` would overwrite
-them.
+**The demo runs the current code, staff alerts included** (deployed
+2026-09-25 06:52 UTC; migration `20260925090000_messaging_staff_alerts`
+applied, bot webhook re-set). Still to test there: a staff member clicks
+"Turn on Telegram alerts" in the Inbox → Open Telegram → linked (0 links so
+far).
 
-**Updating the demo:** on the Mac with Docker Desktop running,
-`deploy/push.sh root@157.245.148.58 --build-on-mac` (code only — the demo's
-data, photos and settings are untouched). SSH from this Mac works with the
-user's key; a push takes ~2–3 min. **The Mac has only 8 GB total RAM**,
-Docker Desktop is allocated 4 GB of it (`docker info` to check) — deliberately
-left there, not raised, per the user (2026-09-25): the emulated `linux/amd64`
-build (Apple Silicon → Intel) can sit silent for several minutes on a single
-layer under that little memory and looks hung even when it isn't; `push.sh`
-now passes `--progress=plain` to both `docker buildx build` calls so it
-streams continuously instead. If a push ever looks stuck, that's the known
-cause — let it keep running rather than assuming failure; a fresh
-`docker ps`/`curl https://demo.yarvorax.com/health` on/against the droplet
-confirms whether the previous attempt actually landed before retrying.
+**The demo: https://demo.yarvorax.com + https://admin.demo.yarvorax.com** —
+DigitalOcean droplet `Demo-RealEstate`, **157.245.148.58**, SGP1, $6 plan
+(1 vCPU / 961 MB / 25 GB), Ubuntu 24.04, ufw 22/80/443, 2 GB swap. Code
+`/opt/era`, settings `/opt/era/deploy/.env` (source copy: the Mac's git-ignored
+`deploy/.env`). Caddy + Let's Encrypt; hidden from Google. **Telegram bot
+@ERACambodiaAI_bot runs on the demo** (webhook); the Mac's `.env` has its
+token commented out. Nightly backup 02:00 Phnom Penh → `/var/backups/era`
+(plus one-off content backups there: `about-*.dump`). DNS at GoDaddy: `demo`,
+`admin.demo` → 157.245.148.58. **Never deploy to Yarvora-X (159.223.84.89) —
+the live yarvorax.com site.** The demo's database is its own copy; CMS/content
+edits there are made directly (with a backup), and re-running
+`import-data.sh` would overwrite them.
 
-**Git:** the user commits on `main` themselves most of the time. The agent's
-shell has **no GitHub credentials** — `git push` must be run by the user
-(VS Code / GitHub Desktop, or after `gh auth login`); never type credentials.
+**Updating the demo:** Mac, Docker Desktop running →
+`deploy/push.sh root@157.245.148.58 --build-on-mac` (code only; ~2–5 min).
+The Mac has 8 GB RAM, Docker 4 GB (leave it): the emulated build can be
+silent for minutes — not a failure. **Don't edit code while a push runs**
+(it builds from the live working tree). After a push, check `/health` and
+grep the served bundle for the change.
 
-**Local dev servers:** started from the **Claude app's preview panel**
-(client :5173, admin :5174, api :4000) — don't start them in terminal tabs
-(port clash). Docker Desktop must be running first (Postgres `era-postgres`
-on :5435).
+**Local dev:** servers run from the Claude app's **preview panel** (client
+:5173, admin :5174, api :4000) — never in terminal tabs. Docker Desktop
+first (Postgres `era-postgres` :5435). No bot locally, by design.
 
-## Recent work (full reasoning in `progress.md`)
+## Recent work (details and reasons in `progress.md`)
 
-00000000. **Staff alerts on Telegram (2026-09-25, local, uncommitted)** — so
-   a customer waiting on a person isn't missed while nobody has the Inbox open.
-   - **Linking**: each staff member links their own Telegram from the Inbox
-     header ("Turn on Telegram alerts"). That makes a one-time 15-min code;
-     opening `t.me/<bot>?start=staff_<code>` and pressing Start links the chat.
-     The bot handles `/start staff_…` and `/stopalerts` *before* creating a
-     customer conversation, so staff chats never show in the Inbox. The
-     control also has "Send test" and "Turn off".
-   - **Three triggers**:
-     - The AI's `request_agent` (only when `needsAgent` goes false→true).
-       Goes to everyone who can open the chat.
-     - A customer writing into a staff-handled chat. Handler only, first
-       unread message only.
-     - The 30-min auto hand-back. Goes to everyone who can open the chat,
-       including the previous handler.
-     - Plus a new lead (`crm.lead_created` subscription) → its owner, or
-       managers if unassigned. Idempotent via `messaging_staff_alerts_sent`
-       key `lead:<id>`.
-   - **Who gets them**: Inbox visibility — `crm:read:all`, or the
-     handler/lead owner.
-   - **Where it lives**: `modules/messaging/staff-alerts.ts`; tables
-     `messaging_staff_alert_links` + `messaging_staff_alerts_sent` (migration
-     `20260925090000_messaging_staff_alerts`); new
-     `IdentityApi.listUserAccess`. Router: `messaging.alerts.{me,link,unlink,test}`
-     (crm:read).
-   - **Buttons**: alerts carry an "Open in Inbox"/"Open lead" button to the
-     admin address the staff member linked from (`/inbox?c=`,
-     `/leads?open=`). A localhost/LAN address gets plain text instead
-     (Telegram rejects those buttons).
-   - **Tested** with a throw-away harness (fake Telegram API, stubbed AI, real
-     modules + DB): 20/20. It caught a real bug: the owner missed the alert
-     when the AI saved the lead and asked for a person in the same turn (fixed
-     by alerting with this turn's `leadId`).
-     - Harness gotcha: backdating messages to one timestamp scrambles "latest
-       message" — shift them with `createdAt - interval` instead.
-   - **Admin UI**: the unavailable, linked, test-error and turn-off states were
-     checked locally. The "Open Telegram → waiting" state needs a real bot, so
-     check it on the demo.
-
-0000000. **Honesty check of the other customer pages (2026-09-25, commit
-   2796ea3, pushed; live on the demo — verified by grepping the served
-   bundle)**. Method: scan the rendered `main` text of each page and
-   list dead controls via `__reactProps$…` (a button with no onClick and no
-   `<a>` or form around it). Fixed:
-   - **Property detail**: the dead Share button now works (`ShareButton`:
-     native share sheet on phones, else copies the link, else says to copy
-     it from the address bar). The Favorite heart was removed (no favourites
-     feature exists). "Prime location in X" → "Located in X". "N units" is
-     pluralised. "We reply within 1 business day" (an unkept promise) → "An
-     ERA agent follows up on every enquiry". "Premium Amenities" →
-     "Amenities".
-   - **Stock-photo fallback**: listings with no photos (30) showed an Unsplash
-     house as if it were theirs, on the Properties list, the detail page and
-     "You May Also Like". Now they show the new
-     `components/PropertyImage.tsx` (ERA gradient + logo + "Photos coming
-     soon").
-   - **Properties header**: "Discover 667 premium projects" → "Browse 667
-     properties for sale and rent across Cambodia".
-   - **About → Team**: the dead "View Open Positions" button (no careers
-     page) → "Get in Touch", which opens the Contact tab.
-   - **About → Contact**: the stock map photo → an address panel with an
-     "Open in Google Maps" link (`OFFICE_ADDRESS` const).
-   - **Footer**: "Leading real estate company" (an unverifiable ranking) →
-     "Buy, sell and rent property across Cambodia with ERA's local team…".
-   - `/chat`: nothing to fix.
-
-   Verified: desktop + 375 px (no sideways scroll); Share showed "Link
-   copied" on a real click and the fallback text on a scripted one;
-   typecheck/lint clean. **Still needs ERA's confirmation, not code** (hardcoded
-   Figma values, in the footer + About → Contact):
-   - Phones +855 23 123 456 and +855 12 345 678 (the second looks like a
-     placeholder).
-   - Emails info@ / sales@eracambodia.com.
-   - Address "Street 240, BKK1" (it now drives the Maps link too).
-   - Business hours Mon–Fri 8–6, Sat 9–5.
-
-   The About page's CMS text (hero "Leading the future…", "pioneering",
-   "revolutionizing") is editable in the admin's Manage About page; it is
-   flagged for ERA, not changed.
-
-000000. **Home page: invented figures removed (2026-09-25, live on the demo
-   since 06:17 UTC — verified by grepping the served bundle: final
-   `min-h-[22rem]` hero, no stock photo, none of the old claims)** — user asked to make the "Proven Results & Performance"
-   band "like About page". Its four template stats (1,247+ leads qualified,
-   94.5% AI accuracy, <1 min response, 40% conversion boost) were never real;
-   replaced with four non-numeric highlights in the About page's pattern
-   (`HIGHLIGHTS` const in `HomePage.tsx`: Real Listings Only / Answers
-   Anytime / Matched to Your Needs / Real People on Hand — each a true
-   statement about the platform), band retitled "What You Can Count On" (not
-   "Why Choose ERA Cambodia" — the features section above already uses that
-   label). Then, on the user's instruction ("rewrite them to match what the
-   site does"), **every claim on the home page was checked against the code**
-   and rewritten: hero "5K+ Happy Clients" + "4.9/5" stars → three true
-   points; "Average response <1 min" (×2) → "Online 24/7 — website &
-   Telegram"; Data-Driven Insights (market analysis, price predictions — not
-   built) → "Clear Property Details" (prices, sizes, availability, filters);
-   "Secure payment processing" (no payments exist) → "Your details go only to
-   ERA's team"; Automated Follow-ups (reminders, auto-scheduling — not built)
-   → "Easy Viewing Requests" (AI saves the request, an agent calls — matches
-   the assistant prompt); "Multi-language support" moved to the AI card as
-   "Replies in Khmer, English or Chinese" (the prompt's rule; consultants'
-   languages unknown); "Trusted by thousands" / "4.9/5 Rating" → "Backed by
-   ERA Cambodia's local sales team" + true badges; "verified inventory" →
-   "current listings". **Checked by scanning the rendered page text for
-   digits** (the first pass used a code grep, missed "5K+", "4.9/5",
-   "&lt;1 min", and wrongly told the user the page had no numbers — lesson:
-   verify copy on the rendered page, not with a regex over JSX). Only "24/7"
-   and the "3 simple steps" numbering remain. **Open questions for the
-   user**: (1) the hero image is an Unsplash stock photo with alt text
-   "Luxury Property in Phnom Penh" — the no-stand-in-photos rule says replace
-   with a real ERA photo or an honest graphic; (2) "Real ERA listings" /
-   "from ERA's own inventory" — 592 of the 667 demo listings were scraped from
-   pointerasia.com (a competing brokerage), so the claim is only true once
-   the inventory is ERA's own. **(1) done on the user's request**: the hero
-   photo is now an ERA brand panel (white logo `04fbd…png` — the dark-
-   background variant the About page's brand panel also uses — tagline, chips
-   for property types that exist in Inventory, the "AI Assistant Ready" card).
-   First version used a fixed `aspect-[5/4]` with the card absolutely
-   positioned on top: fine at 1089 px, but at 375 px the panel was 274 px
-   tall, the logo was clipped and the chips sat under the card — caught only
-   by measuring at phone width. Now the content sets the height (`min-h`
-   for desktop weight) and the card is in the flow. **Deploy gotcha seen
-   here**: `push.sh --build-on-mac` builds from the Mac's working tree *when
-   each `buildx build` starts* (api first, web after), not from a snapshot at
-   launch — editing files while a push runs can ship a half-finished version.
-   Don't edit client code during a push, or push again afterwards.
-00000. **Admin click-through of the last untested screens (2026-09-25,
-   live on the demo — pushed 06:05 UTC, commit `82c7724`)**. Worked, verified
-   against Postgres and the customer site:
-   - **Campaign ad link end to end**: new campaign → its
-     `/?utm_campaign=<code>` link → visitor enquiry on a property → the
-     Lead carries that `campaignId`, Marketing shows Leads 1 / cost-per-lead
-     $30; date validation; delete refused while a lead is linked, allowed
-     after. (Telegram link hidden locally — no bot on the Mac, by design.)
-   - **Bulk Publish / Make private**: exactly the selected rows change; a
-     private listing is "Property not found" by direct link and absent from
-     `inventory.public.projects.list`; publishing restores it.
-   - **Add/Edit property form**: every field saves; new property defaults to
-     Private and is invisible to customers; Edit pre-fills everything;
-     blanked fields save as `null`, untouched ones are kept.
-   Fixed (admin, typecheck clean, verified live):
-   - `AdminLayout.tsx` main column lacked `min-w-0` → below ~1190 px window
-     width every page with a wide table scrolled sideways and **drawers were
-     cut off on the right** (Campaign drawer lost Status/Spend/End date).
-     Same lesson as the Inbox `min-h-0` incident, horizontal this time.
-   - `CampaignsPage.tsx` copy button: `clipboard.writeText` failure (refused,
-     or absent on plain-http LAN addresses) was an unhandled rejection with
-     no feedback → now selects the link + shows "press ⌘C / Ctrl+C"; button
-     got an `aria-label`.
-   - Wording: "1 campaigns" → singular; Sales/Rent subtitles said
-     "projects" → "properties" (Projects page still says "projects").
-   Not fixed / for the user:
-   - **No way to delete a property** (no API procedure, no UI) — a mistaken
-     one can only be made Private. Possibly deliberate; ask before adding.
-   - Two unexplained HTTP 500s appeared in the admin tab's console during the
-     Marketing-page steps; couldn't reproduce with the same steps (all 200).
-     The local API belongs to another session (watch mode), so its logs
-     weren't readable — likely a restart mid-request, unconfirmed. Watch for
-     it on the demo.
-   - `sales.reservations.list` polls every 4 s wherever it's mounted
-     (including property pages) — by design for the reservation saga.
-0000. **"Failed" deploy was actually a slow build, not a failure
-   (2026-09-25)** — user reported `deploy/push.sh --build-on-mac` failing;
-   investigated live (SSH to the droplet, checked `deploy/docker-compose.yml`
-   — not the unrelated root `docker-compose.yml`, which is dev-Postgres-only
-   and has no `api`/`web` service, a dead end I hit first): `era-api-1`/
-   `era-web-1`/`era-postgres-1` were all already up, freshly built minutes
-   earlier, migrations applied, no errors in `docker compose logs api`, both
-   sites returning 200, disk at 28%. **The deploy had actually succeeded —
-   nothing was actually broken.** Root cause of the *appearance* of failure:
-   `docker buildx build --platform linux/amd64` cross-builds for Intel via
-   emulation on this Apple-Silicon Mac, and Docker Desktop's VM only has
-   4 GB RAM (the Mac has 8 GB total) — a single layer (`pnpm install`/build)
-   can run silent for minutes with the default collapsing terminal UI,
-   reading as hung. Fixed by adding `--progress=plain` to both `buildx
-   build` calls in `push.sh` (streams continuously instead). Asked the user
-   about raising Docker's memory allocation given the 8 GB ceiling — they
-   chose to leave it at 4 GB (correctly: this machine can't spare more
-   without risking system-wide swapping during a build). **Lesson:** when a
-   deploy "fails" with no pasted error, check the actual server state first
-   (containers, logs, live health check) before assuming the failure is
-   real — `set -euo pipefail` in `push.sh` means a truly failed run would
-   leave stale/missing images, which this run didn't.
-000. **About page wording (2026-09-25, live on the demo)** — user direction:
-   **no numbers on the About page; describe ERA's experience in general
-   terms; mention the CEO.** paragraph2 (CMS) is now "Under the leadership
-   of Chairman and CEO Kungkea Khorn, ERA Cambodia has built a trusted
-   reputation…" (local DB, demo DB — backup
-   `/var/backups/era/about-content-before-paragraph2.dump` — and
-   `prisma/seed-about.ts`). The stats row (template figures 5 / 1,247+ /
-   94.5% / 10) was replaced in `AboutPage.tsx` by four non-numeric
-   highlights (Trusted Local Experts, Wide Property Portfolio, 24/7 AI
-   Assistant, End-to-End Support); the `stat*` CMS fields are no longer
-   shown anywhere (still editable in Manage About). **Template content
-   cleaned up (local only, not yet on the demo):** History = four undated
-   stages (Today / Going Digital / Growing Together / The Beginning — `year`
-   is free text; admin placeholder now "Year or stage"), the template's
-   unverifiable dates/figures dropped; the four made-up Awards deleted
-   (local backup in the agent scratchpad) and the Awards section hidden
-   everywhere while none exist (`app/useAboutSections.ts` for header /
-   mobile / footer, tab filter + `?tab=awards` → overview on the page);
-   the Unsplash "ERA Cambodia Office" photo replaced by an ERA brand panel.
-   `seed-about.ts` matches (no awards seeded). **Verified on the demo
-   2026-09-25**: `settings_about_milestones` holds the same four undated
-   stages as local and `settings_about_awards` is empty on both — nothing
-   left to apply there.
-00. **About menu made usable (2026-09-25, live on the demo)** —
-   every About menu item (and every footer "About ERA" link) pointed at plain
-   `/about`, so "Our History"/"Our Team"/… just showed Company Overview; the
-   hover menu also stayed open over the page after a click and snapped shut
-   crossing the `mt-2` gap. Now: `app/aboutSections.ts` is the single list
-   (page tabs, header menu, mobile menu, footer); the open section is in the
-   URL (`/about?tab=history`, `useSearchParams`, tab clicks `replace`), with a
-   scroll-into-view when switched from outside the tabs; header menu =
-   About link + separate chevron button (touch/keyboard, `aria-expanded`),
-   hover-intent close (180 ms), `pt-2` bridge instead of a margin gap, closes
-   on item click / navigation / Esc / outside click, current section
-   highlighted; mobile menu lists the sections. Verified with real DOM events
-   (desktop + 375 px). Noticed: the About Overview text (CMS) still says "a
-   portfolio of 5 premium projects" and "10 sales professionals".
-0. **Footer + Odoo wording (2026-09-25, live on the demo)** — footer bottom
-   row: "© 2026 ERA Cambodia · Powered by AI Agent" left, Facebook / Call
-   (tel:+85523123456) / Telegram (fixed: was the wrong `@ERAcambodia_bot`,
-   now `@ERACambodiaAI_bot`) icons right; "Connect With Us" block and
-   Messenger/LinkedIn/WhatsApp icons removed. All "Odoo" wording removed from
-   the customer site (footer, HomePage ×3, AboutPage highlight → "Integrated
-   CRM & Sales") and from the About CMS content (paragraph1, 2024 milestone,
-   2024 award) — edited in the local DB, `prisma/seed-about.ts`, **and the
-   demo DB directly** (backup of those 3 tables before the edit:
-   `/var/backups/era/about-before-odoo-edit.dump` on the demo). User still to
-   confirm the real ERA phone number and Facebook page URL.
-1. **Returning customers aren't re-asked for details** — the assistant adds
-   the lead's saved contact (`onFileNote`, via `CrmApi.listLeadSummaries`) to
-   the per-visitor prompt block for Telegram (`leadId`) and website
-   (`leadToken`) chats. Verified both; live on the demo.
-2. **Inbox reply box fix** (`min-h-0` in the flex/grid panel) — the user
-   took over a chat on the demo and couldn't reply. Live.
-3. **Website chat polish** (`ChatPage.tsx`): safe formatter, compact photo
-   cards, starter buttons, New chat, IME-safe Enter, no stock photos; the
-   website prompt summarises instead of listing. Live.
-4. **Deployment** (`Dockerfile`, `deploy/`, `deploy/README.md`), the demo
-   set-up above, `push.sh --build-on-mac` + `--force-recreate` + prune.
-5. **Inbox + human handoff + auto hand-back** (`modules/messaging/inbox.ts`,
-   `/inbox`), `request_agent` tool.
+1. **Staff alerts on Telegram** (live on the demo) —
+   `modules/messaging/staff-alerts.ts`; staff link their own Telegram from the
+   Inbox; alerts for "customer wants a person", a customer writing in a chat
+   they handle, the 30-min auto hand-back, and a new lead assigned to them.
+   Harness 20/20. Only the real "Open Telegram → linked" step is untested.
+2. **Honesty pass on the customer site** (live): home page figures and
+   claims rewritten to what the site does; stock photos replaced by ERA brand
+   panels / "Photos coming soon"; Share works, Favorite removed; wording
+   fixes on property, Properties, About → Team/Contact, footer.
+3. **About page** (live): CEO-led paragraph, no numbers; four highlights
+   instead of the template stats; History as four undated stages; made-up
+   Awards deleted and the section hidden until real ones exist; menu items
+   open their own section (`/about?tab=…`).
+4. **Admin click-through** (live): campaign ad link → lead attribution, bulk
+   Publish/Private, Add/Edit property form all verified; fixed drawers cut off
+   (`min-w-0`) and the campaign copy button.
+5. **Footer**: "© 2026 ERA Cambodia · Powered by AI Agent", Facebook / Call /
+   Telegram icons; all "Odoo" wording removed site-wide.
 
 ## Checks still to do
 
+- **Link a staff Telegram on the demo** and send a test alert (see above).
 - **Management review feedback** — collect and work through it.
-- **Contact details (footer + About → Contact)** — the user hasn't yet
-  confirmed them; all came from the Figma export, not from ERA:
-  - +855 23 123 456 (the Call icon, also the header/Contact Info number) and
-    +855 12 345 678.
-  - info@ / sales@eracambodia.com.
-  - Street 240, BKK1.
-  - The business hours.
-  - facebook.com/eracambodia.
-- The user has now used the Inbox on the demo (take over, reply). **AI
-  Knowledge page clicked through locally 2026-09-25**: suggested-topic
-  prefill, create, edit, Active→Hidden (counter drops to 0, and
-  `promptSection()` confirmed the AI no longer receives it), two-click
-  delete — all correct, no console errors; the 40k cap was proven
-  server-side (5th 8,000-char entry rejected with the "knowledge is full"
-  message; a hidden one still saves). Test rows removed. **Campaign links,
-  bulk Publish/Private and the Add/Edit property form were clicked through
-  too (2026-09-25, local)** — see Recent work 00000. Every admin screen on the
-  earlier "never clicked" list has now been exercised at least once.
+- **ERA must confirm the contact details** (all from the Figma export): phones
+  +855 23 123 456 and +855 12 345 678 (the second looks like a placeholder),
+  info@ / sales@eracambodia.com, "Street 240, BKK1" (drives the Maps link),
+  business hours, facebook.com/eracambodia.
+- **"Real ERA listings" claims**: 592 of the 667 demo listings were scraped
+  from pointerasia.com (another brokerage) — only true once the inventory is
+  ERA's own.
+- CMS wording still from the template ("Leading the future…", "pioneering",
+  "revolutionizing") — editable in Manage About; flagged for ERA.
 
 ## Known open items
 
-- **Rotate the exposed secrets before production**: the demo's Anthropic key
-  and the Telegram bot token were pasted into chat (the demo uses them
-  knowingly); the Mac's older Anthropic key still works — delete it in the
-  console. Telegram: `/revoke` in @BotFather → new token into the server's
-  `deploy/.env` → `push.sh`.
-- **AI Knowledge is empty** — ERA staff need to write answers (ideally before
-  the review).
-- **Listing data gaps**: 30 published listings have no photos; amenities
-  empty on all 667; 217 without bedroom data; no description field.
-- **AI can still claim a save it never attempted** — prompt rule only
-  (rejected saves are a server guarantee). Re-test whenever the prompt changes.
-- **Inbox gaps**: website chats aren't stored (not in the Inbox); customer
-  photos/stickers show as a placeholder; visibility filtered in code over the
-  latest 200 conversations; no push/sound alert, only the badge.
-- **Single-instance assumptions**: chat rate limiter, Telegram photo
-  `file_id` cache and card→property map are in memory.
-- **No automated tests** (`pnpm test` is empty); every check so far was a
-  throw-away harness script.
-- **Name search** misses spelling variants / run-together words;
-  `LOCATION_ALIASES` covers only common Phnom Penh areas + Sihanoukville.
-- **Customer site fetches the full catalog** (fine at 667 listings).
-- **Decorative UI** on the customer site: Share was wired and Favorite removed
-  (Recent work 0000000). Only the unused `featured` field remains.
-- **`ImageGallery.tsx` file-picker → crop flow** untested end-to-end.
-- **`DRAFT`/`PENDING_SIGNATURE` contract statuses** unused.
-- **About-page team members** have no real photos.
+- **Rotate the exposed secrets before production** (the demo's Anthropic key
+  and the Telegram token were pasted into chat; the Mac's older Anthropic key
+  still works — delete it).
+- **AI Knowledge is empty** — ERA staff need to write answers.
+- **Listing data gaps**: 30 listings without photos; amenities empty on all
+  667; 217 without bedroom data; no description field.
+- **No way to delete a property** (only make it Private) — ask before adding.
+- **AI can still claim a save it never attempted** (prompt rule only).
+- **Inbox gaps**: website chats aren't stored; customer photos show as a
+  placeholder; visibility filtered in code over the latest 200 conversations.
+- **Single-instance assumptions**: rate limiter, Telegram caches in memory.
+- **No automated tests** — every check so far was a throw-away harness.
+- Name search misses spelling variants; `LOCATION_ALIASES` covers only
+  common areas. Customer site loads the full catalog (fine at 667).
+- Unused: `featured` flag, `DRAFT`/`PENDING_SIGNATURE` contract statuses.
+- `ImageGallery.tsx` file-picker → crop flow untested; team members have no
+  real photos; two unexplained admin HTTP 500s seen once locally (not
+  reproduced) — watch on the demo.
 
 ## If asked "what's next" with no other steer
 
-1. Work through the management review's feedback.
-2. Rotate the secrets; staff write AI Knowledge; fill listing data gaps.
-3. ~~Staff alerts~~ — built (Recent work 00000000); staff must link their
-   Telegram from the Inbox on the demo.
-4. **Facebook Messenger, then WhatsApp** on the `messaging` module (Meta app
-   review is slow — start the paperwork early; a privacy-policy page on the
-   client site is required).
-5. Automated tests from the harness patterns in `techContext.md`.
+1. Link a staff Telegram on the demo (Inbox → Turn on Telegram alerts).
+2. Management feedback; ERA confirms contact details; staff write AI
+   Knowledge; fill listing data gaps; rotate secrets.
+3. **Facebook Messenger, then WhatsApp** on the `messaging` module (start
+   Meta's app review early; needs a privacy-policy page).
+4. Automated tests from the harness patterns in `techContext.md`.
