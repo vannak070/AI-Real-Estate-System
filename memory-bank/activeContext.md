@@ -50,8 +50,9 @@ on :5435).
 
 ## Recent work (full reasoning in `progress.md`)
 
-000000. **Home page: invented figures removed (2026-09-25, local only —
-   needs a push)** — user asked to make the "Proven Results & Performance"
+000000. **Home page: invented figures removed (2026-09-25, live on the demo
+   since 06:17 UTC — verified by grepping the served bundle: final
+   `min-h-[22rem]` hero, no stock photo, none of the old claims)** — user asked to make the "Proven Results & Performance"
    band "like About page". Its four template stats (1,247+ leads qualified,
    94.5% AI accuracy, <1 min response, 40% conversion boost) were never real;
    replaced with four non-numeric highlights in the About page's pattern
@@ -82,7 +83,19 @@ on :5435).
    with a real ERA photo or an honest graphic; (2) "Real ERA listings" /
    "from ERA's own inventory" — 592 of the 667 demo listings were scraped from
    pointerasia.com (a competing brokerage), so the claim is only true once
-   the inventory is ERA's own.
+   the inventory is ERA's own. **(1) done on the user's request**: the hero
+   photo is now an ERA brand panel (white logo `04fbd…png` — the dark-
+   background variant the About page's brand panel also uses — tagline, chips
+   for property types that exist in Inventory, the "AI Assistant Ready" card).
+   First version used a fixed `aspect-[5/4]` with the card absolutely
+   positioned on top: fine at 1089 px, but at 375 px the panel was 274 px
+   tall, the logo was clipped and the chips sat under the card — caught only
+   by measuring at phone width. Now the content sets the height (`min-h`
+   for desktop weight) and the card is in the flow. **Deploy gotcha seen
+   here**: `push.sh --build-on-mac` builds from the Mac's working tree *when
+   each `buildx build` starts* (api first, web after), not from a snapshot at
+   launch — editing files while a push runs can ship a half-finished version.
+   Don't edit client code during a push, or push again afterwards.
 00000. **Admin click-through of the last untested screens (2026-09-25,
    live on the demo — pushed 06:05 UTC, commit `82c7724`)**. Worked, verified
    against Postgres and the customer site:

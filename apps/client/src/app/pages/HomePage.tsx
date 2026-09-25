@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { MessageSquare, Zap, Search, Brain, Building2, Bot, CheckCircle, ArrowRight, Shield, Clock, Users } from "lucide-react";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import eraLogo from "figma:asset/04fbd52ef60da91b44edcb17b864e7abb90acda5.png";
 
 /** Same approach as the About page's highlights: describe what ERA offers, never invented figures. */
 const HIGHLIGHTS = [
@@ -76,16 +76,27 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Right Content - Hero Image */}
+            {/* Right Content — ERA brand panel. Replaced a stock photo captioned as a Phnom Penh property
+                (it wasn't one): a real ERA photo or an honest graphic, never a stand-in. */}
             <div className="relative">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-                <ImageWithFallback 
-                  src="https://images.unsplash.com/photo-1613977257592-4871e5fcd7c4?w=800&h=600&fit=crop"
-                  alt="Luxury Property in Phnom Penh"
-                  className="w-full h-auto"
-                />
-                {/* Floating Card */}
-                <div className="absolute bottom-6 left-6 right-6 bg-white rounded-xl p-4 shadow-xl">
+              {/* Height comes from the content (min-h only for visual weight on desktop) — a fixed aspect
+                  ratio clipped the logo and pushed the chips under the card on phones. */}
+              <div className="relative flex min-h-[22rem] flex-col gap-6 rounded-2xl overflow-hidden p-6 shadow-2xl border border-white/15 bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-sm">
+                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#EF2D2C]/30 blur-3xl"></div>
+                <div className="absolute -bottom-20 -left-12 h-56 w-56 rounded-full bg-[#001F5B]/70 blur-3xl"></div>
+                <div className="relative flex flex-1 flex-col items-center justify-center px-2 pt-4 text-center text-white">
+                  <img src={eraLogo} alt="ERA Cambodia" className="h-24 w-auto sm:h-28" />
+                  <p className="mt-5 text-xl font-bold sm:text-2xl">Your trusted real estate partner in Cambodia</p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    {['Condos', 'Villas', 'Houses', 'Land', 'Commercial'].map((type) => (
+                      <span key={type} className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium">
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                {/* AI status card — in the flow at the bottom, so it can never cover the content above */}
+                <div className="relative bg-white rounded-xl p-4 shadow-xl">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 rounded-lg bg-[#EF2D2C]/10 flex items-center justify-center">
