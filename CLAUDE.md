@@ -62,6 +62,11 @@ pnpm build          # turbo → vite build for every app
 pnpm test           # turbo → (no test runner wired yet)
 ```
 
+**Production** runs from `Dockerfile` + `deploy/` (one VPS: postgres, api, Caddy serving both
+SPAs and proxying `/trpc`, `/uploads`, `/webhooks` on the same address). The user's step-by-step
+guide is `deploy/README.md`; updates are `deploy/push.sh root@<ip>`. Behind Caddy the API needs
+`TRUST_PROXY=true` (real visitor IPs); `COOKIE_SECURE=true` only once there's HTTPS.
+
 Task running goes through **Turborepo** (`turbo.json`). CI (`.github/workflows/ci.yml`)
 runs `pnpm install → prisma:generate → turbo run typecheck lint build`.
 

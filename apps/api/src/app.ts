@@ -21,7 +21,7 @@ export async function buildApp() {
   const bus = createEventBus(config, logger);
   await bus.start();
 
-  const app = createHttpServer(logger);
+  const app = createHttpServer(logger, { trustProxy: config.trustProxy });
   const apis: Partial<ModuleApis> = {};
 
   // Lazy sibling-API resolution: a module may reference `ctx.modules.x` at call

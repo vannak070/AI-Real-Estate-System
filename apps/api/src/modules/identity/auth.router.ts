@@ -22,6 +22,7 @@ export const authRouter = router({
       ctx.res.setCookie(SESSION_COOKIE, token, {
         httpOnly: true,
         sameSite: 'lax',
+        secure: ctx.config.cookieSecure,
         path: '/',
         expires: expiresAt,
       });

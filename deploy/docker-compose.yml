@@ -1,0 +1,68 @@
+# Production stack — one server runs everything. See deploy/README.md.
+#   docker compose -f deploy/docker-compose.yml up -d --build
+# Settings come from deploy/.env (copy deploy/.env.example; never commit it).
+
+name: era
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: era
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: era
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No published port — only the api container can reach the database.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U era -d era']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      target: api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://era:${POSTGRES_PASSWORD}@postgres:5432/era?schema=public
+      NODE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: '4000'
+      TRUST_PROXY: 'true'
+    volumes:
+      # Property/team photos — kept outside the container so rebuilds never lose them.
+      - uploads:/app/apps/api/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      target: web
+      args:
+        VITE_CLIENT_URL: ${CLIENT_URL:?Set CLIENT_URL in deploy/.env}
+    restart: unless-stopped
+    environment:
+      CLIENT_SITE: ${CLIENT_SITE:-:80}
+      ADMIN_SITE: ${ADMIN_SITE:-:8080}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '8080:8080'
+    volumes:
+      # HTTPS certificates (once a domain is set) — must survive restarts.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

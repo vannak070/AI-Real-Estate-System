@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import type { Logger } from '@era/shared';
 
-export function createHttpServer(logger: Logger): FastifyInstance {
+export function createHttpServer(logger: Logger, options: { trustProxy?: boolean } = {}): FastifyInstance {
   // find-my-way's default maxParamLength (100) truncates the single route
   // param tRPC's fastify adapter captures the whole comma-joined batch path
   // into — five-plus procedures batched together in one request (routine once
@@ -13,7 +13,13 @@ export function createHttpServer(logger: Logger): FastifyInstance {
   // travel as a base64 data URL inside a tRPC JSON body (see platform/
   // uploads.ts) — base64 inflates the ~5MB the client-side cropper targets
   // by ~33%, so 1MB would reject every real photo.
-  const app = Fastify({ logger: false, maxParamLength: 2000, bodyLimit: 10 * 1024 * 1024 });
+  const app = Fastify({
+    logger: false,
+    maxParamLength: 2000,
+    bodyLimit: 10 * 1024 * 1024,
+    // Production runs behind Caddy: without this `req.ip` is always the proxy's address.
+    trustProxy: options.trustProxy ?? false,
+  });
 
   app.get('/health', async () => ({ status: 'ok' }));
 

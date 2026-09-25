@@ -7,6 +7,18 @@ const schema = z.object({
   databaseUrl: z.string().min(1, 'DATABASE_URL is required'),
   eventBus: z.enum(['inprocess', 'nats']).default('inprocess'),
   natsUrl: z.string().default('nats://localhost:4222'),
+  /** Behind a reverse proxy (production: Caddy): read the visitor's real IP from X-Forwarded-For.
+   * Without it every visitor shares the proxy's IP — and one per-IP chat rate limit. */
+  trustProxy: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
+  /** Session cookie only over HTTPS. Turn on as soon as the site has a domain + HTTPS; must stay
+   * off on plain HTTP (the browser would drop the cookie and nobody could sign in). */
+  cookieSecure: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
   /** Browser origins allowed to call the API with credentials (cookies). */
   corsOrigins: z
     .string()
@@ -50,6 +62,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     eventBus: env.EVENT_BUS,
     natsUrl: env.NATS_URL,
     corsOrigins: env.CORS_ORIGINS,
+    trustProxy: env.TRUST_PROXY,
+    cookieSecure: env.COOKIE_SECURE,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     chatTokenSecret: env.CHAT_TOKEN_SECRET,
     telegramBotToken: env.TELEGRAM_BOT_TOKEN || undefined,

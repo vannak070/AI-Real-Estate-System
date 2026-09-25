@@ -1,0 +1,36 @@
+# Caddy serves both websites and forwards API calls to the "api" container.
+# Site addresses come from deploy/.env:
+#   no domain yet →  CLIENT_SITE=:80        ADMIN_SITE=:8080        (plain HTTP on the server's IP)
+#   with a domain →  CLIENT_SITE=www.example.com  ADMIN_SITE=admin.example.com
+#                    (Caddy then gets and renews HTTPS certificates by itself)
+
+(api) {
+	# Everything the websites ask the backend for, on their own address — no CORS, one cookie domain.
+	@backend path /trpc/* /uploads/* /health /webhooks/*
+	handle @backend {
+		reverse_proxy api:4000
+	}
+}
+
+(spa) {
+	encode gzip zstd
+	# Hashed build assets never change — cache them hard; index.html always revalidates.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+{$CLIENT_SITE} {
+	import api
+	root * /srv/client
+	import spa
+}
+
+{$ADMIN_SITE} {
+	import api
+	root * /srv/admin
+	import spa
+}

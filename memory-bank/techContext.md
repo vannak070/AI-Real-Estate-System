@@ -24,6 +24,16 @@
   call is logged as `assistant.usage`. Telegram via plain `fetch` to the Bot
   API (`modules/messaging/telegram.ts`, no SDK).
 
+## Production
+
+See `deploy/README.md` (user guide) and CLAUDE.md. Production settings live in `deploy/.env` on the
+server (git-ignored, never overwritten by `push.sh`), including `TRUST_PROXY`, `COOKIE_SECURE`,
+`CORS_ORIGINS`, `CLIENT_SITE`/`ADMIN_SITE` (Caddy addresses), `POSTGRES_PASSWORD`. To rehearse the
+stack locally: copy `deploy/docker-compose.yml` with the host ports changed (e.g. 18080/18081, no
+443), a throwaway `deploy/.env`, `docker compose -p era-rehearsal -f <copy> up -d --build`, then
+`COMPOSE="docker compose -p era-rehearsal -f <copy>" deploy/import-data.sh`; tear down with
+`down -v --rmi local` and delete the copy, `deploy/.env` and `deploy/data`.
+
 ## Environment variables (`.env` at the repo root, git-ignored)
 
 Required: `DATABASE_URL`. Optional — the API starts without any of them:

@@ -13,3 +13,7 @@ coverage/
 # Locally-uploaded images (apps/api/src/platform/uploads.ts) — not source, don't commit
 apps/api/uploads/*
 !apps/api/uploads/.gitkeep
+
+# Production data exports/backups (deploy/) — contain customer data, never commit
+deploy/data/
+deploy/backups/

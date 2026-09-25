@@ -24,6 +24,29 @@ process may run (port :4000, one Telegram poller).
 
 ## Recent work (newest first — full reasoning in `progress.md`)
 
+000. **Production deployment kit (2026-09-25; rehearsed end to end on the
+   Mac, not yet on a real server)** — user chose: one cloud VPS in
+   Singapore, **IP address first (no domain yet)**, user runs the commands
+   with step-by-step guidance. `Dockerfile` (targets `api` = migrate deploy
+   + `node --import tsx`, `web` = Caddy with both SPA builds), `deploy/`:
+   `docker-compose.yml` (postgres with no published port, api, web on
+   80/443/8080; volumes pgdata/uploads/caddy_data), `Caddyfile` (per-site
+   `/trpc /uploads /health /webhooks` → api, SPA fallback; site addresses
+   from env: `:80`/`:8080` now, domains later = automatic HTTPS),
+   `.env.example`, `push.sh` (rsync code only + `up -d --build`),
+   `export-local-data.sh`, `import-data.sh` (pg_restore --clean + photo
+   volume), `backup.sh` (nightly cron, 14 d db / 7 d photos), `README.md`
+   (the user's guide). Code: `TRUST_PROXY` (Fastify `trustProxy` — without
+   it every visitor shares Caddy's IP and one per-IP chat rate limit),
+   `COOKIE_SECURE` (session cookie `secure`; must stay false on plain HTTP),
+   SPAs accept `VITE_API_BASE_URL=same-origin`. Rehearsal: built both
+   images (~70 s), imported the real data (counts identical: 667 projects,
+   46 leads, 14 users, 20 migrations, 682 photo files), customer site +
+   photos + AI chat through Caddy, foreign-origin CORS refused, db port not
+   published, admin deep links served; rehearsal containers/volumes/data
+   deleted. **Next:** user creates the droplet and follows deploy/README.md;
+   then remove `TELEGRAM_BOT_TOKEN` from the laptop's `.env` (one poller per
+   token).
 00. **Inbox auto hand-back (2026-09-25; verified with a fake clock, UI hint
    not yet seen signed-in)** — `inbox.sweep()` runs every 60 s (module
    `start`/`stop`): a staff-handled chat whose latest message is the

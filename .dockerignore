@@ -1,0 +1,17 @@
+# Keep the Docker build context small and free of secrets/local data.
+**/node_modules
+**/dist
+**/.turbo
+**/*.tsbuildinfo
+.git
+.env
+**/.env
+**/.env.local
+apps/api/uploads
+deploy/backups
+deploy/data
+*.dump
+*.tgz
+.DS_Store
+memory-bank
+claude
