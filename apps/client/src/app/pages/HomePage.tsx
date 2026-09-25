@@ -2,6 +2,14 @@ import { Link } from "react-router";
 import { MessageSquare, Zap, TrendingUp, Brain, Building2, Bot, CheckCircle, ArrowRight, Star, Shield, Clock, Users } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
+/** Same approach as the About page's highlights: describe what ERA offers, never invented figures. */
+const HIGHLIGHTS = [
+  { title: 'Real Listings Only', text: "Every property comes from ERA's own up-to-date inventory", Icon: Building2 },
+  { title: 'Answers Anytime', text: 'Our AI assistant replies 24/7 on the website and Telegram', Icon: MessageSquare },
+  { title: 'Matched to Your Needs', text: 'Search by budget, area, size and number of bedrooms', Icon: Brain },
+  { title: 'Real People on Hand', text: 'An ERA consultant takes over whenever you want a person', Icon: Users },
+];
+
 export function HomePage() {
   return (
     <div>
@@ -170,7 +178,7 @@ export function HomePage() {
                 </li>
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>94.5% matching accuracy</span>
+                  <span>Matches by budget, area & size</span>
                 </li>
               </ul>
             </div>
@@ -212,7 +220,7 @@ export function HomePage() {
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
-                  <span>100% verified listings</span>
+                  <span>Listings from ERA's own inventory</span>
                 </li>
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
                   <CheckCircle className="w-4 h-4 text-[#EF2D2C]" />
@@ -253,7 +261,7 @@ export function HomePage() {
               </div>
               <h3 className="text-xl font-bold mb-3 text-center" style={{ color: '#001F5B' }}>Expert Sales Team</h3>
               <p className="text-gray-600 mb-3 text-center text-sm">
-                Our 10 experienced sales professionals are ready to assist you, backed by AI insights.
+                Our experienced sales consultants are ready to assist you, backed by AI insights.
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2 text-sm text-gray-600">
@@ -270,7 +278,7 @@ export function HomePage() {
         </div>
       </section>
       
-      {/* Stats Section - Redesigned */}
+      {/* Why ERA — highlights, no figures on purpose (the old template stats were invented). */}
       <section className="relative py-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#001F5B] to-[#8B0A1C]"></div>
         <div className="absolute inset-0 opacity-10" style={{ 
@@ -280,42 +288,26 @@ export function HomePage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-              Proven Results & Performance
+              What You Can Count On
             </h2>
             <p className="text-xl text-gray-300">
-              Real numbers from our AI-powered platform
+              Local property experts, real listings, and an AI assistant that's always on
             </p>
           </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-5xl lg:text-6xl font-bold mb-2 bg-gradient-to-r from-[#EF2D2C] to-white bg-clip-text text-transparent">
-                1,247+
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {HIGHLIGHTS.map(({ title, text, Icon }) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm transition hover:bg-white/10"
+              >
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#EF2D2C] to-[#8B0A1C] shadow-lg">
+                  <Icon className="h-7 w-7 text-white" />
+                </div>
+                <div className="text-lg font-bold text-white">{title}</div>
+                <div className="mt-2 text-sm text-gray-300">{text}</div>
               </div>
-              <div className="text-gray-300 font-medium">Leads Qualified</div>
-              <div className="text-sm text-gray-400 mt-1">by AI agents</div>
-            </div>
-            <div className="text-center">
-              <div className="text-5xl lg:text-6xl font-bold mb-2 bg-gradient-to-r from-[#EF2D2C] to-white bg-clip-text text-transparent">
-                94.5%
-              </div>
-              <div className="text-gray-300 font-medium">AI Accuracy</div>
-              <div className="text-sm text-gray-400 mt-1">matching rate</div>
-            </div>
-            <div className="text-center">
-              <div className="text-5xl lg:text-6xl font-bold mb-2 bg-gradient-to-r from-[#EF2D2C] to-white bg-clip-text text-transparent">
-                &lt;1min
-              </div>
-              <div className="text-gray-300 font-medium">Response Time</div>
-              <div className="text-sm text-gray-400 mt-1">average</div>
-            </div>
-            <div className="text-center">
-              <div className="text-5xl lg:text-6xl font-bold mb-2 bg-gradient-to-r from-[#EF2D2C] to-white bg-clip-text text-transparent">
-                40%
-              </div>
-              <div className="text-gray-300 font-medium">Conversion Boost</div>
-              <div className="text-sm text-gray-400 mt-1">vs traditional</div>
-            </div>
+            ))}
           </div>
         </div>
       </section>

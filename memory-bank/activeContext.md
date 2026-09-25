@@ -50,8 +50,24 @@ on :5435).
 
 ## Recent work (full reasoning in `progress.md`)
 
+000000. **Home page: invented figures removed (2026-09-25, local only —
+   needs a push)** — user asked to make the "Proven Results & Performance"
+   band "like About page". Its four template stats (1,247+ leads qualified,
+   94.5% AI accuracy, <1 min response, 40% conversion boost) were never real;
+   replaced with four non-numeric highlights in the About page's pattern
+   (`HIGHLIGHTS` const in `HomePage.tsx`: Real Listings Only / Answers
+   Anytime / Matched to Your Needs / Real People on Hand — each a true
+   statement about the platform), band retitled "What You Can Count On" (not
+   "Why Choose ERA Cambodia" — the features section above already uses that
+   label). Same pass removed the page's other figures: "94.5% matching
+   accuracy", "100% verified listings", "Our 10 experienced sales
+   professionals". Verified desktop + 375 px. **Still on the home page, not
+   touched (user to decide)**: feature bullets that describe things the site
+   doesn't do — "Secure payment processing" (no online payment exists),
+   "Real-time market analysis" / "Price trend predictions", "Smart reminder
+   system" / "Auto-scheduling viewings".
 00000. **Admin click-through of the last untested screens (2026-09-25,
-   local only — not yet on the demo; needs a `push.sh`)**. Worked, verified
+   live on the demo — pushed 06:05 UTC, commit `82c7724`)**. Worked, verified
    against Postgres and the customer site:
    - **Campaign ad link end to end**: new campaign → its
      `/?utm_campaign=<code>` link → visitor enquiry on a property → the
