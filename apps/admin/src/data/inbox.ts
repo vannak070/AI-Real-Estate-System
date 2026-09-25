@@ -47,3 +47,27 @@ export const useTakeOver = () => useInboxMutation((id: string) => api.messaging.
 export const useHandBack = () => useInboxMutation((id: string) => api.messaging.inbox.handBack.mutate({ id }));
 export const useSendReply = () =>
   useInboxMutation((input: { id: string; text: string }) => api.messaging.inbox.send.mutate(input));
+
+/* ── The signed-in staff member's Telegram alerts ── */
+
+const ALERTS = ['messaging', 'alerts'] as const;
+
+/** `waiting`: a link was just opened — poll until the bot reports the chat linked. */
+export function useMyAlerts(waiting: boolean) {
+  return useQuery({
+    queryKey: [...ALERTS, 'me'],
+    queryFn: () => api.messaging.alerts.me.query(),
+    refetchInterval: waiting ? 3_000 : false,
+  });
+}
+
+function useAlertsMutation<TInput, TResult>(fn: (input: TInput) => Promise<TResult>) {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: fn, onSuccess: () => queryClient.invalidateQueries({ queryKey: ALERTS }) });
+}
+
+/** Alert buttons link back to this back office, at the address it's open on now. */
+export const useLinkAlerts = () =>
+  useAlertsMutation(() => api.messaging.alerts.link.mutate({ adminUrl: window.location.origin }));
+export const useUnlinkAlerts = () => useAlertsMutation(() => api.messaging.alerts.unlink.mutate());
+export const useTestAlert = () => useMutation({ mutationFn: () => api.messaging.alerts.test.mutate() });

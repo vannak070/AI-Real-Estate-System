@@ -4,6 +4,7 @@ import type { MessagingConversation } from '@prisma/client';
 import type { ModuleContext } from '../../platform/module.js';
 import type { CrmLeadSummaryView } from '../crm/index.js';
 import type { TelegramBot } from './telegram-bot.js';
+import type { StaffAlerts } from './staff-alerts.js';
 
 /** The signed-in staff member using the Inbox. */
 export interface InboxViewer {
@@ -34,7 +35,7 @@ const needsAttention = (c: Pick<MessagingConversation, 'needsAgent' | 'mode' | '
 /** How often handled chats are checked for the automatic hand-back rules. */
 const SWEEP_EVERY_MS = 60_000;
 
-export function createInbox({ db, modules, config, logger }: ModuleContext, telegram: TelegramBot) {
+export function createInbox({ db, modules, config, logger }: ModuleContext, telegram: TelegramBot, alerts: StaffAlerts) {
   const log = logger.child({ svc: 'inbox' });
   /** Per platform: send a message, and have the AI answer a chat's waiting message(s). */
   const adapters: Record<string, { send: (chatId: string, text: string) => Promise<unknown>; answerPending: (id: string) => Promise<void> }> = {
@@ -57,7 +58,7 @@ export function createInbox({ db, modules, config, logger }: ModuleContext, tele
     if (!waitMs && !idleMs) return;
     const handled = await db.messagingConversation.findMany({
       where: { mode: 'AGENT' },
-      include: { messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { role: true, createdAt: true } } },
+      include: { messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { role: true, text: true, createdAt: true } } },
     });
     for (const c of handled) {
       const last = c.messages[0];
@@ -76,6 +77,12 @@ export function createInbox({ db, modules, config, logger }: ModuleContext, tele
             },
           });
           if (claimed.count === 0) continue;
+          // `c` still names the staff member who had it, so they're told along with the managers.
+          void alerts.needsAgent(
+            c,
+            `Waited ${config.inboxAutoHandbackMinutes} min with no staff reply — the AI is answering for now.`,
+            last?.text ?? null,
+          );
           const adapter = adapters[c.channel];
           const notice =
             "Sorry for the wait — our team is busy right now. ERA's AI assistant will help you in the meantime, and a team member can still join this chat.";

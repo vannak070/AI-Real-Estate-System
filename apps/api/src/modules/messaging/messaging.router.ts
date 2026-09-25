@@ -6,6 +6,7 @@ const byId = z.object({ id: z.string() });
 
 export function messagingRouter({ modules }: ModuleContext) {
   const inbox = () => modules.messaging.inbox;
+  const alerts = () => modules.messaging.alerts;
   return router({
     /** Bot connection state for the Marketing → Channels tab. */
     status: withCapability('marketing:read').query(() => modules.messaging.status()),
@@ -32,6 +33,18 @@ export function messagingRouter({ modules }: ModuleContext) {
       send: withCapability('crm:write')
         .input(z.object({ id: z.string(), text: z.string().trim().min(1).max(3500) }))
         .mutation(({ input, ctx }) => inbox().send(ctx.user, input.id, input.text)),
+    }),
+
+    /** The signed-in staff member's own Telegram alerts (they only ever hear about records they
+     * could open in the Inbox or Pipeline anyway). */
+    alerts: router({
+      me: withCapability('crm:read').query(({ ctx }) => alerts().status(ctx.user.id)),
+      /** `adminUrl`: this back office's address as the browser sees it — alert buttons open it. */
+      link: withCapability('crm:read')
+        .input(z.object({ adminUrl: z.string().url().max(200).regex(/^https?:\/\//) }))
+        .mutation(({ input, ctx }) => alerts().createLink(ctx.user.id, input.adminUrl)),
+      unlink: withCapability('crm:read').mutation(({ ctx }) => alerts().unlink(ctx.user.id)),
+      test: withCapability('crm:read').mutation(({ ctx }) => alerts().sendTest(ctx.user.id)),
     }),
   });
 }

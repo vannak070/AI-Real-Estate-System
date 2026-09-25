@@ -16,10 +16,19 @@ export interface IdentityAgentDocumentView {
   email: string;
 }
 
+/** What a user may see — for deciding who gets a staff alert about a record. */
+export interface IdentityUserAccessView {
+  id: string;
+  name: string;
+  active: boolean;
+  capabilities: string[];
+}
+
 export interface IdentityApi {
   getUser(id: string): Promise<IdentityUserView | null>;
   listAgents(): Promise<Array<Pick<IdentityUserView, 'id' | 'name'>>>;
   getAgentDocument(id: string): Promise<IdentityAgentDocumentView | null>;
+  listUserAccess(ids: string[]): Promise<IdentityUserAccessView[]>;
 }
 
 export const identityModule: AppModule<IdentityApi> = {
@@ -49,6 +58,11 @@ export const identityModule: AppModule<IdentityApi> = {
               email: u.email,
             }
           : null;
+      },
+      async listUserAccess(ids) {
+        if (ids.length === 0) return [];
+        const rows = await db.user.findMany({ where: { id: { in: ids } }, include: { role: true } });
+        return rows.map((u) => ({ id: u.id, name: u.name, active: u.active, capabilities: u.role.capabilities }));
       },
     };
     // TODO: auth routes (login / session) land here.

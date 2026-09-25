@@ -6,8 +6,12 @@ last few items here. Verify any claim against the code before relying on it.
 
 ## Where things stand (2026-09-25)
 
-**Ready for the management review.** Code on the Mac, GitHub (`origin/main`
-= `9af00bb`, 2026-09-25) and the online demo all match; nothing uncommitted.
+**Ready for the management review.** GitHub (`origin/main` = `2796ea3`,
+2026-09-25, the customer-site honesty check) and the online demo match.
+**Uncommitted on the Mac, not deployed: staff alerts** (Recent work
+00000000). When they go to the demo, the migration applies itself on startup
+(the Dockerfile runs `prisma migrate deploy`). Then check the "Open Telegram →
+waiting → linked" step there with the real bot.
 
 **The demo: https://demo.yarvorax.com (customer site) +
 https://admin.demo.yarvorax.com (back office)** — DigitalOcean droplet
@@ -50,8 +54,48 @@ on :5435).
 
 ## Recent work (full reasoning in `progress.md`)
 
-0000000. **Honesty check of the other customer pages (2026-09-25, local,
-   uncommitted)**. Method: scan the rendered `main` text of each page and
+00000000. **Staff alerts on Telegram (2026-09-25, local, uncommitted)** — so
+   a customer waiting on a person isn't missed while nobody has the Inbox open.
+   - **Linking**: each staff member links their own Telegram from the Inbox
+     header ("Turn on Telegram alerts"). That makes a one-time 15-min code;
+     opening `t.me/<bot>?start=staff_<code>` and pressing Start links the chat.
+     The bot handles `/start staff_…` and `/stopalerts` *before* creating a
+     customer conversation, so staff chats never show in the Inbox. The
+     control also has "Send test" and "Turn off".
+   - **Three triggers**:
+     - The AI's `request_agent` (only when `needsAgent` goes false→true).
+       Goes to everyone who can open the chat.
+     - A customer writing into a staff-handled chat. Handler only, first
+       unread message only.
+     - The 30-min auto hand-back. Goes to everyone who can open the chat,
+       including the previous handler.
+     - Plus a new lead (`crm.lead_created` subscription) → its owner, or
+       managers if unassigned. Idempotent via `messaging_staff_alerts_sent`
+       key `lead:<id>`.
+   - **Who gets them**: Inbox visibility — `crm:read:all`, or the
+     handler/lead owner.
+   - **Where it lives**: `modules/messaging/staff-alerts.ts`; tables
+     `messaging_staff_alert_links` + `messaging_staff_alerts_sent` (migration
+     `20260925090000_messaging_staff_alerts`); new
+     `IdentityApi.listUserAccess`. Router: `messaging.alerts.{me,link,unlink,test}`
+     (crm:read).
+   - **Buttons**: alerts carry an "Open in Inbox"/"Open lead" button to the
+     admin address the staff member linked from (`/inbox?c=`,
+     `/leads?open=`). A localhost/LAN address gets plain text instead
+     (Telegram rejects those buttons).
+   - **Tested** with a throw-away harness (fake Telegram API, stubbed AI, real
+     modules + DB): 20/20. It caught a real bug: the owner missed the alert
+     when the AI saved the lead and asked for a person in the same turn (fixed
+     by alerting with this turn's `leadId`).
+     - Harness gotcha: backdating messages to one timestamp scrambles "latest
+       message" — shift them with `createdAt - interval` instead.
+   - **Admin UI**: the unavailable, linked, test-error and turn-off states were
+     checked locally. The "Open Telegram → waiting" state needs a real bot, so
+     check it on the demo.
+
+0000000. **Honesty check of the other customer pages (2026-09-25, commit
+   2796ea3, pushed; live on the demo — verified by grepping the served
+   bundle)**. Method: scan the rendered `main` text of each page and
    list dead controls via `__reactProps$…` (a button with no onClick and no
    `<a>` or form around it). Fixed:
    - **Property detail**: the dead Share button now works (`ShareButton`:
@@ -310,8 +354,8 @@ on :5435).
 
 1. Work through the management review's feedback.
 2. Rotate the secrets; staff write AI Knowledge; fill listing data gaps.
-3. Staff alerts (e.g. a Telegram message to the team when a customer asks
-   for a person) so the Inbox works without the page open.
+3. ~~Staff alerts~~ — built (Recent work 00000000); staff must link their
+   Telegram from the Inbox on the demo.
 4. **Facebook Messenger, then WhatsApp** on the `messaging` module (Meta app
    review is slow — start the paperwork early; a privacy-policy page on the
    client site is required).

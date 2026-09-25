@@ -66,3 +66,35 @@ model MessagingMessage {
   @@index([conversationId, createdAt])
   @@map("messaging_messages")
 }
+
+/// A staff member's Telegram chat with the bot, for staff alerts (a customer asks for a person, a
+/// customer writes to a chat they're handling, a new lead is assigned to them). Linked from the
+/// admin Inbox: a one-time code opens t.me/<bot>?start=staff_<code>, and the bot ties that chat to
+/// the user. One row per user.
+model MessagingStaffAlertLink {
+  /// identity_users.id (no FK — module rule).
+  userId            String    @id
+  /// Telegram chat.id — null until the code is used.
+  chatId            String?
+  /// As Telegram reports the person who linked it.
+  telegramName      String?
+  linkedAt          DateTime?
+  /// One-time link code (15 min). Cleared once used.
+  linkCode          String?   @unique
+  linkCodeExpiresAt DateTime?
+  /// The back office's address as the staff member opened it — alert buttons link there.
+  adminUrl          String?
+  createdAt         DateTime  @default(now())
+
+  @@index([chatId])
+  @@map("messaging_staff_alert_links")
+}
+
+/// Alerts already sent for an event, keyed e.g. "lead:<leadId>" — a redelivered event (NATS
+/// retry) is recognised and not alerted twice.
+model MessagingStaffAlertSent {
+  key       String   @id
+  createdAt DateTime @default(now())
+
+  @@map("messaging_staff_alerts_sent")
+}

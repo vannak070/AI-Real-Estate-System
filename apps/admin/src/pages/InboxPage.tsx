@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { Bot, Image as ImageIcon, Send, UserRound } from 'lucide-react';
+import { Bell, BellOff, Bot, ExternalLink, Image as ImageIcon, Send, UserRound } from 'lucide-react';
 import { PageHeader, Tabs, Badge, Button, EmptyState, cn } from '@era/ui';
 import {
   useConversation,
   useHandBack,
   useInbox,
+  useLinkAlerts,
   useMarkRead,
+  useMyAlerts,
+  useTestAlert,
+  useUnlinkAlerts,
   useSendReply,
   useTakeOver,
   type ConversationThread,
@@ -309,6 +313,92 @@ function ConversationPane({ id }: { id: string }) {
   );
 }
 
+/* ── Telegram alerts (the signed-in staff member's own) ── */
+
+const errorText = (err: unknown) => (err instanceof Error ? err.message : 'Something went wrong.');
+
+function TelegramAlerts() {
+  // A link opened in Telegram but not used yet: poll until the bot reports the chat linked.
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const { data: me } = useMyAlerts(!!pendingUrl);
+  const link = useLinkAlerts();
+  const unlink = useUnlinkAlerts();
+  const test = useTestAlert();
+
+  useEffect(() => {
+    if (me?.linked) setPendingUrl(null);
+  }, [me?.linked]);
+
+  if (!me) return null;
+  const error = link.error ?? unlink.error ?? test.error;
+  const errorLine = error && <p className="w-full text-right text-xs text-[#8B0A1C]">{errorText(error)}</p>;
+
+  if (me.linked) {
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700">
+          <Bell className="h-4 w-4" />
+          Telegram alerts on{me.telegramName ? ` · ${me.telegramName}` : ''}
+        </span>
+        <Button size="sm" variant="ghost" disabled={test.isPending} onClick={() => test.mutate()}>
+          {test.isSuccess ? 'Test sent ✓' : test.isPending ? 'Sending…' : 'Send test'}
+        </Button>
+        <Button size="sm" variant="ghost" disabled={unlink.isPending} onClick={() => unlink.mutate()}>
+          <BellOff className="h-4 w-4" />
+          Turn off
+        </Button>
+        {errorLine}
+      </div>
+    );
+  }
+
+  if (!me.available) {
+    return (
+      <span className="text-sm text-gray-400" title="Set TELEGRAM_BOT_TOKEN on the server to use Telegram alerts.">
+        Telegram alerts unavailable — the bot isn't connected
+      </span>
+    );
+  }
+
+  if (pendingUrl) {
+    return (
+      <div className="flex max-w-md flex-wrap items-center justify-end gap-2 text-right">
+        <a
+          href={pendingUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#229ED9] px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Open Telegram
+        </a>
+        <Button size="sm" variant="ghost" onClick={() => setPendingUrl(null)}>
+          Cancel
+        </Button>
+        <p className="w-full text-xs text-gray-500">
+          Press <b>Start</b> in the bot chat to finish. Waiting… (the link works once, for 15 minutes)
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={link.isPending}
+        onClick={() => link.mutate(undefined, { onSuccess: (r) => setPendingUrl(r.url) })}
+        title="Get a Telegram message when a customer asks for a person, writes in a chat you're handling, or a new lead is assigned to you"
+      >
+        <Bell className="h-4 w-4" />
+        Turn on Telegram alerts
+      </Button>
+      {errorLine}
+    </div>
+  );
+}
+
 /* ── Page ── */
 
 export function InboxPage() {
@@ -324,6 +414,7 @@ export function InboxPage() {
       <PageHeader
         title="Inbox"
         subtitle="Customer chats with the Telegram AI bot. Take over any chat to reply as yourself; hand it back when you're done."
+        actions={<TelegramAlerts />}
       />
       <Tabs
         tabs={[

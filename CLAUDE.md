@@ -274,6 +274,10 @@ Rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
   replies from `ctx.modules.assistant`. Also the admin **Inbox**
   (`inbox.ts`, `/inbox` page): staff take a chat over (AI goes silent),
   reply through the bot, hand it back; visibility follows CRM ownership.
+  **Staff alerts** (`staff-alerts.ts`): each staff member links their own
+  Telegram from the Inbox (one-time `t.me/<bot>?start=staff_<code>`) and is
+  messaged when a chat they can see needs a person, a customer writes in a
+  chat they handle, or a new lead is assigned to them (same visibility rule).
   Optional: nothing starts without
   `TELEGRAM_BOT_TOKEN`. Background work uses the `AppModule` `start`/`stop`
   hooks (`platform/module.ts`, run by `app.ts`).

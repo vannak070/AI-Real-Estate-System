@@ -5,6 +5,7 @@ import { Prisma, type MessagingConversation } from '@prisma/client';
 import type { ModuleContext } from '../../platform/module.js';
 import { resolveUploadPath } from '../../platform/uploads.js';
 import type { PropertyCard } from '../assistant/index.js';
+import { isPublicUrl, STAFF_START_PREFIX, type StaffAlerts } from './staff-alerts.js';
 import {
   createTelegramClient,
   TelegramApiError,
@@ -50,21 +51,6 @@ export interface TelegramStatus {
   error: string | null;
 }
 
-/** Telegram refuses link buttons to addresses it can't reach (localhost, LAN). */
-function isPublicUrl(url: string): boolean {
-  try {
-    const host = new URL(url).hostname;
-    return !(
-      host === 'localhost' ||
-      host.endsWith('.local') ||
-      /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.)/.test(host) ||
-      !host.includes('.')
-    );
-  } catch {
-    return false;
-  }
-}
-
 /** "2. Time Square 5 ⏎ From $80,000 ⏎ 📍 BKK1" — numbered when there are several, so a customer
  * can answer "the second one" / "2". */
 function cardCaption(card: PropertyCard, number: number | null): string {
@@ -83,7 +69,10 @@ const MAX_REMEMBERED_CARDS = 5000;
 
 const isDuplicate = (err: unknown) => err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 
-export function createTelegramBot({ config, db, logger, modules }: ModuleContext) {
+/** "/start staff_<code>" — a staff member linking this chat for alerts (see staff-alerts.ts). */
+const STAFF_START = new RegExp(`^/start ${STAFF_START_PREFIX}([A-Za-z0-9_-]{8,58})$`);
+
+export function createTelegramBot({ config, db, logger, modules }: ModuleContext, alerts: StaffAlerts) {
   const log = logger.child({ svc: 'telegram' });
   const status: TelegramStatus = { configured: !!config.telegramBotToken, mode: null, botUsername: null, error: null };
   const token = config.telegramBotToken;
@@ -94,7 +83,7 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       async stop() {},
       verifyWebhook: () => false,
       handleUpdate() {},
-      async sendText(_chatId: string, _text: string): Promise<number> {
+      async sendText(_chatId: string, _text: string, _markup?: ReplyMarkup): Promise<number> {
         throw new Error('The Telegram bot is not connected (TELEGRAM_BOT_TOKEN is not set).');
       },
       async answerPending(_conversationId: string) {},
@@ -215,6 +204,7 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
     typing();
     const typingTimer = setInterval(typing, 4500);
     let result;
+    let lastCustomerText: string | null = null;
     try {
       const recent = await db.messagingMessage.findMany({
         where: { conversationId: convo.id },
@@ -230,6 +220,7 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
             : // Staff replies are part of our side of the conversation; mark them so the AI knows.
               { role: 'assistant' as const, content: m.role === 'AGENT' ? `[ERA staff member replied:] ${m.text}` : m.text },
         );
+      lastCustomerText = [...history].reverse().find((m) => m.role === 'user')?.content ?? null;
 
       result = await modules.assistant.replyToMessage({
         source: CHANNEL,
@@ -259,6 +250,12 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       select: { mode: true },
     });
     if (latest.mode === 'AGENT') return;
+    // Only when the flag goes up — a chat already waiting for a person doesn't alert again.
+    // With this turn's lead: the AI often saves the lead and asks for a person in the same reply,
+    // and the lead's owner must hear about it.
+    if (result.wantsAgent && !convo.needsAgent) {
+      void alerts.needsAgent({ ...convo, leadId: result.leadId }, result.wantsAgent, lastCustomerText);
+    }
     await saveReply(result.transcript);
     // Photo cards first, then the text — its follow-up question ends up last, next to the input.
     await sendCards(chatId, result.cards);
@@ -271,6 +268,22 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
     const from = msg.from!;
     const chatId = String(msg.chat.id);
     const displayName = [from.first_name, from.last_name].filter(Boolean).join(' ') || undefined;
+
+    // Staff alert commands are handled before a customer conversation is created or touched.
+    if (!tap) {
+      const staffStart = STAFF_START.exec(msg.text?.trim() ?? '');
+      if (staffStart) {
+        await send(chatId, await alerts.claimLink(staffStart[1]!, chatId, displayName ?? from.username ?? null), { remove_keyboard: true });
+        return;
+      }
+      if (msg.text?.trim() === '/stopalerts') {
+        const reply = await alerts.stopFromChat(chatId);
+        if (reply) {
+          await send(chatId, reply);
+          return;
+        }
+      }
+    }
 
     const convo = await db.messagingConversation.upsert({
       where: { channel_externalChatId: { channel: CHANNEL, externalChatId: chatId } },
@@ -307,10 +320,18 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
       if (isDuplicate(err)) return;
       throw err;
     }
-    await db.messagingConversation.update({ where: { id: convo.id }, data: { unreadCount: { increment: 1 } } });
+    const { unreadCount } = await db.messagingConversation.update({
+      where: { id: convo.id },
+      data: { unreadCount: { increment: 1 } },
+      select: { unreadCount: true },
+    });
     // A staff member has taken over in the Inbox: the AI stays silent and the message just waits
     // there for them (commands and button taps included — they're the customer talking to a person).
-    if (convo.mode === 'AGENT') return;
+    // Their first unread message pings the staff member on Telegram, so it's seen without the Inbox open.
+    if (convo.mode === 'AGENT') {
+      if (unreadCount === 1) void alerts.customerWaiting(convo, inbound.text);
+      return;
+    }
     const saveReply = (reply: string) =>
       db.messagingMessage.create({ data: { conversationId: convo.id, role: 'ASSISTANT', text: reply } });
 
@@ -480,9 +501,9 @@ export function createTelegramBot({ config, db, logger, modules }: ModuleContext
         );
       })();
     },
-    /** A staff member's reply from the Inbox. Resolves to the Telegram message id. */
-    sendText(chatId: string, text: string) {
-      return tg.sendMessage(chatId, text);
+    /** A staff member's reply from the Inbox, or a staff alert. Resolves to the Telegram message id. */
+    sendText(chatId: string, text: string, markup?: ReplyMarkup) {
+      return tg.sendMessage(chatId, text, markup);
     },
     verifyWebhook(header: string | undefined) {
       if (status.mode !== 'webhook' || !header) return false;
